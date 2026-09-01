@@ -1,0 +1,705 @@
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://172.18.240.1:3000
+- Environments: .env.local
+✓ Ready in 1187ms
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\atuld\yarn.lock as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Users\atuld\OneDrive\Desktop\scopeai\package-lock.json
+
+
+ GET / 200 in 890ms (next.js: 364ms, application-code: 526ms)
+ GET /chat 200 in 467ms (next.js: 63ms, application-code: 404ms)
+ GET /metrics 404 in 610ms (next.js: 62ms, application-code: 548ms)
+ GET /api/health 200 in 330ms (next.js: 109ms, proxy.ts: 202ms, application-code: 19ms)
+ GET / 200 in 113ms (next.js: 7ms, application-code: 105ms)
+ GET /metrics 404 in 65ms (next.js: 7ms, application-code: 58ms)
+ GET / 200 in 76ms (next.js: 5ms, application-code: 70ms)
+ GET /chat 200 in 57ms (next.js: 8ms, application-code: 49ms)
+ GET /metrics 404 in 70ms (next.js: 9ms, application-code: 61ms)
+{"level":"info","msg":"orchestrator.round.start","ts":"2026-05-15T10:34:09.259Z","sessionId":"f1860cb0-eeb6-4c2f-b6ff-30351b4d6188","roundNumber":0,"status":"analyzing"}
+ GET /metrics 404 in 61ms (next.js: 9ms, application-code: 53ms)
+{"level":"error","msg":"extract.anthropic_failure","ts":"2026-05-15T10:34:19.961Z","message":"OpenRouter request failed: fetch failed"}
+ POST /api/session 502 in 14.0s (next.js: 3.3s, proxy.ts: 11ms, application-code: 10.7s)
+[browser] {"level":"error","msg":"chat.create_failed","ts":"2026-05-15T10:34:19.968Z","code":"LLM_ERROR","status":502} 
+    at emit (lib/logger.ts:20:34)
+    at Object.error (lib/logger.ts:31:59)
+    at ChatLayout.useMutation[createMutation] [as onError] (components/chat/ChatLayout.tsx:100:14)
+  18 |   const entry: LogEntry = { level, msg, ts: new Date().toISOString(), ...meta };
+  19 |   const payload = JSON.stringify(entry);
+> 20 |   if (level === "error") console.error(payload);
+     |                                  ^
+  21 |   else if (level === "warn") console.warn(payload);
+  22 |   // eslint-disable-next-line no-console
+  23 |   else console.log(payload); (lib/logger.ts:20:34)
+ GET /metrics 404 in 94ms (next.js: 9ms, application-code: 85ms)
+ GET /metrics 404 in 105ms (next.js: 13ms, application-code: 92ms)
+ GET /metrics 404 in 73ms (next.js: 10ms, application-code: 63ms)
+ GET /metrics 404 in 62ms (next.js: 8ms, application-code: 54ms)
+ GET /metrics 404 in 57ms (next.js: 7ms, application-code: 50ms)
+ GET /metrics 404 in 70ms (next.js: 7ms, application-code: 62ms)
+ GET /metrics 404 in 78ms (next.js: 7ms, application-code: 71ms)
+ GET /metrics 404 in 62ms (next.js: 8ms, application-code: 54ms)
+ GET /metrics 404 in 81ms (next.js: 13ms, application-code: 68ms)
+ GET /metrics 404 in 609ms (next.js: 250ms, application-code: 358ms)
+ GET /metrics 404 in 61ms (next.js: 7ms, application-code: 54ms)
+ GET /metrics 404 in 382ms (next.js: 106ms, application-code: 276ms)
+ GET /metrics 404 in 65ms (next.js: 7ms, application-code: 58ms)
+ GET /metrics 404 in 415ms (next.js: 126ms, application-code: 289ms)
+ GET /metrics 404 in 66ms (next.js: 9ms, application-code: 58ms)
+ GET /metrics 404 in 68ms (next.js: 8ms, application-code: 60ms)
+{"level":"info","msg":"orchestrator.round.start","ts":"2026-05-15T10:38:28.869Z","sessionId":"decb3293-9cc8-46af-9477-7011a46f3da7","roundNumber":0,"status":"analyzing"}
+ GET /metrics 404 in 64ms (next.js: 7ms, application-code: 57ms)
+ GET /metrics 404 in 58ms (next.js: 11ms, application-code: 47ms)
+ GET /metrics 404 in 58ms (next.js: 7ms, application-code: 51ms)
+ GET /metrics 404 in 59ms (next.js: 7ms, application-code: 52ms)
+ GET /metrics 404 in 66ms (next.js: 8ms, application-code: 58ms)
+ GET /metrics 404 in 71ms (next.js: 9ms, application-code: 62ms)
+{"level":"info","msg":"extract.completed","ts":"2026-05-15T10:39:47.008Z","durationMs":78119,"inputTokens":1889,"outputTokens":1732,"cacheReadTokens":0,"cacheCreationTokens":0,"stopReason":"tool_use"}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T10:39:47.727Z","durationMs":711,"query":"topic:saas auth  oauth analytics dashboard billing  subscription language:typescript fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:name,description,readme","total":0,"returned":0}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T10:39:47.728Z","durationMs":711,"query":"auth  oauth analytics dashboard billing  subscription csv export team  settings language:typescript fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:name,description,readme","total":0,"returned":0}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T10:39:47.852Z","durationMs":835,"query":"language:typescript auth  oauth analytics dashboard billing  subscription fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:name,description,readme","total":4,"returned":4}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T10:39:47.964Z","durationMs":947,"query":"saas auth  oauth fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:readme","total":24,"returned":10}
+ GET /metrics 404 in 55ms (next.js: 7ms, application-code: 48ms)
+{"level":"info","msg":"github.extract_modules.completed","ts":"2026-05-15T10:40:02.900Z","durationMs":12967,"inputTokens":2123,"outputTokens":213}
+{"level":"info","msg":"github.extract_modules.completed","ts":"2026-05-15T10:40:12.810Z","durationMs":9908,"inputTokens":2139,"outputTokens":180}
+ GET /metrics 404 in 66ms (next.js: 9ms, application-code: 57ms)
+{"level":"info","msg":"github.extract_modules.completed","ts":"2026-05-15T10:40:24.081Z","durationMs":11266,"inputTokens":2226,"outputTokens":204}
+ GET /metrics 404 in 86ms (next.js: 8ms, application-code: 79ms)
+{"level":"info","msg":"github.extract_modules.completed","ts":"2026-05-15T10:40:31.750Z","durationMs":7665,"inputTokens":2028,"outputTokens":127}
+ GET /metrics 404 in 64ms (next.js: 9ms, application-code: 55ms)
+{"level":"info","msg":"github.extract_modules.completed","ts":"2026-05-15T10:40:55.701Z","durationMs":23948,"inputTokens":1936,"outputTokens":216}
+{"level":"info","msg":"github.enrich.completed","ts":"2026-05-15T10:40:55.703Z","durationMs":68689,"reposSearched":10,"variantsRun":4,"readmesFetched":10,"foldersFetched":9,"llmCallsUsed":5,"topMatchesCount":5,"distinctModules":75,"avgSimilarity":0.33}
+ POST /api/session 200 in 2.5min (next.js: 447ms, proxy.ts: 218ms, application-code: 2.4min)
+ GET /metrics 404 in 73ms (next.js: 9ms, application-code: 64ms)
+ GET /metrics 404 in 74ms (next.js: 7ms, application-code: 67ms)
+ GET /metrics 404 in 68ms (next.js: 8ms, application-code: 61ms)
+{"level":"info","msg":"finalize.client.tokens","ts":"2026-05-15T10:41:36.804Z","inputTokens":2740,"outputTokens":969,"cacheReadTokens":0}
+ GET /metrics 404 in 76ms (next.js: 8ms, application-code: 68ms)
+ GET /metrics 404 in 74ms (next.js: 8ms, application-code: 66ms)
+ GET /metrics 404 in 64ms (next.js: 7ms, application-code: 57ms)
+ GET /metrics 404 in 63ms (next.js: 8ms, application-code: 55ms)
+{"level":"info","msg":"finalize.engineer.tokens","ts":"2026-05-15T10:42:37.159Z","inputTokens":3023,"outputTokens":2360,"cacheReadTokens":0}
+{"level":"info","msg":"finalize.completed","ts":"2026-05-15T10:42:37.166Z","sessionId":"decb3293-9cc8-46af-9477-7011a46f3da7","durationMs":101293}
+ POST /api/finalize 200 in 101s (next.js: 91ms, proxy.ts: 13ms, application-code: 101s)
+ GET /metrics 404 in 81ms (next.js: 10ms, application-code: 71ms)
+ GET /metrics 404 in 74ms (next.js: 9ms, application-code: 65ms)
+ GET /metrics 404 in 68ms (next.js: 13ms, application-code: 55ms)
+ GET / 200 in 280ms (next.js: 57ms, application-code: 223ms)
+ GET /chat 200 in 327ms (next.js: 239ms, application-code: 88ms)
+ GET /metrics 404 in 86ms (next.js: 9ms, application-code: 76ms)
+{"level":"info","msg":"orchestrator.round.start","ts":"2026-05-15T10:43:30.330Z","sessionId":"e6282f4d-8767-460a-93f7-7687f0847f98","roundNumber":0,"status":"analyzing"}
+ GET /metrics 404 in 71ms (next.js: 12ms, application-code: 59ms)
+ GET /metrics 404 in 94ms (next.js: 10ms, application-code: 84ms)
+ GET /metrics 404 in 74ms (next.js: 8ms, application-code: 66ms)
+ GET /metrics 404 in 82ms (next.js: 8ms, application-code: 73ms)
+ GET /metrics 404 in 67ms (next.js: 8ms, application-code: 59ms)
+{"level":"info","msg":"extract.completed","ts":"2026-05-15T10:44:55.333Z","durationMs":85002,"inputTokens":1828,"outputTokens":1845,"cacheReadTokens":0,"cacheCreationTokens":0,"stopReason":"tool_use"}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T10:44:55.956Z","durationMs":620,"query":"topic:saas auth invoice management pdf generation fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:name,description,readme","total":0,"returned":0}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T10:44:56.098Z","durationMs":761,"query":"auth invoice management pdf generation email notification payment integration fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:name,description,readme","total":3,"returned":3}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T10:44:56.177Z","durationMs":840,"query":"saas auth fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:readme","total":102,"returned":10}
+ GET /metrics 404 in 64ms (next.js: 8ms, application-code: 56ms)
+{"level":"info","msg":"github.extract_modules.completed","ts":"2026-05-15T10:45:13.022Z","durationMs":14903,"inputTokens":2028,"outputTokens":191}
+ GET /metrics 404 in 72ms (next.js: 10ms, application-code: 62ms)
+{"level":"info","msg":"github.extract_modules.completed","ts":"2026-05-15T10:45:27.291Z","durationMs":14268,"inputTokens":1843,"outputTokens":206}
+ GET /metrics 404 in 69ms (next.js: 9ms, application-code: 59ms)
+{"level":"info","msg":"github.extract_modules.completed","ts":"2026-05-15T10:45:38.657Z","durationMs":11366,"inputTokens":1684,"outputTokens":153}
+ GET /metrics 404 in 70ms (next.js: 9ms, application-code: 62ms)
+{"level":"info","msg":"github.extract_modules.completed","ts":"2026-05-15T10:45:49.311Z","durationMs":10653,"inputTokens":1491,"outputTokens":122}
+ GET /metrics 404 in 65ms (next.js: 9ms, application-code: 57ms)
+{"level":"info","msg":"github.extract_modules.completed","ts":"2026-05-15T10:46:01.426Z","durationMs":12114,"inputTokens":1948,"outputTokens":100}
+{"level":"info","msg":"github.enrich.completed","ts":"2026-05-15T10:46:01.427Z","durationMs":66092,"reposSearched":10,"variantsRun":3,"readmesFetched":10,"foldersFetched":9,"llmCallsUsed":5,"topMatchesCount":5,"distinctModules":63,"avgSimilarity":0.58}
+ GET /metrics 404 in 66ms (next.js: 7ms, application-code: 59ms)
+{"level":"info","msg":"mcq.completed","ts":"2026-05-15T10:46:26.876Z","durationMs":25447,"inputTokens":1168,"outputTokens":471}
+ POST /api/session 200 in 2.9min (next.js: 6ms, proxy.ts: 12ms, application-code: 2.9min)
+ GET /chat?s=e6282f4d-8767-460a-93f7-7687f0847f98 200 in 43ms (next.js: 4ms, application-code: 39ms)
+ GET /metrics 404 in 97ms (next.js: 10ms, application-code: 87ms)
+ GET /api/session/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 4.4s (next.js: 4.4s, proxy.ts: 16ms, application-code: 11ms)
+ GET /metrics 404 in 90ms (next.js: 13ms, application-code: 77ms)
+ GET /api/session/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 40ms (next.js: 19ms, proxy.ts: 10ms, application-code: 11ms)
+{"level":"info","msg":"orchestrator.round.start","ts":"2026-05-15T10:46:51.926Z","sessionId":"e6282f4d-8767-460a-93f7-7687f0847f98","roundNumber":1,"status":"analyzing"}
+ GET /metrics 404 in 80ms (next.js: 9ms, application-code: 71ms)
+ GET /metrics 404 in 76ms (next.js: 11ms, application-code: 65ms)
+ GET /metrics 404 in 66ms (next.js: 8ms, application-code: 59ms)
+ GET /metrics 404 in 67ms (next.js: 9ms, application-code: 58ms)
+ GET /metrics 404 in 64ms (next.js: 8ms, application-code: 56ms)
+ GET /metrics 404 in 69ms (next.js: 9ms, application-code: 59ms)
+ GET /metrics 404 in 107ms (next.js: 33ms, application-code: 74ms)
+{"level":"info","msg":"extract.completed","ts":"2026-05-15T10:48:30.416Z","durationMs":98484,"inputTokens":1959,"outputTokens":1903,"cacheReadTokens":0,"cacheCreationTokens":0,"stopReason":"tool_use"}
+ POST /api/session/e6282f4d-8767-460a-93f7-7687f0847f98/answer 200 in 102s (next.js: 3.6s, proxy.ts: 8ms, application-code: 99s)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 1347ms (next.js: 1173ms, application-code: 175ms)
+ GET /metrics 404 in 68ms (next.js: 7ms, application-code: 61ms)
+ GET /metrics 404 in 87ms (next.js: 11ms, application-code: 77ms)
+ GET /metrics 404 in 71ms (next.js: 8ms, application-code: 64ms)
+ GET /metrics 404 in 70ms (next.js: 8ms, application-code: 63ms)
+ GET /metrics 404 in 75ms (next.js: 8ms, application-code: 67ms)
+ GET /metrics 404 in 67ms (next.js: 8ms, application-code: 59ms)
+{"level":"info","msg":"finalize.client.tokens","ts":"2026-05-15T10:50:02.785Z","inputTokens":3098,"outputTokens":1061,"cacheReadTokens":0}
+ GET /metrics 404 in 64ms (next.js: 8ms, application-code: 56ms)
+ GET /metrics 404 in 92ms (next.js: 32ms, application-code: 60ms)
+ GET /metrics 404 in 88ms (next.js: 9ms, application-code: 80ms)
+{"level":"info","msg":"finalize.engineer.tokens","ts":"2026-05-15T10:50:46.627Z","inputTokens":3381,"outputTokens":2799,"cacheReadTokens":0}
+{"level":"info","msg":"finalize.completed","ts":"2026-05-15T10:50:46.630Z","sessionId":"e6282f4d-8767-460a-93f7-7687f0847f98","durationMs":126270}
+ POST /api/finalize 200 in 2.1min (next.js: 4ms, proxy.ts: 11ms, application-code: 2.1min)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 70ms (next.js: 16ms, application-code: 53ms)
+ GET /metrics 404 in 70ms (next.js: 8ms, application-code: 62ms)
+ GET /metrics 404 in 62ms (next.js: 8ms, application-code: 54ms)
+ GET /metrics 404 in 72ms (next.js: 8ms, application-code: 64ms)
+ GET /metrics 404 in 70ms (next.js: 10ms, application-code: 60ms)
+ GET /metrics 404 in 65ms (next.js: 7ms, application-code: 57ms)
+ GET /metrics 404 in 67ms (next.js: 7ms, application-code: 60ms)
+ GET /metrics 404 in 76ms (next.js: 10ms, application-code: 66ms)
+ GET /metrics 404 in 109ms (next.js: 15ms, application-code: 94ms)
+ GET /metrics 404 in 72ms (next.js: 8ms, application-code: 63ms)
+ GET /metrics 404 in 79ms (next.js: 12ms, application-code: 67ms)
+ GET /metrics 404 in 147ms (next.js: 20ms, application-code: 127ms)
+ GET /metrics 404 in 66ms (next.js: 8ms, application-code: 58ms)
+ GET /metrics 404 in 96ms (next.js: 14ms, application-code: 82ms)
+ GET /metrics 404 in 127ms (next.js: 35ms, application-code: 91ms)
+ GET /metrics 404 in 67ms (next.js: 9ms, application-code: 58ms)
+ GET /metrics 404 in 80ms (next.js: 13ms, application-code: 67ms)
+ GET /metrics 404 in 97ms (next.js: 11ms, application-code: 86ms)
+ GET /metrics 404 in 70ms (next.js: 9ms, application-code: 62ms)
+ GET /metrics 404 in 102ms (next.js: 35ms, application-code: 68ms)
+ GET /metrics 404 in 87ms (next.js: 9ms, application-code: 77ms)
+ GET /metrics 404 in 93ms (next.js: 11ms, application-code: 83ms)
+ GET /metrics 404 in 96ms (next.js: 15ms, application-code: 81ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 583ms (next.js: 346ms, application-code: 238ms)
+ GET /metrics 404 in 427ms (next.js: 35ms, application-code: 392ms)
+ GET /metrics 404 in 96ms (next.js: 10ms, application-code: 86ms)
+ GET /metrics 404 in 98ms (next.js: 9ms, application-code: 89ms)
+ GET /metrics 404 in 70ms (next.js: 9ms, application-code: 60ms)
+ GET /metrics 404 in 103ms (next.js: 9ms, application-code: 94ms)
+✓ Compiled in 665ms
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 415ms (next.js: 238ms, application-code: 177ms)
+ GET /metrics 404 in 319ms (next.js: 30ms, application-code: 289ms)
+ GET /metrics 404 in 112ms (next.js: 10ms, application-code: 102ms)
+ GET /metrics 404 in 79ms (next.js: 9ms, application-code: 70ms)
+ GET /metrics 404 in 71ms (next.js: 9ms, application-code: 62ms)
+ GET /metrics 404 in 73ms (next.js: 7ms, application-code: 66ms)
+ GET /metrics 404 in 69ms (next.js: 7ms, application-code: 61ms)
+ GET /metrics 404 in 79ms (next.js: 9ms, application-code: 70ms)
+ GET /metrics 404 in 77ms (next.js: 9ms, application-code: 68ms)
+ GET /metrics 404 in 62ms (next.js: 7ms, application-code: 54ms)
+ GET /metrics 404 in 68ms (next.js: 7ms, application-code: 61ms)
+ GET /metrics 404 in 80ms (next.js: 10ms, application-code: 70ms)
+ GET /metrics 404 in 85ms (next.js: 10ms, application-code: 75ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 343ms (next.js: 146ms, application-code: 197ms)
+ GET /metrics 404 in 313ms (next.js: 30ms, application-code: 283ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 345ms (next.js: 160ms, application-code: 185ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 65ms (next.js: 4ms, application-code: 61ms)
+ GET /metrics 404 in 269ms (next.js: 24ms, application-code: 245ms)
+✓ Compiled in 93ms
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 846ms (next.js: 400ms, application-code: 445ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 377ms (next.js: 5ms, application-code: 372ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 330ms (next.js: 138ms, application-code: 192ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 338ms (next.js: 8ms, application-code: 329ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 337ms (next.js: 94ms, application-code: 243ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 341ms (next.js: 54ms, application-code: 287ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 283ms (next.js: 7ms, application-code: 277ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 194ms (next.js: 15ms, application-code: 179ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 93ms (next.js: 6ms, application-code: 88ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 94ms (next.js: 40ms, application-code: 54ms)
+ GET /metrics 404 in 282ms (next.js: 24ms, application-code: 258ms)
+ GET /metrics 404 in 109ms (next.js: 10ms, application-code: 99ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 342ms (next.js: 140ms, application-code: 202ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 66ms (next.js: 5ms, application-code: 61ms)
+ GET /metrics 404 in 284ms (next.js: 24ms, application-code: 261ms)
+ GET /metrics 404 in 62ms (next.js: 7ms, application-code: 55ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 368ms (next.js: 152ms, application-code: 217ms)
+ GET /output/e6282f4d-8767-460a-93f7-7687f0847f98 200 in 85ms (next.js: 5ms, application-code: 80ms)
+ GET /metrics 404 in 300ms (next.js: 27ms, application-code: 273ms)
+ GET /metrics 404 in 76ms (next.js: 8ms, application-code: 68ms)
+ GET /metrics 404 in 65ms (next.js: 8ms, application-code: 58ms)
+ GET /metrics 404 in 86ms (next.js: 8ms, application-code: 79ms)
+ GET /chat 200 in 298ms (next.js: 195ms, application-code: 103ms)
+ GET / 200 in 79ms (next.js: 33ms, application-code: 46ms)
+ GET /metrics 404 in 89ms (next.js: 10ms, application-code: 79ms)
+ GET / 200 in 397ms (next.js: 8ms, application-code: 390ms)
+ GET /metrics 404 in 109ms (next.js: 11ms, application-code: 98ms)
+{"level":"info","msg":"orchestrator.round.start","ts":"2026-05-15T11:03:34.064Z","sessionId":"73027009-9619-495e-a62e-e0aff2000811","roundNumber":0,"status":"analyzing"}
+ GET / 200 in 111ms (next.js: 6ms, application-code: 105ms)
+ GET /metrics 404 in 91ms (next.js: 10ms, application-code: 81ms)
+ GET /chat 200 in 42ms (next.js: 6ms, application-code: 36ms)
+ GET /metrics 404 in 80ms (next.js: 10ms, application-code: 70ms)
+ GET /metrics 404 in 109ms (next.js: 34ms, application-code: 75ms)
+{"level":"info","msg":"orchestrator.round.start","ts":"2026-05-15T11:04:16.978Z","sessionId":"e98f3a1d-b7e2-4418-8d44-7c8fc973958f","roundNumber":0,"status":"analyzing"}
+ GET /metrics 404 in 99ms (next.js: 9ms, application-code: 90ms)
+ GET /metrics 404 in 110ms (next.js: 9ms, application-code: 101ms)
+ GET /metrics 404 in 79ms (next.js: 8ms, application-code: 71ms)
+ GET /metrics 404 in 101ms (next.js: 9ms, application-code: 92ms)
+{"level":"info","msg":"extract.completed","ts":"2026-05-15T11:05:17.119Z","durationMs":103047,"inputTokens":1889,"outputTokens":1968,"cacheReadTokens":0,"cacheCreationTokens":0,"stopReason":"tool_use"}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T11:05:17.959Z","durationMs":833,"query":"topic:saas auth  store connections dashboard billing language:typescript fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:name,description,readme","total":0,"returned":0}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T11:05:18.004Z","durationMs":878,"query":"auth  store connections dashboard billing csv export team management language:typescript fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:name,description,readme","total":0,"returned":0}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T11:05:18.226Z","durationMs":1099,"query":"saas auth  store connections fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:readme","total":10,"returned":10}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T11:05:18.231Z","durationMs":1104,"query":"language:typescript auth  store connections dashboard billing fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:name,description,readme","total":5,"returned":5}
+GET /repos/shadcnstore/shadcn-dashboard-landing-template/readme - 403 with id FA87:34FD52:C741D3:DBC072:6A06FDEE in 60ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:05:18.299Z","repo":"shadcnstore/shadcn-dashboard-landing-template"}
+GET /repos/shadcnstore/shadcn-dashboard-landing-template - 403 with id FA88:364F36:C771CD:DBE4E8:6A06FDEE in 72ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:05:18.312Z","repo":"shadcnstore/shadcn-dashboard-landing-template"}
+GET /repos/decocms/studio/readme - 403 with id FA89:1B3D84:CF302F:E3A9C7:6A06FDEE in 76ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:05:18.320Z","repo":"decocms/studio"}
+GET /repos/decocms/studio - 403 with id FA8A:2F17BE:CA25F2:DE9B22:6A06FDEE in 77ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:05:18.322Z","repo":"decocms/studio"}
+GET /repos/hugodemenez/deltalytix/readme - 403 with id FA87:34FD52:C741F7:DBC09C:6A06FDEE in 92ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:05:18.406Z","repo":"hugodemenez/deltalytix"}
+GET /repos/railspulse/rails_pulse/readme - 403 with id FA88:364F36:C771E5:DBE510:6A06FDEE in 85ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:05:18.409Z","repo":"railspulse/rails_pulse"}
+GET /repos/miroslavpejic85/mirotalk - 403 with id FA8C:386333:C5B571:DA3408:6A06FDEE in 515ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:05:18.764Z","repo":"miroslavpejic85/mirotalk"}
+GET /repos/Laxcorp-Research/project-raven - 403 with id FA90:30C9D9:C71AD9:DB9515:6A06FDEE in 506ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:05:18.766Z","repo":"Laxcorp-Research/project-raven"}
+GET /repos/momenbasel/keyFinder/readme - 403 with id FA91:2F5023:C94795:DDBA1A:6A06FDEE in 505ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:05:18.768Z","repo":"momenbasel/keyFinder"}
+GET /repos/miroslavpejic85/mirotalk/readme - 403 with id FA8B:3035C2:CC84E3:E1002F:6A06FDEE in 525ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:05:18.770Z","repo":"miroslavpejic85/mirotalk"}
+GET /repos/absmach/magistrala/readme - 403 with id FA8D:1A4B1B:CB1A64:DF96A9:6A06FDEE in 522ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:05:18.774Z","repo":"absmach/magistrala"}
+GET /repos/momenbasel/keyFinder - 403 with id FA92:1884CE:C5AE64:DA30CF:6A06FDEE in 511ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:05:18.777Z","repo":"momenbasel/keyFinder"}
+GET /repos/Laxcorp-Research/project-raven/readme - 403 with id FA8F:25454E:C94888:DDC6F3:6A06FDEE in 673ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:05:18.930Z","repo":"Laxcorp-Research/project-raven"}
+GET /repos/absmach/magistrala - 403 with id FA8E:129507:C7D962:DC54C6:6A06FDEE in 678ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:05:18.934Z","repo":"absmach/magistrala"}
+GET /repos/hugodemenez/deltalytix - 403 with id FA93:2CF552:C78D8C:DC0C4E:6A06FDEF in 631ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:05:18.946Z","repo":"hugodemenez/deltalytix"}
+GET /repos/secondpathstudio/privatescribe - 403 with id FA88:364F36:C772A5:DBE5EA:6A06FDEE in 175ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:05:18.948Z","repo":"secondpathstudio/privatescribe"}
+GET /repos/secondpathstudio/privatescribe/readme - 403 with id FA87:34FD52:C742B5:DBC15D:6A06FDEE in 178ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:05:18.949Z","repo":"secondpathstudio/privatescribe"}
+GET /repos/railspulse/rails_pulse - 403 with id FA94:2253B1:CEBC83:E33871:6A06FDEF in 626ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:05:18.951Z","repo":"railspulse/rails_pulse"}
+GET /repos/essamamdani/openclaw-coolify/readme - 403 with id FA89:1B3D84:CF312B:E3AAC9:6A06FDEE in 174ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:05:18.952Z","repo":"essamamdani/openclaw-coolify"}
+GET /repos/essamamdani/openclaw-coolify - 403 with id FA8A:2F17BE:CA26E4:DE9C10:6A06FDEE in 183ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:05:18.962Z","repo":"essamamdani/openclaw-coolify"}
+GET /repos/axuitomo/CF-EMBY-PROXY-UI/readme - 403 with id FA8B:3035C2:CC85AC:E10107:6A06FDEF in 61ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:05:18.993Z","repo":"axuitomo/CF-EMBY-PROXY-UI"}
+GET /repos/axuitomo/CF-EMBY-PROXY-UI - 403 with id FA8C:386333:C5B62C:DA34D0:6A06FDEF in 62ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:05:18.995Z","repo":"axuitomo/CF-EMBY-PROXY-UI"}
+GET /repos/hadez8877/awesome-opensource/readme - 403 with id FA8D:1A4B1B:CB1B0E:DF9760:6A06FDEF in 62ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:05:18.997Z","repo":"hadez8877/awesome-opensource"}
+GET /repos/hadez8877/awesome-opensource - 403 with id FA8F:25454E:C948D1:DDC73B:6A06FDEF in 73ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:05:19.008Z","repo":"hadez8877/awesome-opensource"}
+{"level":"info","msg":"github.enrich.completed","ts":"2026-05-15T11:05:19.010Z","durationMs":1886,"reposSearched":12,"variantsRun":4,"readmesFetched":0,"foldersFetched":0,"llmCallsUsed":0,"topMatchesCount":0,"distinctModules":0,"avgSimilarity":0}
+ POST /api/session 200 in 106s (next.js: 469ms, proxy.ts: 228ms, application-code: 105s)
+ GET /metrics 404 in 90ms (next.js: 11ms, application-code: 79ms)
+ GET /metrics 404 in 77ms (next.js: 9ms, application-code: 69ms)
+ GET /metrics 404 in 82ms (next.js: 11ms, application-code: 70ms)
+ GET /metrics 404 in 94ms (next.js: 12ms, application-code: 82ms)
+{"level":"info","msg":"extract.completed","ts":"2026-05-15T11:06:14.040Z","durationMs":117061,"inputTokens":3189,"outputTokens":2267,"cacheReadTokens":0,"cacheCreationTokens":0,"stopReason":"tool_use"}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T11:06:14.646Z","durationMs":605,"query":"topic:healthcare auth symptom collection nlp processor fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:name,description,readme","total":0,"returned":0}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T11:06:14.676Z","durationMs":634,"query":"auth symptom collection nlp processor risk scoring triage dashboard fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:name,description,readme","total":0,"returned":0}
+{"level":"info","msg":"github.search.completed","ts":"2026-05-15T11:06:14.955Z","durationMs":913,"query":"healthcare auth fork:false stars:50..50000 pushed:>2024-06-01 NOT awesome NOT list NOT tutorial NOT example in:readme","total":8,"returned":8}
+GET /repos/BrowserBox/BrowserBox/readme - 403 with id E566:26DAB6:CCAC82:E12955:6A06FE27 in 73ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:06:15.031Z","repo":"BrowserBox/BrowserBox"}
+GET /repos/BrowserBox/BrowserBox - 403 with id E567:2A6249:C6BD99:DB4040:6A06FE27 in 75ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:06:15.033Z","repo":"BrowserBox/BrowserBox"}
+GET /repos/clacky-ai/openclacky/readme - 403 with id E568:7EFE3:C900DA:DD7D61:6A06FE27 in 83ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:06:15.042Z","repo":"clacky-ai/openclacky"}
+GET /repos/hiprathamesh/doc-prescrip/readme - 403 with id E566:26DAB6:CCACA4:E12975:6A06FE27 in 73ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:06:15.108Z","repo":"hiprathamesh/doc-prescrip"}
+GET /repos/labsai/EDDI - 403 with id E56B:13629F:C5BBEF:DA39B9:6A06FE27 in 282ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:06:15.247Z","repo":"labsai/EDDI"}
+GET /repos/clacky-ai/openclacky - 403 with id E569:191206:C8DA11:DD5AAB:6A06FE27 in 289ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:06:15.249Z","repo":"clacky-ai/openclacky"}
+GET /repos/baryhuang/company-os/readme - 403 with id E570:3035C2:CCE0E9:E16057:6A06FE27 in 271ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:06:15.250Z","repo":"baryhuang/company-os"}
+GET /repos/aliviahossain/Disease-prediction - 403 with id E56F:2F17BE:CA7F73:DEF8DC:6A06FE27 in 299ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:06:15.277Z","repo":"aliviahossain/Disease-prediction"}
+GET /repos/ruslanmv/ai-medical-chatbot/readme - 403 with id E56C:34FD52:C79D7F:DC204D:6A06FE27 in 336ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:06:15.307Z","repo":"ruslanmv/ai-medical-chatbot"}
+GET /repos/aliviahossain/Disease-prediction/readme - 403 with id E56E:1B3D84:CF8FB4:E40D76:6A06FE27 in 334ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:06:15.309Z","repo":"aliviahossain/Disease-prediction"}
+GET /repos/ruslanmv/ai-medical-chatbot - 403 with id E56D:364F36:C7D1B3:DC4920:6A06FE27 in 339ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:06:15.312Z","repo":"ruslanmv/ai-medical-chatbot"}
+GET /repos/labsai/EDDI/readme - 403 with id E56A:238C03:CBD5BB:E05296:6A06FE27 in 351ms
+{"level":"warn","msg":"github.readme.rate_limited","ts":"2026-05-15T11:06:15.314Z","repo":"labsai/EDDI"}
+GET /repos/baryhuang/company-os - 403 with id E571:386333:C616C5:DA9969:6A06FE27 in 334ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:06:15.316Z","repo":"baryhuang/company-os"}
+GET /repos/hiprathamesh/doc-prescrip - 403 with id E572:1A4B1B:CB75C4:DFF676:6A06FE27 in 284ms
+{"level":"warn","msg":"github.tree.rate_limited","ts":"2026-05-15T11:06:15.319Z","repo":"hiprathamesh/doc-prescrip"}
+{"level":"info","msg":"github.enrich.completed","ts":"2026-05-15T11:06:15.321Z","durationMs":1280,"reposSearched":7,"variantsRun":3,"readmesFetched":0,"foldersFetched":0,"llmCallsUsed":0,"topMatchesCount":0,"distinctModules":0,"avgSimilarity":0}
+ GET /metrics 404 in 86ms (next.js: 12ms, application-code: 73ms)
+ GET /metrics 404 in 81ms (next.js: 12ms, application-code: 68ms)
+{"level":"info","msg":"mcq.completed","ts":"2026-05-15T11:06:43.842Z","durationMs":28519,"inputTokens":1256,"outputTokens":469}
+ POST /api/session 200 in 2.4min (next.js: 5ms, proxy.ts: 10ms, application-code: 2.4min)
+ GET /chat?s=e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 54ms (next.js: 9ms, application-code: 45ms)
+ GET /api/session/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 418ms (next.js: 368ms, proxy.ts: 11ms, application-code: 38ms)
+{"level":"info","msg":"finalize.client.tokens","ts":"2026-05-15T11:06:48.251Z","inputTokens":1771,"outputTokens":1327,"cacheReadTokens":0}
+ GET /metrics 404 in 69ms (next.js: 9ms, application-code: 61ms)
+ GET /metrics 404 in 72ms (next.js: 9ms, application-code: 63ms)
+ GET /metrics 404 in 96ms (next.js: 13ms, application-code: 83ms)
+ GET /metrics 404 in 73ms (next.js: 11ms, application-code: 62ms)
+{"level":"info","msg":"orchestrator.round.start","ts":"2026-05-15T11:07:47.793Z","sessionId":"e98f3a1d-b7e2-4418-8d44-7c8fc973958f","roundNumber":1,"status":"analyzing"}
+ GET /api/session/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 39ms (next.js: 23ms, proxy.ts: 7ms, application-code: 9ms)
+{"level":"info","msg":"finalize.engineer.tokens","ts":"2026-05-15T11:07:51.526Z","inputTokens":2054,"outputTokens":2685,"cacheReadTokens":0}
+{"level":"info","msg":"finalize.completed","ts":"2026-05-15T11:07:51.536Z","sessionId":"73027009-9619-495e-a62e-e0aff2000811","durationMs":152132}
+ POST /api/finalize 200 in 2.5min (next.js: 332ms, proxy.ts: 5ms, application-code: 2.5min)
+ GET /metrics 404 in 86ms (next.js: 14ms, application-code: 72ms)
+ GET /metrics 404 in 88ms (next.js: 12ms, application-code: 76ms)
+ GET /metrics 404 in 83ms (next.js: 9ms, application-code: 74ms)
+ GET /metrics 404 in 71ms (next.js: 8ms, application-code: 63ms)
+ GET /metrics 404 in 78ms (next.js: 11ms, application-code: 67ms)
+ GET /metrics 404 in 72ms (next.js: 9ms, application-code: 63ms)
+ GET /metrics 404 in 77ms (next.js: 7ms, application-code: 70ms)
+{"level":"info","msg":"extract.completed","ts":"2026-05-15T11:09:38.061Z","durationMs":110245,"inputTokens":3333,"outputTokens":2377,"cacheReadTokens":0,"cacheCreationTokens":0,"stopReason":"tool_use"}
+ POST /api/session/e98f3a1d-b7e2-4418-8d44-7c8fc973958f/answer 200 in 111s (next.js: 531ms, proxy.ts: 12ms, application-code: 110s)
+ GET /output/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 70ms (next.js: 16ms, application-code: 54ms)
+ GET /metrics 404 in 83ms (next.js: 8ms, application-code: 74ms)
+ GET /metrics 404 in 81ms (next.js: 9ms, application-code: 72ms)
+ GET /metrics 404 in 67ms (next.js: 8ms, application-code: 59ms)
+ GET /metrics 404 in 73ms (next.js: 7ms, application-code: 65ms)
+ GET /metrics 404 in 83ms (next.js: 12ms, application-code: 71ms)
+ GET /metrics 404 in 79ms (next.js: 8ms, application-code: 70ms)
+{"level":"info","msg":"finalize.client.tokens","ts":"2026-05-15T11:11:00.592Z","inputTokens":3908,"outputTokens":1530,"cacheReadTokens":0}
+ GET /metrics 404 in 77ms (next.js: 8ms, application-code: 69ms)
+ GET /metrics 404 in 69ms (next.js: 8ms, application-code: 61ms)
+ GET /metrics 404 in 78ms (next.js: 10ms, application-code: 67ms)
+ GET /metrics 404 in 75ms (next.js: 10ms, application-code: 65ms)
+ GET /metrics 404 in 86ms (next.js: 30ms, application-code: 56ms)
+{"level":"info","msg":"finalize.engineer.tokens","ts":"2026-05-15T11:12:18.357Z","inputTokens":4191,"outputTokens":3265,"cacheReadTokens":0}
+{"level":"info","msg":"finalize.completed","ts":"2026-05-15T11:12:18.360Z","sessionId":"e98f3a1d-b7e2-4418-8d44-7c8fc973958f","durationMs":154403}
+ POST /api/finalize 200 in 2.6min (next.js: 7ms, proxy.ts: 8ms, application-code: 2.6min)
+ GET /output/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 69ms (next.js: 13ms, application-code: 56ms)
+ GET /metrics 404 in 112ms (next.js: 11ms, application-code: 100ms)
+ GET /metrics 404 in 109ms (next.js: 12ms, application-code: 97ms)
+ GET /metrics 404 in 84ms (next.js: 8ms, application-code: 76ms)
+ GET /metrics 404 in 79ms (next.js: 9ms, application-code: 69ms)
+ GET /metrics 404 in 86ms (next.js: 10ms, application-code: 77ms)
+ GET /metrics 404 in 95ms (next.js: 13ms, application-code: 82ms)
+ GET /metrics 404 in 136ms (next.js: 11ms, application-code: 125ms)
+[browser] ⨯ unhandledRejection: Error: Attempting to parse an unsupported color function "oklab"
+ GET /metrics 404 in 103ms (next.js: 12ms, application-code: 91ms)
+ GET /metrics 404 in 93ms (next.js: 9ms, application-code: 83ms)
+ GET /metrics 404 in 72ms (next.js: 8ms, application-code: 64ms)
+ GET /metrics 404 in 76ms (next.js: 11ms, application-code: 65ms)
+ GET /metrics 404 in 93ms (next.js: 10ms, application-code: 83ms)
+ GET /metrics 404 in 76ms (next.js: 9ms, application-code: 67ms)
+ GET /metrics 404 in 102ms (next.js: 12ms, application-code: 89ms)
+ GET /metrics 404 in 94ms (next.js: 10ms, application-code: 84ms)
+ GET /metrics 404 in 68ms (next.js: 9ms, application-code: 59ms)
+ GET /metrics 404 in 80ms (next.js: 13ms, application-code: 67ms)
+ GET /metrics 404 in 97ms (next.js: 9ms, application-code: 88ms)
+ GET /metrics 404 in 119ms (next.js: 11ms, application-code: 107ms)
+ GET /metrics 404 in 64ms (next.js: 7ms, application-code: 57ms)
+ GET /metrics 404 in 51ms (next.js: 4ms, application-code: 46ms)
+ GET /metrics 404 in 57ms (next.js: 7ms, application-code: 51ms)
+ GET /metrics 404 in 48ms (next.js: 5ms, application-code: 43ms)
+ GET /metrics 404 in 51ms (next.js: 8ms, application-code: 43ms)
+ GET /metrics 404 in 59ms (next.js: 5ms, application-code: 54ms)
+ GET /metrics 404 in 45ms (next.js: 6ms, application-code: 39ms)
+ GET /metrics 404 in 46ms (next.js: 5ms, application-code: 42ms)
+ GET /metrics 404 in 43ms (next.js: 4ms, application-code: 39ms)
+✓ Compiled in 383ms
+ GET /metrics 404 in 42ms (next.js: 7ms, application-code: 36ms)
+ GET /metrics 404 in 45ms (next.js: 6ms, application-code: 40ms)
+✓ Compiled in 190ms
+ GET /output/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 1375ms (next.js: 357ms, application-code: 1018ms)
+ GET /output/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 29ms (next.js: 3ms, application-code: 27ms)
+✓ Compiled in 535ms
+ GET /output/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 443ms (next.js: 48ms, application-code: 396ms)
+ GET /output/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 1021ms (next.js: 205ms, application-code: 816ms)
+ GET /output/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 127ms (next.js: 87ms, application-code: 41ms)
+ GET /output/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 132ms (next.js: 52ms, application-code: 80ms)
+ GET /output/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 134ms (next.js: 13ms, application-code: 121ms)
+ GET /metrics 404 in 1047ms (next.js: 351ms, application-code: 696ms)
+ GET /output/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 513ms (next.js: 5ms, application-code: 508ms)
+ GET /metrics 404 in 39ms (next.js: 5ms, application-code: 34ms)
+ GET /metrics 404 in 34ms (next.js: 5ms, application-code: 29ms)
+✓ Compiled in 82ms
+ GET /output/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 342ms (next.js: 178ms, application-code: 164ms)
+ GET /output/e98f3a1d-b7e2-4418-8d44-7c8fc973958f 200 in 33ms (next.js: 3ms, application-code: 30ms)
+ GET /metrics 404 in 173ms (next.js: 17ms, application-code: 155ms)
+ GET /metrics 404 in 51ms (next.js: 4ms, application-code: 47ms)
+ GET /metrics 404 in 38ms (next.js: 4ms, application-code: 34ms)
+ GET /metrics 404 in 35ms (next.js: 4ms, application-code: 31ms)
+ GET /metrics 404 in 33ms (next.js: 4ms, application-code: 30ms)
+ GET /metrics 404 in 32ms (next.js: 4ms, application-code: 29ms)
+ GET /metrics 404 in 35ms (next.js: 4ms, application-code: 31ms)
+ GET /metrics 404 in 35ms (next.js: 4ms, application-code: 30ms)
+ GET /metrics 404 in 38ms (next.js: 4ms, application-code: 34ms)
+ GET /metrics 404 in 42ms (next.js: 5ms, application-code: 37ms)
+ GET /metrics 404 in 39ms (next.js: 4ms, application-code: 35ms)
+ GET /metrics 404 in 33ms (next.js: 4ms, application-code: 29ms)
+ GET /metrics 404 in 33ms (next.js: 5ms, application-code: 28ms)
+ GET /metrics 404 in 38ms (next.js: 5ms, application-code: 34ms)
+ GET /metrics 404 in 32ms (next.js: 5ms, application-code: 28ms)
+ GET /metrics 404 in 34ms (next.js: 6ms, application-code: 28ms)
+ GET /metrics 404 in 35ms (next.js: 4ms, application-code: 31ms)
+ GET /metrics 404 in 37ms (next.js: 5ms, application-code: 32ms)
+ GET /metrics 404 in 34ms (next.js: 4ms, application-code: 29ms)
+ GET /metrics 404 in 32ms (next.js: 4ms, application-code: 28ms)
+ GET /metrics 404 in 35ms (next.js: 4ms, application-code: 30ms)
+ GET /metrics 404 in 37ms (next.js: 5ms, application-code: 32ms)
+ GET /metrics 404 in 34ms (next.js: 4ms, application-code: 30ms)
+ GET /metrics 404 in 40ms (next.js: 6ms, application-code: 34ms)
+ GET /metrics 404 in 33ms (next.js: 4ms, application-code: 29ms)
+ GET /metrics 404 in 67ms (next.js: 8ms, application-code: 59ms)
+ GET /metrics 404 in 65ms (next.js: 8ms, application-code: 57ms)
+ GET /metrics 404 in 62ms (next.js: 6ms, application-code: 55ms)
+ GET /metrics 404 in 65ms (next.js: 7ms, application-code: 58ms)
+ GET /metrics 404 in 71ms (next.js: 8ms, application-code: 63ms)
+ GET /metrics 404 in 63ms (next.js: 6ms, application-code: 57ms)
+ GET /metrics 404 in 59ms (next.js: 5ms, application-code: 54ms)
+ GET /metrics 404 in 62ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 63ms (next.js: 6ms, application-code: 57ms)
+ GET /metrics 404 in 63ms (next.js: 6ms, application-code: 57ms)
+ GET /metrics 404 in 65ms (next.js: 7ms, application-code: 58ms)
+ GET /metrics 404 in 67ms (next.js: 7ms, application-code: 60ms)
+ GET /metrics 404 in 63ms (next.js: 6ms, application-code: 57ms)
+ GET /metrics 404 in 67ms (next.js: 5ms, application-code: 61ms)
+ GET /metrics 404 in 66ms (next.js: 8ms, application-code: 57ms)
+ GET /metrics 404 in 58ms (next.js: 5ms, application-code: 53ms)
+ GET /metrics 404 in 64ms (next.js: 5ms, application-code: 60ms)
+ GET /metrics 404 in 58ms (next.js: 6ms, application-code: 52ms)
+ GET /metrics 404 in 61ms (next.js: 5ms, application-code: 57ms)
+ GET /metrics 404 in 54ms (next.js: 6ms, application-code: 48ms)
+ GET /metrics 404 in 62ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 60ms (next.js: 7ms, application-code: 53ms)
+ GET /metrics 404 in 60ms (next.js: 5ms, application-code: 55ms)
+ GET /metrics 404 in 60ms (next.js: 6ms, application-code: 54ms)
+ GET /metrics 404 in 70ms (next.js: 9ms, application-code: 61ms)
+ GET /metrics 404 in 59ms (next.js: 6ms, application-code: 53ms)
+ GET /metrics 404 in 70ms (next.js: 7ms, application-code: 63ms)
+ GET /metrics 404 in 58ms (next.js: 5ms, application-code: 53ms)
+ GET /metrics 404 in 66ms (next.js: 6ms, application-code: 60ms)
+ GET /metrics 404 in 58ms (next.js: 5ms, application-code: 53ms)
+ GET /metrics 404 in 70ms (next.js: 6ms, application-code: 64ms)
+ GET /metrics 404 in 60ms (next.js: 6ms, application-code: 54ms)
+ GET /metrics 404 in 71ms (next.js: 8ms, application-code: 63ms)
+ GET /metrics 404 in 63ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 70ms (next.js: 6ms, application-code: 64ms)
+ GET /metrics 404 in 66ms (next.js: 8ms, application-code: 58ms)
+ GET /metrics 404 in 64ms (next.js: 5ms, application-code: 59ms)
+ GET /metrics 404 in 64ms (next.js: 6ms, application-code: 58ms)
+ GET /metrics 404 in 59ms (next.js: 5ms, application-code: 54ms)
+ GET /metrics 404 in 65ms (next.js: 7ms, application-code: 58ms)
+ GET /metrics 404 in 65ms (next.js: 8ms, application-code: 56ms)
+ GET /metrics 404 in 64ms (next.js: 7ms, application-code: 57ms)
+ GET /metrics 404 in 69ms (next.js: 5ms, application-code: 64ms)
+ GET /metrics 404 in 63ms (next.js: 8ms, application-code: 55ms)
+ GET /metrics 404 in 60ms (next.js: 6ms, application-code: 54ms)
+ GET /metrics 404 in 62ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 64ms (next.js: 7ms, application-code: 57ms)
+ GET /metrics 404 in 61ms (next.js: 5ms, application-code: 56ms)
+ GET /metrics 404 in 68ms (next.js: 6ms, application-code: 62ms)
+ GET /metrics 404 in 56ms (next.js: 7ms, application-code: 49ms)
+ GET /metrics 404 in 65ms (next.js: 5ms, application-code: 60ms)
+ GET /metrics 404 in 67ms (next.js: 7ms, application-code: 60ms)
+ GET /metrics 404 in 56ms (next.js: 5ms, application-code: 51ms)
+ GET /metrics 404 in 70ms (next.js: 7ms, application-code: 63ms)
+ GET /metrics 404 in 61ms (next.js: 8ms, application-code: 53ms)
+ GET /metrics 404 in 62ms (next.js: 7ms, application-code: 55ms)
+ GET /metrics 404 in 62ms (next.js: 5ms, application-code: 57ms)
+ GET /metrics 404 in 66ms (next.js: 7ms, application-code: 59ms)
+ GET /metrics 404 in 61ms (next.js: 6ms, application-code: 55ms)
+ GET /metrics 404 in 65ms (next.js: 8ms, application-code: 57ms)
+ GET /metrics 404 in 63ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 55ms (next.js: 7ms, application-code: 47ms)
+ GET /metrics 404 in 55ms (next.js: 6ms, application-code: 50ms)
+ GET /metrics 404 in 60ms (next.js: 7ms, application-code: 52ms)
+ GET /metrics 404 in 65ms (next.js: 5ms, application-code: 59ms)
+ GET /metrics 404 in 59ms (next.js: 7ms, application-code: 52ms)
+ GET /metrics 404 in 62ms (next.js: 5ms, application-code: 56ms)
+ GET /metrics 404 in 52ms (next.js: 8ms, application-code: 45ms)
+ GET /metrics 404 in 64ms (next.js: 7ms, application-code: 57ms)
+ GET /metrics 404 in 60ms (next.js: 6ms, application-code: 54ms)
+ GET /metrics 404 in 60ms (next.js: 6ms, application-code: 55ms)
+ GET /metrics 404 in 58ms (next.js: 8ms, application-code: 50ms)
+ GET /metrics 404 in 61ms (next.js: 5ms, application-code: 56ms)
+ GET /metrics 404 in 71ms (next.js: 8ms, application-code: 62ms)
+ GET /metrics 404 in 68ms (next.js: 9ms, application-code: 59ms)
+ GET /metrics 404 in 60ms (next.js: 5ms, application-code: 55ms)
+ GET /metrics 404 in 70ms (next.js: 8ms, application-code: 62ms)
+ GET /metrics 404 in 62ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 60ms (next.js: 5ms, application-code: 55ms)
+ GET /metrics 404 in 61ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 66ms (next.js: 10ms, application-code: 56ms)
+ GET /metrics 404 in 71ms (next.js: 6ms, application-code: 65ms)
+ GET /metrics 404 in 65ms (next.js: 6ms, application-code: 59ms)
+ GET /metrics 404 in 56ms (next.js: 7ms, application-code: 49ms)
+ GET /metrics 404 in 53ms (next.js: 5ms, application-code: 48ms)
+ GET /metrics 404 in 64ms (next.js: 8ms, application-code: 56ms)
+ GET /metrics 404 in 63ms (next.js: 7ms, application-code: 56ms)
+ GET /metrics 404 in 66ms (next.js: 7ms, application-code: 59ms)
+ GET /metrics 404 in 57ms (next.js: 7ms, application-code: 49ms)
+ GET /metrics 404 in 57ms (next.js: 6ms, application-code: 51ms)
+ GET /metrics 404 in 61ms (next.js: 7ms, application-code: 54ms)
+ GET /metrics 404 in 66ms (next.js: 5ms, application-code: 61ms)
+ GET /metrics 404 in 58ms (next.js: 7ms, application-code: 50ms)
+ GET /metrics 404 in 52ms (next.js: 6ms, application-code: 46ms)
+ GET /metrics 404 in 54ms (next.js: 7ms, application-code: 47ms)
+ GET /metrics 404 in 60ms (next.js: 7ms, application-code: 53ms)
+ GET /metrics 404 in 63ms (next.js: 7ms, application-code: 55ms)
+ GET /metrics 404 in 63ms (next.js: 5ms, application-code: 58ms)
+ GET /metrics 404 in 61ms (next.js: 9ms, application-code: 52ms)
+ GET /metrics 404 in 77ms (next.js: 10ms, application-code: 67ms)
+ GET /metrics 404 in 71ms (next.js: 10ms, application-code: 60ms)
+ GET /metrics 404 in 63ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 62ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 59ms (next.js: 7ms, application-code: 52ms)
+ GET /metrics 404 in 63ms (next.js: 7ms, application-code: 56ms)
+ GET /metrics 404 in 58ms (next.js: 8ms, application-code: 50ms)
+ GET /metrics 404 in 66ms (next.js: 7ms, application-code: 59ms)
+ GET /metrics 404 in 61ms (next.js: 6ms, application-code: 55ms)
+ GET /metrics 404 in 58ms (next.js: 8ms, application-code: 50ms)
+ GET /metrics 404 in 57ms (next.js: 6ms, application-code: 51ms)
+ GET /metrics 404 in 61ms (next.js: 7ms, application-code: 54ms)
+ GET /metrics 404 in 62ms (next.js: 6ms, application-code: 55ms)
+ GET /metrics 404 in 61ms (next.js: 6ms, application-code: 55ms)
+ GET /metrics 404 in 58ms (next.js: 9ms, application-code: 49ms)
+ GET /metrics 404 in 57ms (next.js: 5ms, application-code: 52ms)
+ GET /metrics 404 in 62ms (next.js: 7ms, application-code: 55ms)
+ GET /metrics 404 in 61ms (next.js: 5ms, application-code: 56ms)
+ GET /metrics 404 in 67ms (next.js: 8ms, application-code: 59ms)
+ GET /metrics 404 in 71ms (next.js: 6ms, application-code: 65ms)
+ GET /metrics 404 in 71ms (next.js: 8ms, application-code: 63ms)
+ GET /metrics 404 in 56ms (next.js: 5ms, application-code: 52ms)
+ GET /metrics 404 in 60ms (next.js: 7ms, application-code: 53ms)
+ GET /metrics 404 in 55ms (next.js: 6ms, application-code: 49ms)
+ GET /metrics 404 in 62ms (next.js: 5ms, application-code: 57ms)
+ GET /metrics 404 in 56ms (next.js: 5ms, application-code: 51ms)
+ GET /metrics 404 in 60ms (next.js: 8ms, application-code: 52ms)
+ GET /metrics 404 in 60ms (next.js: 5ms, application-code: 55ms)
+ GET /metrics 404 in 63ms (next.js: 8ms, application-code: 55ms)
+ GET /metrics 404 in 65ms (next.js: 6ms, application-code: 59ms)
+ GET /metrics 404 in 66ms (next.js: 7ms, application-code: 59ms)
+ GET /metrics 404 in 59ms (next.js: 5ms, application-code: 55ms)
+ GET /metrics 404 in 63ms (next.js: 7ms, application-code: 56ms)
+ GET /metrics 404 in 58ms (next.js: 6ms, application-code: 53ms)
+ GET /metrics 404 in 59ms (next.js: 8ms, application-code: 51ms)
+ GET /metrics 404 in 66ms (next.js: 9ms, application-code: 57ms)
+ GET /metrics 404 in 64ms (next.js: 5ms, application-code: 59ms)
+ GET /metrics 404 in 75ms (next.js: 7ms, application-code: 68ms)
+ GET /metrics 404 in 66ms (next.js: 6ms, application-code: 60ms)
+ GET /metrics 404 in 63ms (next.js: 7ms, application-code: 56ms)
+ GET /metrics 404 in 67ms (next.js: 10ms, application-code: 56ms)
+ GET /metrics 404 in 72ms (next.js: 7ms, application-code: 65ms)
+ GET /metrics 404 in 58ms (next.js: 7ms, application-code: 51ms)
+ GET /metrics 404 in 461ms (next.js: 122ms, application-code: 338ms)
+ GET /metrics 404 in 146ms (next.js: 17ms, application-code: 128ms)
+ GET /metrics 404 in 164ms (next.js: 20ms, application-code: 143ms)
+ GET /metrics 404 in 141ms (next.js: 17ms, application-code: 125ms)
+ GET /metrics 404 in 144ms (next.js: 12ms, application-code: 132ms)
+ GET /metrics 404 in 128ms (next.js: 17ms, application-code: 111ms)
+ GET /metrics 404 in 144ms (next.js: 15ms, application-code: 129ms)
+ GET /metrics 404 in 98ms (next.js: 11ms, application-code: 87ms)
+ GET /metrics 404 in 85ms (next.js: 10ms, application-code: 75ms)
+ GET /metrics 404 in 106ms (next.js: 12ms, application-code: 93ms)
+ GET /metrics 404 in 98ms (next.js: 9ms, application-code: 90ms)
+ GET /metrics 404 in 98ms (next.js: 11ms, application-code: 87ms)
+ GET /metrics 404 in 356ms (next.js: 10ms, application-code: 347ms)
+ GET /chat 200 in 401ms (next.js: 317ms, application-code: 84ms)
+ GET /metrics 404 in 93ms (next.js: 9ms, application-code: 84ms)
+ GET /metrics 404 in 121ms (next.js: 35ms, application-code: 85ms)
+ GET /metrics 404 in 64ms (next.js: 8ms, application-code: 57ms)
+ GET /metrics 404 in 58ms (next.js: 9ms, application-code: 49ms)
+ GET /metrics 404 in 59ms (next.js: 7ms, application-code: 52ms)
+ GET /metrics 404 in 68ms (next.js: 10ms, application-code: 58ms)
+ GET /metrics 404 in 72ms (next.js: 8ms, application-code: 64ms)
+ GET /metrics 404 in 60ms (next.js: 6ms, application-code: 54ms)
+ GET /metrics 404 in 57ms (next.js: 6ms, application-code: 51ms)
+ GET /metrics 404 in 65ms (next.js: 8ms, application-code: 57ms)
+ GET /metrics 404 in 67ms (next.js: 7ms, application-code: 60ms)
+ GET /metrics 404 in 61ms (next.js: 6ms, application-code: 55ms)
+ GET /metrics 404 in 64ms (next.js: 5ms, application-code: 58ms)
+ GET /metrics 404 in 63ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 62ms (next.js: 5ms, application-code: 57ms)
+ GET /metrics 404 in 63ms (next.js: 7ms, application-code: 56ms)
+ GET /metrics 404 in 58ms (next.js: 5ms, application-code: 53ms)
+ GET /metrics 404 in 60ms (next.js: 7ms, application-code: 53ms)
+ GET /metrics 404 in 61ms (next.js: 6ms, application-code: 55ms)
+ GET /metrics 404 in 62ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 68ms (next.js: 5ms, application-code: 63ms)
+ GET /metrics 404 in 71ms (next.js: 7ms, application-code: 64ms)
+ GET /metrics 404 in 58ms (next.js: 7ms, application-code: 51ms)
+ GET /metrics 404 in 61ms (next.js: 5ms, application-code: 55ms)
+ GET /metrics 404 in 69ms (next.js: 10ms, application-code: 59ms)
+ GET /metrics 404 in 72ms (next.js: 5ms, application-code: 67ms)
+ GET /metrics 404 in 63ms (next.js: 6ms, application-code: 58ms)
+ GET /metrics 404 in 58ms (next.js: 5ms, application-code: 53ms)
+ GET /metrics 404 in 70ms (next.js: 9ms, application-code: 61ms)
+ GET /metrics 404 in 65ms (next.js: 6ms, application-code: 59ms)
+ GET /metrics 404 in 58ms (next.js: 7ms, application-code: 51ms)
+ GET /metrics 404 in 59ms (next.js: 5ms, application-code: 54ms)
+ GET /metrics 404 in 66ms (next.js: 8ms, application-code: 58ms)
+ GET /metrics 404 in 69ms (next.js: 6ms, application-code: 64ms)
+ GET /metrics 404 in 60ms (next.js: 5ms, application-code: 55ms)
+ GET /metrics 404 in 70ms (next.js: 7ms, application-code: 63ms)
+ GET /metrics 404 in 69ms (next.js: 6ms, application-code: 63ms)
+ GET /metrics 404 in 57ms (next.js: 6ms, application-code: 51ms)
+ GET /metrics 404 in 59ms (next.js: 6ms, application-code: 53ms)
+ GET /metrics 404 in 80ms (next.js: 7ms, application-code: 73ms)
+ GET /metrics 404 in 62ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 57ms (next.js: 7ms, application-code: 50ms)
+ GET /metrics 404 in 69ms (next.js: 6ms, application-code: 63ms)
+ GET /metrics 404 in 65ms (next.js: 8ms, application-code: 57ms)
+ GET /metrics 404 in 73ms (next.js: 8ms, application-code: 65ms)
+ GET /metrics 404 in 69ms (next.js: 6ms, application-code: 64ms)
+ GET /metrics 404 in 58ms (next.js: 6ms, application-code: 51ms)
+ GET /metrics 404 in 73ms (next.js: 7ms, application-code: 66ms)
+ GET /metrics 404 in 70ms (next.js: 6ms, application-code: 65ms)
+ GET /metrics 404 in 77ms (next.js: 9ms, application-code: 69ms)
+ GET /metrics 404 in 69ms (next.js: 7ms, application-code: 62ms)
+ GET /metrics 404 in 74ms (next.js: 8ms, application-code: 66ms)
+ GET /metrics 404 in 76ms (next.js: 7ms, application-code: 69ms)
+ GET /metrics 404 in 76ms (next.js: 8ms, application-code: 68ms)
+ GET /metrics 404 in 69ms (next.js: 8ms, application-code: 61ms)
+ GET /metrics 404 in 63ms (next.js: 8ms, application-code: 55ms)
+ GET /metrics 404 in 63ms (next.js: 8ms, application-code: 55ms)
+ GET /metrics 404 in 64ms (next.js: 6ms, application-code: 58ms)
+ GET /metrics 404 in 56ms (next.js: 7ms, application-code: 49ms)
+ GET /metrics 404 in 74ms (next.js: 6ms, application-code: 68ms)
+ GET /metrics 404 in 65ms (next.js: 7ms, application-code: 57ms)
+ GET /metrics 404 in 68ms (next.js: 6ms, application-code: 62ms)
+ GET /metrics 404 in 67ms (next.js: 7ms, application-code: 60ms)
+ GET /metrics 404 in 62ms (next.js: 5ms, application-code: 57ms)
+ GET /metrics 404 in 66ms (next.js: 8ms, application-code: 58ms)
+ GET /metrics 404 in 68ms (next.js: 5ms, application-code: 62ms)
+ GET /metrics 404 in 62ms (next.js: 6ms, application-code: 56ms)
+ GET /metrics 404 in 57ms (next.js: 8ms, application-code: 49ms)
+ GET /metrics 404 in 67ms (next.js: 7ms, application-code: 61ms)
+ GET /metrics 404 in 69ms (next.js: 7ms, application-code: 62ms)
+ GET /metrics 404 in 68ms (next.js: 5ms, application-code: 63ms)
+ GET /metrics 404 in 70ms (next.js: 8ms, application-code: 63ms)
+ GET /metrics 404 in 59ms (next.js: 5ms, application-code: 54ms)
+ GET /metrics 404 in 76ms (next.js: 8ms, application-code: 68ms)
+ GET /metrics 404 in 63ms (next.js: 6ms, application-code: 57ms)
+ GET /metrics 404 in 60ms (next.js: 8ms, application-code: 52ms)
+ GET /metrics 404 in 67ms (next.js: 6ms, application-code: 61ms)
+ GET /metrics 404 in 62ms (next.js: 7ms, application-code: 54ms)
+ GET /metrics 404 in 66ms (next.js: 7ms, application-code: 59ms)
+ GET /metrics 404 in 72ms (next.js: 8ms, application-code: 64ms)
+ GET /metrics 404 in 77ms (next.js: 6ms, application-code: 70ms)
+ GET /metrics 404 in 63ms (next.js: 7ms, application-code: 56ms)
+ GET /metrics 404 in 83ms (next.js: 10ms, application-code: 73ms)
+ GET /metrics 404 in 104ms (next.js: 15ms, application-code: 89ms)
+ GET /metrics 404 in 52ms (next.js: 8ms, application-code: 43ms)
+ GET /metrics 404 in 41ms (next.js: 5ms, application-code: 36ms)
+ GET /metrics 404 in 57ms (next.js: 6ms, application-code: 51ms)
+ GET /metrics 404 in 42ms (next.js: 5ms, application-code: 38ms)
+ GET /metrics 404 in 39ms (next.js: 6ms, application-code: 33ms)
+ GET /metrics 404 in 48ms (next.js: 4ms, application-code: 43ms)
+ GET /metrics 404 in 41ms (next.js: 6ms, application-code: 35ms)
+ GET /metrics 404 in 37ms (next.js: 4ms, application-code: 33ms)
+ GET /metrics 404 in 43ms (next.js: 6ms, application-code: 37ms)
+ GET /metrics 404 in 41ms (next.js: 4ms, application-code: 36ms)
+ GET /metrics 404 in 41ms (next.js: 4ms, application-code: 37ms)
+ GET /metrics 404 in 41ms (next.js: 5ms, application-code: 35ms)
+ GET /metrics 404 in 43ms (next.js: 4ms, application-code: 39ms)
+ GET /metrics 404 in 41ms (next.js: 7ms, application-code: 34ms)
+ GET /metrics 404 in 39ms (next.js: 5ms, application-code: 34ms)
+ GET /metrics 404 in 41ms (next.js: 7ms, application-code: 34ms)
+ GET /metrics 404 in 48ms (next.js: 6ms, application-code: 42ms)
+ GET /metrics 404 in 41ms (next.js: 4ms, application-code: 37ms)
+ GET /metrics 404 in 43ms (next.js: 6ms, application-code: 37ms)
+ GET /metrics 404 in 67ms (next.js: 12ms, application-code: 55ms)
+ GET /metrics 404 in 38ms (next.js: 4ms, application-code: 34ms)
+ GET /metrics 404 in 74ms (next.js: 14ms, application-code: 60ms)
+ GET /health/live 404 in 61ms (next.js: 6ms, application-code: 55ms)
+ POST /api/v1/trips/sample-plan 404 in 515ms (next.js: 15ms, proxy.ts: 459ms, application-code: 40ms)
+[?25h

@@ -1,0 +1,10 @@
+# ScopeAI robots policy.
+# Only the marketing landing page is indexable. Everything else is per-user
+# state (chat sessions, output editor, share tokens) or API surface.
+
+User-agent: *
+Allow: /$
+Disallow: /chat
+Disallow: /output
+Disallow: /share
+Disallow: /api

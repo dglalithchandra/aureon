@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopeAI — Master Blueprint v1.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080c;
+  --s1:#0d0f16;
+  --s2:#12141e;
+  --s3:#181b26;
+  --border:#1e2130;
+  --border2:#272b3d;
+  --border3:#323750;
+
+  --gold:#e8c46a;
+  --gold-dim:rgba(232,196,106,0.08);
+  --gold-border:rgba(232,196,106,0.22);
+
+  --cyan:#4dd9d9;
+  --cyan-dim:rgba(77,217,217,0.07);
+  --cyan-border:rgba(77,217,217,0.22);
+
+  --green:#52d68a;
+  --green-dim:rgba(82,214,138,0.07);
+  --green-border:rgba(82,214,138,0.22);
+
+  --red:#e85d5d;
+  --red-dim:rgba(232,93,93,0.08);
+  --red-border:rgba(232,93,93,0.22);
+
+  --purple:#a97be8;
+  --purple-dim:rgba(169,123,232,0.07);
+  --purple-border:rgba(169,123,232,0.22);
+
+  --blue:#5b9cf6;
+  --blue-dim:rgba(91,156,246,0.07);
+  --blue-border:rgba(91,156,246,0.22);
+
+  --orange:#f0915a;
+  --orange-dim:rgba(240,145,90,0.07);
+  --orange-border:rgba(240,145,90,0.22);
+
+  --teal:#3fd8b8;
+  --teal-dim:rgba(63,216,184,0.07);
+  --teal-border:rgba(63,216,184,0.22);
+
+  --text:#dde1f0;
+  --muted:#6b7196;
+  --muted2:#444869;
+}
+
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;font-size:15px;line-height:1.7;min-height:100vh;overflow-x:hidden;}
+
+/* ── NOISE TEXTURE OVERLAY ── */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");opacity:0.4;pointer-events:none;z-index:0;}
+
+/* ── TOP STRIPE ── */
+.top-stripe{background:linear-gradient(90deg,var(--gold),var(--cyan));height:3px;width:100%;position:relative;z-index:10;}
+
+/* ── COVER ── */
+.cover{position:relative;z-index:1;padding:70px 48px 60px;max-width:1120px;margin:0 auto;border-bottom:1px solid var(--border);}
+.cover-meta{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:28px;display:flex;gap:28px;flex-wrap:wrap;}
+.cover-meta span{display:flex;align-items:center;gap:6px;}
+.cover-meta span::before{content:'·';color:var(--gold);}
+.cover h1{font-family:'Playfair Display',serif;font-size:clamp(48px,8vw,88px);font-weight:900;line-height:.92;letter-spacing:-.02em;margin-bottom:22px;}
+.cover h1 .acc{color:var(--gold);}
+.cover h1 .dim{color:var(--muted2);}
+.cover-desc{font-size:16px;color:var(--muted);max-width:660px;line-height:1.8;margin-bottom:36px;}
+.cover-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:40px;}
+.cg-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
+.cg-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.cg-val{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;line-height:1;}
+.cg-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+
+/* ── RATINGS SECTION ── */
+.section{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:60px 48px;border-bottom:1px solid var(--border);}
+.section.no-border{border-bottom:none;}
+
+.sec-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.sec-eyebrow::after{content:'';flex:1;height:1px;background:var(--border2);}
+.sec-h2{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,44px);font-weight:800;line-height:1.1;letter-spacing:-.02em;margin-bottom:12px;}
+.sec-sub{color:var(--muted);max-width:640px;line-height:1.8;margin-bottom:40px;}
+
+/* ── RATING CARDS ── */
+.rating-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:40px;}
+.rating-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.rc-head{padding:22px 26px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.rc-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;}
+.rc-score{font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:600;}
+.rc-body{padding:24px 26px;}
+.rc-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+.rc-row:last-child{border-bottom:none;}
+.rc-dim{font-size:13px;color:var(--muted);}
+.rc-bar-wrap{width:120px;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;}
+.rc-bar{height:100%;border-radius:3px;transition:width 1s;}
+.rc-stars{font-size:12px;letter-spacing:1px;}
+.rc-strengths{margin-top:16px;}
+.rc-strengths h5{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.rc-tag{display:inline-block;font-size:11px;padding:3px 9px;border-radius:4px;margin:3px 3px 3px 0;font-family:'JetBrains Mono',monospace;}
+.tag-gold{background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-border);}
+.tag-cyan{background:var(--cyan-dim);color:var(--cyan);border:1px solid var(--cyan-border);}
+.tag-green{background:var(--green-dim);color:var(--green);border:1px solid var(--green-border);}
+.tag-red{background:var(--red-dim);color:var(--red);border:1px solid var(--red-border);}
+.tag-purple{background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-border);}
+.tag-blue{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue-border);}
+.tag-orange{background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange-border);}
+.tag-teal{background:var(--teal-dim);color:var(--teal);border:1px solid var(--teal-border);}
+
+/* ── DECISION BANNER ── */
+.decision-banner{background:linear-gradient(135deg,var(--gold-dim),var(--cyan-dim));border:1px solid var(--gold-border);border-radius:14px;padding:32px 36px;margin-bottom:0;}
+.db-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;}
+.db-title{font-family:'Playfair Display',serif;font-size:32px;font-weight:800;letter-spacing:-.01em;margin-bottom:12px;}
+.db-desc{color:var(--muted);line-height:1.8;max-width:700px;}
+
+/* ── PLAIN PARA BOXES ── */
+.plain-para{background:var(--s2);border-left:3px solid var(--cyan);border-radius:0 10px 10px 0;padding:18px 22px;margin:28px 0;font-size:14px;color:var(--muted);line-height:1.85;}
+.plain-para strong{color:var(--text);}
+.plain-para.gold{border-color:var(--gold);}
+.plain-para.green{border-color:var(--green);}
+.plain-para.red{border-color:var(--red);}
+.plain-para.purple{border-color:var(--purple);}
+
+/* ── PHASE HEADERS ── */
+.phase-head{display:flex;align-items:center;gap:20px;margin:60px 0 32px;}
+.phase-num{font-family:'Playfair Display',serif;font-size:80px;font-weight:900;line-height:1;color:var(--border3);min-width:80px;}
+.phase-info h3{font-family:'Playfair Display',serif;font-size:30px;font-weight:800;letter-spacing:-.01em;}
+.phase-info p{color:var(--muted);font-size:13px;margin-top:4px;}
+.phase-rule{flex:1;height:1px;background:var(--border);}
+
+/* ── STEP CARDS ── */
+.step-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;margin-bottom:20px;overflow:hidden;}
+.step-card.blocker{border-color:var(--red-border);}
+.step-card.gold-accent{border-color:var(--gold-border);}
+.step-card.cyan-accent{border-color:var(--cyan-border);}
+.step-card.green-accent{border-color:var(--green-border);}
+.step-card.purple-accent{border-color:var(--purple-border);}
+.step-card.blue-accent{border-color:var(--blue-border);}
+.step-head{display:grid;grid-template-columns:64px 1fr auto;align-items:center;border-bottom:1px solid var(--border);background:var(--s2);}
+.step-num-col{display:flex;align-items:center;justify-content:center;padding:20px 0;border-right:1px solid var(--border);}
+.step-num{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;}
+.sn-red{background:var(--red-dim);color:var(--red);border:1px solid var(--red-border);}
+.sn-gold{background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-border);}
+.sn-cyan{background:var(--cyan-dim);color:var(--cyan);border:1px solid var(--cyan-border);}
+.sn-green{background:var(--green-dim);color:var(--green);border:1px solid var(--green-border);}
+.sn-blue{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue-border);}
+.sn-purple{background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-border);}
+.sn-orange{background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange-border);}
+.sn-teal{background:var(--teal-dim);color:var(--teal);border:1px solid var(--teal-border);}
+.step-title-col{padding:18px 22px;}
+.step-title-col h4{font-family:'Outfit',sans-serif;font-size:15px;font-weight:600;margin-bottom:3px;}
+.step-title-col .step-tagline{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;}
+.step-badge-col{padding:18px 18px;display:flex;align-items:center;gap:6px;}
+.badge{font-family:'JetBrains Mono',monospace;font-size:8px;padding:3px 8px;border-radius:4px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;}
+.badge-new{background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-border);}
+.badge-from1{background:var(--cyan-dim);color:var(--cyan);border:1px solid var(--cyan-border);}
+.badge-from2{background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-border);}
+.badge-merged{background:var(--teal-dim);color:var(--teal);border:1px solid var(--teal-border);}
+.badge-critical{background:var(--red-dim);color:var(--red);border:1px solid var(--red-border);}
+.step-body{padding:22px 26px;}
+.step-body p{font-size:14px;color:var(--muted);line-height:1.8;margin-bottom:14px;}
+.step-body p:last-child{margin-bottom:0;}
+.step-body strong{color:var(--text);}
+
+/* ── DETAIL BLOCK ── */
+.detail-block{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin:14px 0;}
+.detail-block-head{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.detail-block ul{list-style:none;}
+.detail-block li{font-size:13px;color:var(--muted);padding:4px 0;display:flex;gap:10px;align-items:flex-start;line-height:1.6;}
+.detail-block li::before{content:'→';color:var(--border3);flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:2px;}
+.detail-block li strong{color:var(--text);}
+
+/* ── FORMULA BLOCK ── */
+.formula{background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:22px 26px;margin:18px 0;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:2.2;}
+.formula .fhead{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.f-comment{color:var(--border3);}
+.f-gate{color:var(--red);}
+.f-gold{color:var(--gold);}
+.f-cyan{color:var(--cyan);}
+.f-green{color:var(--green);}
+.f-blue{color:var(--blue);}
+.f-purple{color:var(--purple);}
+.f-teal{color:var(--teal);}
+.f-muted{color:var(--muted);}
+.f-eq{color:var(--text);}
+
+/* ── PARAM TABLE ── */
+.param-table{width:100%;border-collapse:collapse;margin:20px 0;font-size:13px;}
+.param-table th{padding:12px 16px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);background:var(--s2);border-bottom:1px solid var(--border);text-align:left;}
+.param-table td{padding:12px 16px;border-bottom:1px solid var(--border);color:var(--muted);vertical-align:middle;line-height:1.5;}
+.param-table tr:last-child td{border-bottom:none;}
+.param-table td:first-child{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);}
+.param-table-wrap{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:20px 0;}
+
+/* ── DOMAIN GRID ── */
+.domain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0;}
+.domain-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.dc-head{padding:10px 16px;background:var(--s2);border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;}
+.dc-body{padding:14px 16px;}
+.dc-body li{font-size:12px;color:var(--muted);list-style:none;padding:2px 0;line-height:1.5;}
+
+/* ── PIPELINE FLOW ── */
+.flow-wrap{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:20px 0;}
+.flow-head{background:var(--s2);padding:14px 22px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);}
+.flow-grid{display:grid;grid-template-columns:1fr 20px 1fr 20px 1fr 20px 1fr;background:var(--s1);}
+.flow-col{padding:20px 16px;border-right:1px solid var(--border);}
+.flow-col:last-child{border-right:none;}
+.flow-arr{display:flex;align-items:center;justify-content:center;color:var(--border3);font-size:12px;}
+.flow-col-head{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.flow-block{background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:8px 10px;margin-bottom:6px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);line-height:1.4;}
+
+/* ── OUTPUT GRID ── */
+.output-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0;}
+.output-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.oc-head{padding:16px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.oc-body{padding:20px 22px;}
+.oc-body li{font-size:13px;color:var(--muted);list-style:none;padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;line-height:1.5;}
+.oc-body li:last-child{border-bottom:none;}
+.oc-body li::before{content:'✦';color:var(--border3);flex-shrink:0;font-size:10px;margin-top:3px;}
+
+/* ── LOOP DIAGRAM ── */
+.loop-diagram{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:28px;margin:20px 0;}
+.loop-step{display:flex;gap:18px;margin-bottom:24px;position:relative;}
+.loop-step:last-child{margin-bottom:0;}
+.loop-step::before{content:'';position:absolute;left:20px;top:42px;height:calc(100% - 8px);width:1px;background:var(--border);z-index:0;}
+.loop-step:last-child::before{display:none;}
+.loop-num{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;flex-shrink:0;z-index:1;}
+.loop-content h5{font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;margin-bottom:5px;}
+.loop-content p{font-size:13px;color:var(--muted);line-height:1.7;}
+
+/* ── VERDICT ── */
+.verdict{background:linear-gradient(135deg,rgba(232,196,106,0.04),rgba(77,217,217,0.04));border:1px solid var(--gold-border);border-radius:14px;padding:36px 40px;margin:40px 0;}
+.verdict h3{font-family:'Playfair Display',serif;font-size:26px;font-weight:800;margin-bottom:14px;}
+.verdict p{font-size:14px;color:var(--muted);line-height:1.85;margin-bottom:14px;}
+.verdict ul{list-style:none;margin-top:16px;}
+.verdict li{font-size:13px;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:flex-start;line-height:1.6;}
+.verdict li:last-child{border-bottom:none;}
+.v-icon{font-size:12px;flex-shrink:0;margin-top:2px;}
+
+/* ── CONDITION BOXES ── */
+.condition-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0;}
+.condition-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
+.condition-card h5{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;}
+.condition-card ul{list-style:none;}
+.condition-card li{font-size:12.5px;color:var(--muted);padding:3px 0;display:flex;gap:8px;line-height:1.5;}
+.condition-card li::before{content:'if';font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--border3);flex-shrink:0;margin-top:3px;}
+
+/* ── MCQ EXAMPLE ── */
+.mcq-example{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin:14px 0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;}
+.mcq-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+.mcq-opt{display:block;color:var(--muted);padding:2px 0;}
+.mcq-custom{display:block;color:var(--gold);margin-top:6px;}
+
+/* ── GITHUB SECTION ── */
+.github-block{background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:22px 26px;margin:18px 0;}
+.github-block-head{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.github-block p{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:10px;}
+.github-block strong{color:var(--text);}
+
+/* ── EFFORT TABLE ── */
+.effort-table{width:100%;border-collapse:collapse;font-size:13px;}
+.effort-table th{padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);background:var(--s2);border-bottom:1px solid var(--border);text-align:left;}
+.effort-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--muted);}
+.effort-table tr:last-child td{border-bottom:none;}
+.effort-table td:first-child{font-family:'JetBrains Mono',monospace;color:var(--text);}
+
+/* ── TOC ── */
+.toc{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:28px 30px;margin:40px 0;}
+.toc h4{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;}
+.toc-list{display:grid;grid-template-columns:1fr 1fr;gap:6px 30px;}
+.toc-item{display:flex;gap:10px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--muted);}
+.toc-item .toc-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--border3);width:28px;flex-shrink:0;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .cover-grid{grid-template-columns:1fr 1fr;}
+  .rating-grid{grid-template-columns:1fr;}
+  .domain-grid{grid-template-columns:1fr 1fr;}
+  .output-grid{grid-template-columns:1fr;}
+  .condition-grid{grid-template-columns:1fr;}
+  .toc-list{grid-template-columns:1fr;}
+  .flow-grid{grid-template-columns:1fr;}
+  .flow-arr{transform:rotate(90deg);}
+}
+@media(max-width:640px){
+  .section{padding:40px 20px;}
+  .cover{padding:40px 20px;}
+  .cover-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="top-stripe"></div>
+
+<!-- ══════════════════════════════════════════
+     COVER
+══════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-meta">
+    <span>ScopeAI Master Blueprint</span>
+    <span>Version 1.0 Final</span>
+    <span>Decision: Option 3 — Best of Both</span>
+    <span>Architecture: 3 Phases · 15 Steps</span>
+  </div>
+  <h1>Scope<span class="acc">AI</span><br><span class="dim">Master Blueprint</span></h1>
+  <p class="cover-desc">The complete, merged, production-ready architecture for a tool that takes a vague software project description and transforms it into a structured client approval document and a full engineering blueprint — using AI, GitHub intelligence, adaptive questioning, and multi-layer confidence scoring.</p>
+  <div class="cover-grid">
+    <div class="cg-card">
+      <div class="cg-label">Total Pipeline Steps</div>
+      <div class="cg-val" style="color:var(--gold)">15</div>
+      <div class="cg-sub">Across 3 macro phases</div>
+    </div>
+    <div class="cg-card">
+      <div class="cg-label">Domains Supported</div>
+      <div class="cg-val" style="color:var(--cyan)">9+</div>
+      <div class="cg-sub">+ Custom fallback</div>
+    </div>
+    <div class="cg-card">
+      <div class="cg-label">Base Parameters</div>
+      <div class="cg-val" style="color:var(--green)">9</div>
+      <div class="cg-sub">+ 3 domain extras each</div>
+    </div>
+    <div class="cg-card">
+      <div class="cg-label">Output Documents</div>
+      <div class="cg-val" style="color:var(--purple)">2</div>
+      <div class="cg-sub">Client view + Engineer doc</div>
+    </div>
+  </div>
+  <div class="toc">
+    <h4>Table of Contents</h4>
+    <div class="toc-list">
+      <div class="toc-item"><span class="toc-num">01</span> Rating: Idea 1 — ScopeAI</div>
+      <div class="toc-item"><span class="toc-num">02</span> Rating: Idea 2 — Scope Builder v6</div>
+      <div class="toc-item"><span class="toc-num">03</span> Decision — Why Option 3</div>
+      <div class="toc-item"><span class="toc-num">04</span> Phase 0 — Pre-Flight Checks</div>
+      <div class="toc-item"><span class="toc-num">05</span> Phase 1 — Intelligence Gathering</div>
+      <div class="toc-item"><span class="toc-num">06</span> Phase 2 — Analysis & Scoring</div>
+      <div class="toc-item"><span class="toc-num">07</span> Phase 3 — Loop or Output</div>
+      <div class="toc-item"><span class="toc-num">08</span> The Confidence Formula</div>
+      <div class="toc-item"><span class="toc-num">09</span> The Clarification Loop</div>
+      <div class="toc-item"><span class="toc-num">10</span> Domain System</div>
+      <div class="toc-item"><span class="toc-num">11</span> GitHub Intelligence Layer</div>
+      <div class="toc-item"><span class="toc-num">12</span> Two-Stage Output System</div>
+      <div class="toc-item"><span class="toc-num">13</span> All Loop Conditions</div>
+      <div class="toc-item"><span class="toc-num">14</span> Risk & Effort Engine</div>
+      <div class="toc-item"><span class="toc-num">15</span> Full Tech Stack</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     RATINGS
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="sec-eyebrow" style="color:var(--gold)">Independent Ratings</div>
+  <h2 class="sec-h2">Both Ideas, Scored Honestly</h2>
+  <p class="sec-sub">Each idea is rated across six dimensions. These ratings directly explain which features get kept, which get merged, and why Option 3 is the only right answer.</p>
+
+  <div class="rating-grid">
+
+    <!-- IDEA 1 -->
+    <div class="rating-card">
+      <div class="rc-head">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--muted);margin-bottom:4px;">IDEA 01 — scopeai.html</div>
+          <div class="rc-title">ScopeAI — Pipeline + GitHub</div>
+        </div>
+        <div>
+          <div class="rc-score" style="color:var(--gold)">7.2</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);text-align:right;">/10</div>
+        </div>
+      </div>
+      <div class="rc-body">
+        <div class="rc-row">
+          <span class="rc-dim">Core Concept Originality</span>
+          <div style="display:flex;align-items:center;gap:8px;"><div class="rc-bar-wrap"><div class="rc-bar" style="width:90%;background:var(--gold);"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold)">9/10</span></div>
+        </div>
+        <div class="rc-row">
+          <span class="rc-dim">AI Architecture Depth</span>
+          <div style="display:flex;align-items:center;gap:8px;"><div class="rc-bar-wrap"><div class="rc-bar" style="width:55%;background:var(--orange);"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--orange)">5.5/10</span></div>
+        </div>
+        <div class="rc-row">
+          <span class="rc-dim">Output Quality Design</span>
+          <div style="display:flex;align-items:center;gap:8px;"><div class="rc-bar-wrap"><div class="rc-bar" style="width:65%;background:var(--cyan);"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)">6.5/10</span></div>
+        </div>
+        <div class="rc-row">
+          <span class="rc-dim">Confidence & Reliability</span>
+          <div style="display:flex;align-items:center;gap:8px;"><div class="rc-bar-wrap"><div class="rc-bar" style="width:40%;background:var(--red);"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red)">4/10</span></div>
+        </div>
+        <div class="rc-row">
+          <span class="rc-dim">Iterative Improvement</span>
+          <div style="display:flex;align-items:center;gap:8px;"><div class="rc-bar-wrap"><div class="rc-bar" style="width:20%;background:var(--red);"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red)">2/10</span></div>
+        </div>
+        <div class="rc-row">
+          <span class="rc-dim">Real-World Validation</span>
+          <div style="display:flex;align-items:center;gap:8px;"><div class="rc-bar-wrap"><div class="rc-bar" style="width:100%;background:var(--green);"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)">10/10</span></div>
+        </div>
+        <div class="rc-strengths">
+          <h5>Unique Strengths (must keep)</h5>
+          <span class="rc-tag tag-gold">GitHub semantic search</span>
+          <span class="rc-tag tag-cyan">README + folder tree parsing</span>
+          <span class="rc-tag tag-green">Module deduplication</span>
+          <span class="rc-tag tag-cyan">Live pipeline visualization</span>
+          <span class="rc-tag tag-gold">Real-world repo validation</span>
+        </div>
+        <div class="rc-strengths" style="margin-top:12px;">
+          <h5>Critical Weaknesses</h5>
+          <span class="rc-tag tag-red">No clarification loop</span>
+          <span class="rc-tag tag-red">No confidence gates</span>
+          <span class="rc-tag tag-red">No domain-specific logic</span>
+          <span class="rc-tag tag-red">One-shot only</span>
+          <span class="rc-tag tag-red">No two-stage output</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- IDEA 2 -->
+    <div class="rating-card">
+      <div class="rc-head">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--muted);margin-bottom:4px;">IDEA 02 — finalversionscopeai.html</div>
+          <div class="rc-title">Scope Builder — Architecture v6</div>
+        </div>
+        <div>
+          <div class="rc-score" style="color:var(--cyan)">9.3</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);text-align:right;">/10</div>
+        </div>
+      </div>
+      <div class="rc-body">
+        <div class="rc-row">
+          <span class="rc-dim">Core Concept Originality</span>
+          <div style="display:flex;align-items:center;gap:8px;"><div class="rc-bar-wrap"><div class="rc-bar" style="width:85%;background:var(--gold);"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold)">8.5/10</span></div>
+        </div>
+        <div class="rc-row">
+          <span class="rc-dim">AI Architecture Depth</span>
+          <div style="display:flex;align-items:center;gap:8px;"><div class="rc-bar-wrap"><div class="rc-bar" style="width:97%;background:var(--green);"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)">9.7/10</span></div>
+        </div>
+        <div class="rc-row">
+          <span class="rc-dim">Output Quality Design</span>
+          <div style="display:flex;align-items:center;gap:8px;"><div class="rc-bar-wrap"><div class="rc-bar" style="width:95%;background:var(--green);"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)">9.5/10</span></div>
+        </div>
+        <div class="rc-row">
+          <span class="rc-dim">Confidence & Reliability</span>
+          <div style="display:flex;align-items:center;gap:8px;"><div class="rc-bar-wrap"><div class="rc-bar" style="width:98%;background:var(--green);"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)">9.8/10</span></div>
+        </div>
+        <div class="rc-row">
+          <span class="rc-dim">Iterative Improvement</span>
+          <div style="display:flex;align-items:center;gap:8px;"><div class="rc-bar-wrap"><div class="rc-bar" style="width:96%;background:var(--green);"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)">9.6/10</span></div>
+        </div>
+        <div class="rc-row">
+          <span class="rc-dim">Real-World Validation</span>
+          <div style="display:flex;align-items:center;gap:8px;"><div class="rc-bar-wrap"><div class="rc-bar" style="width:30%;background:var(--orange);"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--orange)">3/10</span></div>
+        </div>
+        <div class="rc-strengths">
+          <h5>Unique Strengths (must keep)</h5>
+          <span class="rc-tag tag-purple">BLOCKER / CRITICAL gates</span>
+          <span class="rc-tag tag-green">3-component confidence formula</span>
+          <span class="rc-tag tag-blue">Semantic-aware chunking</span>
+          <span class="rc-tag tag-teal">MCQ clarification loop</span>
+          <span class="rc-tag tag-purple">Structured reconstruction</span>
+          <span class="rc-tag tag-gold">2-stage client/engineer output</span>
+          <span class="rc-tag tag-cyan">Domain classifier (9 domains)</span>
+        </div>
+        <div class="rc-strengths" style="margin-top:12px;">
+          <h5>Critical Weaknesses</h5>
+          <span class="rc-tag tag-red">Zero GitHub intelligence</span>
+          <span class="rc-tag tag-red">No live pipeline UX</span>
+          <span class="rc-tag tag-red">No external module validation</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="decision-banner">
+    <div class="db-label">Final Decision</div>
+    <div class="db-title">Option 3 — Best of Both, Merged into One</div>
+    <div class="db-desc">Idea 2 wins on architecture depth by a wide margin. But Idea 1 has one feature that Idea 2 completely lacks: <strong style="color:var(--gold)">GitHub semantic search and real-world module extraction</strong>. This is not a cosmetic feature — it fundamentally validates AI-generated module lists against actual production codebases. The merged architecture takes Idea 2's entire engine and inserts Idea 1's GitHub intelligence as Phase 1 Step 7 (the Module Intelligence Layer), plus brings back the live pipeline visualization as the user-facing experience layer. The result: the only version worth building.</div>
+  </div>
+
+  <div class="plain-para">Think of it this way: <strong>Idea 2 is the brain</strong> — it knows how to think, score, question, and output. <strong>Idea 1 is the eyes</strong> — it can look at the real world and validate what the brain came up with against thousands of real projects. Neither alone is complete. Together, the system doesn't just guess what modules a project needs — it <strong>confirms</strong> those modules against production codebases that already solved similar problems.</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     PHASE 0
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="sec-eyebrow" style="color:var(--red)">Phase 0</div>
+  <h2 class="sec-h2">Pre-Flight Checks</h2>
+  <p class="sec-sub">Before a single AI call is made, the system must check for two conditions that would make any output meaningless: a completely missing core intent, and input so thin that nothing can be extracted from it.</p>
+
+  <div class="plain-para red">Think of Phase 0 as the airport security check. You don't board the plane first and then check if you have your passport. You check before anything else starts. If the absolute minimum isn't there, the system stops and asks for it specifically — not with a generic "tell me more" but with a targeted question that directly addresses what's missing.</div>
+
+  <!-- STEP B0: BLOCKER PRE-CHECK -->
+  <div class="step-card blocker">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-red">B0</div></div>
+      <div class="step-title-col">
+        <h4>BLOCKER Pre-Check — Project Goal (P-01) &amp; Core Features (P-03)</h4>
+        <div class="step-tagline">runs before everything. loop counter does not increment. output is impossible until resolved.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-critical">BLOCKER</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> The system checks whether P-01 (the fundamental problem the software solves) and P-03 (any core features) can be detected at all from the raw input. This is not a quality check — it is an existence check. If the input is something like "I want to build an app" with zero context about what it does, P-01 is MISSING.</p>
+      <p><strong>Condition:</strong> If P-01 or P-03 is MISSING, skip domain classification, skip chunking, skip GitHub search, skip all pipeline steps. The system shows only the BLOCKER question for the missing parameter. This is called a pre-round — it does not count against the maximum round counter. The confidence ceiling is hard-locked at 40% until resolved, and no scope output is generated regardless of round count.</p>
+      <div class="detail-block">
+        <div class="detail-block-head">BLOCKER question format — P-01 (Problem Goal)</div>
+        <ul>
+          <li><strong>Question shown:</strong> "What problem does this software actually solve? Pick the closest description." — with MCQ options: Automate a manual process / Replace an existing tool / Connect two systems / Sell a product or service to customers / Give internal teams a better workflow / Other (describe).</li>
+          <li><strong>If user picks one or types custom:</strong> P-01 is now at minimum PARTIAL-THIN. BLOCKER lifts. System proceeds to Step B1 (Thinness Check) and then to Step 1.</li>
+          <li><strong>If user skips or gives gibberish:</strong> BLOCKER question repeats with a different framing. Extended BLOCKER rounds (more than 3 attempts) trigger a manual review flag.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP B1: THINNESS CHECK -->
+  <div class="step-card" style="border-color:var(--orange-border);">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-orange">B1</div></div>
+      <div class="step-title-col">
+        <h4>Thinness Pre-Check — Input Density Measurement</h4>
+        <div class="step-tagline">measures token count, keyword hits, and entity density before committing to the full pipeline.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-from2">FROM IDEA 2</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> Even if P-01 and P-03 exist, the input may be so thin that semantic chunking and hybrid search will produce unreliable results. This step measures three signals: raw token count, keyword hit density (how many of the base parameter keywords appear), and named entity density (how many proper nouns, product names, domain terms).</p>
+      <div class="formula">
+        <div class="fhead">Thinness Thresholds</div>
+        <div class="f-comment">// Any two of three signals below threshold → thinness triggered</div>
+        <div class="f-gate">Token count &lt; 80 tokens → THIN signal 1</div>
+        <div class="f-gold">Keyword hits &lt; 2 (from base parameter keyword list) → THIN signal 2</div>
+        <div class="f-gold">Named entities &lt; 1 (no product names, role names, or domain terms found) → THIN signal 3</div>
+        <div class="f-comment">// Response if THIN:</div>
+        <div class="f-green">Ask one targeted question based on closest domain match signal</div>
+        <div class="f-green">Not "tell me more" — quote what's missing: "Target users weren't mentioned — who will use this?"</div>
+        <div class="f-muted">// Thinness round does NOT count against max_rounds</div>
+      </div>
+      <p><strong>Why this matters:</strong> If you run the full pipeline on "I want a food app", the vector embeddings are almost meaningless, BM25 hits nothing specific, and the GitHub search returns random results. One targeted question at this stage can turn a 6-word input into a 50-word input that actually yields useful results from the pipeline.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     PHASE 1
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="sec-eyebrow" style="color:var(--cyan)">Phase 1</div>
+  <h2 class="sec-h2">Intelligence Gathering</h2>
+  <p class="sec-sub">The system collects every available signal from the input: domain, parameter states, semantic content, and — uniquely — real-world module patterns from GitHub's production codebase library.</p>
+
+  <div class="plain-para">Think of Phase 1 as the research phase. Before a consultant gives a proposal, they study the client's industry, look at how similar companies have solved similar problems, and identify exactly what information they have and what's still missing. This phase does all of that — automatically, in seconds.</div>
+
+  <!-- STEP 1: DOMAIN CLASSIFICATION -->
+  <div class="step-card cyan-accent">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-cyan">01</div></div>
+      <div class="step-title-col">
+        <h4>3-Signal Domain Classification</h4>
+        <div class="step-tagline">keyword density + named entity recognition + llm micro-call. multi-domain support included.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-from2">FROM IDEA 2</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> Determines which of the 9 supported domains this project belongs to. The domain determines which extra parameters get added, what the confidence threshold is, what the MCQ question options look like, and which GitHub repositories get searched. Getting the domain right is the most important single classification step in the entire pipeline.</p>
+      <div class="formula">
+        <div class="fhead">3-Signal Classifier Formula</div>
+        <div class="f-comment">// Signal 1: Keyword density (40% weight)</div>
+        <div class="f-gold">keyword_score[domain] = (domain_keywords_found / total_domain_keywords) × 100</div>
+        <div class="f-comment">// Signal 2: Named Entity Recognition (35% weight)</div>
+        <div class="f-cyan">ner_score[domain] = confidence from NER model over domain-specific entities</div>
+        <div class="f-comment">// e.g., "Stripe, Razorpay, invoice" → FinTech entities</div>
+        <div class="f-comment">// Signal 3: LLM micro-call (25% weight) — only if ambiguous</div>
+        <div class="f-blue">if (keyword_score[top] − keyword_score[second] &lt; 15):</div>
+        <div class="f-blue">&nbsp;&nbsp;llm_score = one Claude call: "Is this SaaS, FinTech, Marketplace, or other?"</div>
+        <div class="f-comment">// Combine signals</div>
+        <div class="f-green">domain_confidence = keyword_score×0.40 + ner_score×0.35 + llm_score×0.25</div>
+        <div class="f-comment">// Soft confidence bands</div>
+        <div class="f-gold">≥ 65% → confirmed domain, load template</div>
+        <div class="f-gold">44–64% → probable domain, load template with confirm flag</div>
+        <div class="f-gate">&lt; 44% → Custom / Other fallback</div>
+        <div class="f-comment">// Multi-domain: if top 2 domains both ≥ 45%, merge their extra parameters</div>
+        <div class="f-teal">multi_domain = (domain_1_score ≥ 45%) AND (domain_2_score ≥ 45%)</div>
+      </div>
+      <div class="domain-grid">
+        <div class="domain-card"><div class="dc-head">SaaS <span class="rc-tag tag-green" style="font-size:10px;padding:2px 6px;">HIGH CONF</span></div><div class="dc-body"><ul><li>Subscription tiers, tenant isolation, billing, analytics dashboard, API access, team management, webhooks</li></ul></div></div>
+        <div class="domain-card"><div class="dc-head">E-Commerce <span class="rc-tag tag-green" style="font-size:10px;padding:2px 6px;">HIGH CONF</span></div><div class="dc-body"><ul><li>Product catalog, cart, checkout, payment gateway, order management, inventory, shipping, returns</li></ul></div></div>
+        <div class="domain-card"><div class="dc-head">Marketplace <span class="rc-tag tag-cyan" style="font-size:10px;padding:2px 6px;">NEW</span></div><div class="dc-body"><ul><li>Buyer/seller roles, listing management, commission logic, payout system, escrow, dispute resolution, reviews</li></ul></div></div>
+        <div class="domain-card"><div class="dc-head">FinTech <span class="rc-tag tag-cyan" style="font-size:10px;padding:2px 6px;">NEW</span></div><div class="dc-body"><ul><li>KYC/AML, PCI-DSS, transaction ledger, reconciliation, audit trail, fraud detection, regulatory compliance</li></ul></div></div>
+        <div class="domain-card"><div class="dc-head">EdTech <span class="rc-tag tag-cyan" style="font-size:10px;padding:2px 6px;">NEW</span></div><div class="dc-body"><ul><li>Course/module/lesson hierarchy, assessment engine, certificates, progress tracking, instructor vs student roles, SCORM</li></ul></div></div>
+        <div class="domain-card"><div class="dc-head">Healthcare <span class="rc-tag tag-cyan" style="font-size:10px;padding:2px 6px;">NEW</span></div><div class="dc-body"><ul><li>PHI classification, HIPAA, appointment system, medical records, HL7/FHIR, EMR integration, prescriptions, referrals</li></ul></div></div>
+        <div class="domain-card"><div class="dc-head">Mobile App <span class="rc-tag tag-green" style="font-size:10px;padding:2px 6px;">HIGH CONF</span></div><div class="dc-body"><ul><li>iOS/Android/both, push notifications, offline mode, deep linking, app store compliance, device permissions</li></ul></div></div>
+        <div class="domain-card"><div class="dc-head">Internal Tool <span class="rc-tag tag-green" style="font-size:10px;padding:2px 6px;">HIGH CONF</span></div><div class="dc-body"><ul><li>SSO/LDAP, RBAC, audit logs, data import/export, admin panel, workflow automation, reporting</li></ul></div></div>
+        <div class="domain-card"><div class="dc-head">Content Platform <span class="rc-tag tag-gold" style="font-size:10px;padding:2px 6px;">FALLBACK</span></div><div class="dc-body"><ul><li>CMS, publishing workflow, SEO metadata, commenting, media upload/CDN, content scheduling, multi-author roles</li></ul></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="plain-para">Domain classification is the system's first big bet. Once it knows the domain, everything else becomes domain-aware — the questions asked, the GitHub repos searched, the extra parameters loaded, the effort multipliers applied. Getting this right once saves hours of misaligned output later.</div>
+
+  <!-- STEP 2: SEMANTIC CHUNKING -->
+  <div class="step-card blue-accent">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-blue">02</div></div>
+      <div class="step-title-col">
+        <h4>Semantic-Aware Sliding Window Chunking</h4>
+        <div class="step-tagline">detects topic boundaries via embedding cosine similarity. never cuts a topic mid-thought.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-from2">FROM IDEA 2</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> Splits the project description into chunks that align with topic boundaries, not fixed token counts. The core insight: a project description is written in natural topics — "For payments, we need..." then "The admin section should..." then "Users need to be able to...". Each of these should be one chunk. Cutting at 512 tokens regardless of meaning destroys this.</p>
+      <div class="formula">
+        <div class="fhead">Semantic Chunking Algorithm</div>
+        <div class="f-comment">// Step A: tokenize into sentences</div>
+        <div class="f-gold">sentences = tokenize(input)</div>
+        <div class="f-comment">// Step B: embed adjacent sentence pairs</div>
+        <div class="f-cyan">for i in range(len(sentences) - 1):</div>
+        <div class="f-cyan">&nbsp;&nbsp;similarity[i] = cosine_sim(embed(sentences[i]), embed(sentences[i+1]))</div>
+        <div class="f-comment">// Step C: detect topic breaks where adjacent sim drops below threshold</div>
+        <div class="f-gold">topic_break_threshold = 0.65</div>
+        <div class="f-gate">if similarity[i] &lt; 0.65 → new chunk starts at sentences[i+1]</div>
+        <div class="f-comment">// Step D: handle edge cases</div>
+        <div class="f-green">if chunk_tokens &gt; 512 → apply RCS (recursive character splitting) within topic</div>
+        <div class="f-green">if chunk_tokens &lt; 40 → merge with next chunk</div>
+        <div class="f-teal">if total_input_tokens &lt; 200 → single chunk, skip vector path entirely</div>
+        <div class="f-comment">// Guarantee: every token in input appears in exactly one chunk (no orphan text)</div>
+      </div>
+      <p><strong>Short input fallback:</strong> If total input is under 200 tokens, vector embeddings are too noisy to be useful. The system uses BM25 + Query Expansion only, plus a lightweight LLM paragraph labeller that categorises each sentence as Feature / Constraint / Unclear / Off-Topic and maps them to parameter buckets. Full hybrid search re-activates automatically when the user adds context in round 1.</p>
+    </div>
+  </div>
+
+  <!-- STEP 3: HYBRID SEARCH -->
+  <div class="step-card" style="border-color:var(--teal-border);">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-teal">03</div></div>
+      <div class="step-title-col">
+        <h4>Hybrid Search — Vector + BM25 + Query Expansion + Cross-Encoder</h4>
+        <div class="step-tagline">four-stage retrieval per parameter. rrf merge keeps it scale-robust. cross-encoder gives final precision.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-from2">FROM IDEA 2</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> For each parameter (P-01 through P-09 plus domain extras), the system finds the most relevant chunks from the project description. This is not searching the internet — it is searching the chunks of the input itself, to determine what was said (or not said) about each parameter.</p>
+      <div class="flow-wrap">
+        <div class="flow-head">Four-stage retrieval pipeline — runs for every parameter</div>
+        <div class="flow-grid">
+          <div class="flow-col">
+            <div class="flow-col-head" style="color:var(--purple)">① Semantic Chunks</div>
+            <div class="flow-block" style="border-color:var(--purple-border);background:var(--purple-dim);color:var(--purple);">Embed all chunks with MiniLM-L6-v2</div>
+            <div class="flow-block">Build FAISS vector index</div>
+            <div class="flow-block">Query: parameter description embedding</div>
+            <div class="flow-block" style="border-color:var(--purple-border);background:var(--purple-dim);color:var(--purple);">Top-5 results per parameter</div>
+          </div>
+          <div class="flow-arr">→</div>
+          <div class="flow-col">
+            <div class="flow-col-head" style="color:var(--blue)">② BM25 + Expansion</div>
+            <div class="flow-block">Build BM25 inverted keyword index</div>
+            <div class="flow-block" style="border-color:var(--blue-border);background:var(--blue-dim);color:var(--blue);">Load synonym table from parameters.json for domain</div>
+            <div class="flow-block" style="border-color:var(--blue-border);background:var(--blue-dim);color:var(--blue);">"payment" → also queries: billing, checkout, invoice, gateway, transaction</div>
+            <div class="flow-block">Top-5 BM25 results per parameter</div>
+          </div>
+          <div class="flow-arr">→</div>
+          <div class="flow-col">
+            <div class="flow-col-head" style="color:var(--teal)">③ RRF Merge</div>
+            <div class="flow-block">Reciprocal Rank Fusion: score = Σ 1/(60 + rank)</div>
+            <div class="flow-block">Combines Vector-5 + BM25-5</div>
+            <div class="flow-block" style="border-color:var(--teal-border);background:var(--teal-dim);color:var(--teal);">Top-10 merged list per parameter</div>
+            <div class="flow-block" style="font-size:10px;">Scale-robust: no magnitude normalisation needed</div>
+          </div>
+          <div class="flow-arr">→</div>
+          <div class="flow-col">
+            <div class="flow-col-head" style="color:var(--gold)">④ Cross-Encoder Re-rank</div>
+            <div class="flow-block">Read all top-10 chunks together</div>
+            <div class="flow-block" style="border-color:var(--gold-border);background:var(--gold-dim);color:var(--gold);">One Claude call per parameter for relevance re-ranking</div>
+            <div class="flow-block" style="border-color:var(--gold-border);background:var(--gold-dim);color:var(--gold);">Final top-3 chunks → State Scorer</div>
+            <div class="flow-block" style="font-size:10px;">Only on top-10, not all chunks. Precision gain for small cost.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="plain-para">The hybrid search is doing something subtle but powerful: it is reading the project description like a detective, asking "did this client tell us anything about authentication? About integrations? About budget?" — and doing it simultaneously for every parameter that matters for this domain. The combination of semantic similarity and keyword matching ensures nothing gets missed just because the client phrased something differently.</div>
+
+  <!-- STEP 4: PARAMETER STATE -->
+  <div class="step-card purple-accent">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-purple">04</div></div>
+      <div class="step-title-col">
+        <h4>Parameter State Determination — PRESENT / PARTIAL-DEEP / PARTIAL-THIN / MISSING</h4>
+        <div class="step-tagline">one llm call per parameter. outputs state + evidence quote + specific gap description.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-from2">FROM IDEA 2</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> For each parameter, one LLM call takes the top-3 retrieved chunks and the parameter definition and determines the state of that parameter in the input. This is not a binary yes/no — it has four levels that each carry different confidence weights.</p>
+      <div class="param-table-wrap">
+        <table class="param-table">
+          <thead><tr><th>Parameter</th><th>Tier</th><th>Weight</th><th>Description</th><th>State Multiplier</th></tr></thead>
+          <tbody>
+            <tr><td>P-01 — Project Goal / Problem Statement</td><td><span class="rc-tag tag-red" style="font-size:10px;">BLOCKER</span></td><td>5.0</td><td>The core problem the software solves. Without this, nothing else is knowable.</td><td>PRESENT=1.0 | P-DEEP=0.7 | P-THIN=0.3 | MISSING=0.0 → BLOCKER</td></tr>
+            <tr><td>P-02 — Target Users / Personas</td><td><span class="rc-tag tag-gold" style="font-size:10px;">HIGH</span></td><td>4.0</td><td>Who uses the system? What roles do they have?</td><td>PRESENT=1.0 | P-DEEP=0.7 | P-THIN=0.3 | MISSING=0.0 → CRITICAL</td></tr>
+            <tr><td>P-03 — Core Features / Functionality</td><td><span class="rc-tag tag-red" style="font-size:10px;">BLOCKER</span></td><td>5.0</td><td>What must the system actually do? The feature list.</td><td>PRESENT=1.0 | P-DEEP=0.7 | P-THIN=0.3 | MISSING=0.0 → BLOCKER</td></tr>
+            <tr><td>P-04 — Technical Constraints / Stack Preferences</td><td><span class="rc-tag tag-gold" style="font-size:10px;">HIGH</span></td><td>3.5</td><td>React? Node? AWS? Mobile? Existing system to integrate with?</td><td>PRESENT=1.0 | P-DEEP=0.7 | P-THIN=0.3 | MISSING=0.0</td></tr>
+            <tr><td>P-05 — Third-Party Integrations</td><td><span class="rc-tag tag-blue" style="font-size:10px;">MED</span></td><td>2.5</td><td>Stripe, Google OAuth, Twilio, Salesforce, custom APIs?</td><td>PRESENT=1.0 | P-DEEP=0.7 | P-THIN=0.3 | MISSING=0.0</td></tr>
+            <tr><td>P-06 — Non-Functional Requirements</td><td><span class="rc-tag tag-blue" style="font-size:10px;">MED</span></td><td>2.0</td><td>Performance targets, uptime, compliance, accessibility, data retention.</td><td>PRESENT=1.0 | P-DEEP=0.7 | P-THIN=0.3 | MISSING=0.0</td></tr>
+            <tr><td>P-07 — Budget Range</td><td><span class="rc-tag tag-blue" style="font-size:10px;">MED</span></td><td>2.0</td><td>Is there a budget ceiling? This directly constrains scope.</td><td>PRESENT=1.0 | P-DEEP=0.7 | P-THIN=0.3 | MISSING=0.0</td></tr>
+            <tr><td>P-08 — Delivery Timeline</td><td><span class="rc-tag tag-blue" style="font-size:10px;">MED</span></td><td>2.0</td><td>When does it need to be live? MVP vs full launch?</td><td>PRESENT=1.0 | P-DEEP=0.7 | P-THIN=0.3 | MISSING=0.0</td></tr>
+            <tr><td>P-09 — Success Metrics / Definition of Done</td><td><span class="rc-tag tag-muted" style="font-size:10px;background:var(--s3);color:var(--muted);border:1px solid var(--border)">LOW</span></td><td>1.0</td><td>How will we know the project succeeded? KPIs, acceptance criteria.</td><td>PRESENT=1.0 | P-DEEP=0.7 | P-THIN=0.3 | MISSING=0.0</td></tr>
+            <tr><td>P-10, P-11, P-12 — Domain Extras</td><td><span class="rc-tag tag-teal" style="font-size:10px;">DOMAIN</span></td><td>Variable</td><td>Added based on domain. E.g., FinTech adds KYC/AML, Transaction Engine, Fraud Detection.</td><td>Same scale as base params. Weights from domain template.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5: LLM SCORER -->
+  <div class="step-card gold-accent">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-gold">05</div></div>
+      <div class="step-title-col">
+        <h4>5-Axis LLM Completeness Scorer</h4>
+        <div class="step-tagline">one llm call, five axes, 0–50 total → percentage. qualitative view of overall input quality.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-from2">FROM IDEA 2</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> A single LLM call (separate from per-parameter scoring) evaluates the overall quality of the input across five dimensions. This produces the LLM Score component of the 3-part confidence formula. It catches things that parameter-state scoring misses — like whether features are described clearly enough to build, or whether boundaries are stated.</p>
+      <div class="formula">
+        <div class="fhead">5 Evaluation Axes — each scored 0 to 10</div>
+        <div class="f-gold">Axis 1 — Feature Clarity: Are the features described precisely enough to build? (vague=0, specific=10)</div>
+        <div class="f-cyan">Axis 2 — Scope Boundary: Is there clarity on what is NOT included? (none=0, explicit=10)</div>
+        <div class="f-green">Axis 3 — User Role Definition: Are user roles and permissions even mentioned? (absent=0, detailed=10)</div>
+        <div class="f-blue">Axis 4 — Technical Constraints: Any technical requirements specified? (none=0, detailed=10)</div>
+        <div class="f-purple">Axis 5 — Missing Elements: How many expected parameters for this domain are unaddressed? (many=0, none=10)</div>
+        <div class="f-comment">// Formula</div>
+        <div class="f-eq">LLM_Score = (Axis1 + Axis2 + Axis3 + Axis4 + Axis5) / 50 × 100</div>
+        <div class="f-muted">// This becomes 30% of the final confidence score</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 6: GITHUB INTELLIGENCE LAYER -->
+  <div class="step-card cyan-accent">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-cyan">06</div></div>
+      <div class="step-title-col">
+        <h4>GitHub Intelligence Layer — Semantic Search + Module Extraction</h4>
+        <div class="step-tagline">⭐ the killer feature from idea 1. validates ai-generated modules against real production codebases.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-from1">★ FROM IDEA 1</span><span class="badge badge-new">UNIQUE</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> After domain classification, the system performs a semantic search over GitHub to find the 6-8 most similar real-world open-source projects. It then parses their README files and folder trees to extract actual module patterns used in production. This is the feature that makes the final module list grounded in reality, not just AI inference.</p>
+      <div class="github-block">
+        <div class="github-block-head">GitHub Search Pipeline — triggered after Step 1 (domain confirmed)</div>
+        <p><strong>Sub-step A — Query Construction:</strong> Builds a GitHub search query from: domain label + top-5 project keywords extracted from P-01 and P-03 states + domain-specific filter terms. Example for a FinTech project with P-01 "payment processing for freelancers" and P-03 "invoice generation, payouts, tax reports": <em>query = "fintech freelancer payment invoice payout open-source"</em></p>
+        <p><strong>Sub-step B — Semantic Re-Ranking:</strong> GitHub search returns up to 30 results. The system embeds the project description and each repository's README (first 200 tokens) and computes cosine similarity. Top 8 by semantic similarity score are selected. This avoids false matches from keyword overlap alone.</p>
+        <p><strong>Sub-step C — README Parsing:</strong> For each selected repo, the README is fetched and parsed for: section headers (## Installation, ## Features, ## API), feature lists (- [ ] feature), tech stack mentions (React, PostgreSQL, Redis), and integration names (Stripe, SendGrid, Twilio).</p>
+        <p><strong>Sub-step D — Folder Tree Parsing:</strong> The top-level directory structure is fetched via GitHub API (or tree endpoint). Folder names like <em>/auth</em>, <em>/payments</em>, <em>/notifications</em>, <em>/dashboard</em>, <em>/admin</em> are extracted as raw module candidates. This often reveals modules that READMEs do not even mention.</p>
+        <p><strong>Sub-step E — Module Candidate List:</strong> All extracted feature keywords and folder names become module candidates, each tagged with: source repo, extraction method (README header / folder name / feature list item), occurrence count across all 8 repos, and cosine similarity of source repo to the current project.</p>
+      </div>
+      <div class="detail-block">
+        <div class="detail-block-head">Example extraction — SaaS analytics project</div>
+        <ul>
+          <li><strong>Repos matched:</strong> Plausible, Metabase, PostHog, Umami, Ackee, Matomo (open-source), Nocodb, Redash</li>
+          <li><strong>Module candidates from folders:</strong> /auth, /dashboard, /events, /reports, /team, /billing, /api, /settings, /onboarding, /notifications</li>
+          <li><strong>From README feature lists:</strong> User authentication, Custom dashboards, Event tracking, Team management, CSV export, API key management, Email reports</li>
+          <li><strong>High frequency modules (4+ repos):</strong> Auth (8/8), Dashboard (7/8), API (7/8), Settings (6/8), Notifications (5/8), Team (5/8), Billing (4/8)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 7: MODULE NORMALIZATION -->
+  <div class="step-card green-accent">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-green">07</div></div>
+      <div class="step-title-col">
+        <h4>Module Normalization, Fusion &amp; Confidence Scoring</h4>
+        <div class="step-tagline">merges github candidates + parameter-inferred modules. deduplicates. scores each module by frequency and relevance.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-merged">MERGED</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> Takes two inputs — (A) the module candidates extracted from GitHub repos in Step 6, and (B) the parameter-inferred modules generated from the P-01 to P-09 state scores and domain template — and merges them into a single, deduplicated, confidence-ranked module list. This is where Idea 1's GitHub intelligence and Idea 2's parameter system converge.</p>
+      <div class="formula">
+        <div class="fhead">Module Confidence Score Formula — per module</div>
+        <div class="f-comment">// Component A: Parameter Signal (does a matched parameter confirm this module exists?)</div>
+        <div class="f-gold">param_signal = max confidence of all parameters that map to this module (0–1.0)</div>
+        <div class="f-comment">// Component B: GitHub Frequency (how many of the 8 repos had this module?)</div>
+        <div class="f-cyan">github_freq = (repos_containing_module / 8) weighted by avg repo similarity score</div>
+        <div class="f-comment">// Component C: Domain Template Match (is this module standard for this domain?)</div>
+        <div class="f-green">template_match = 1.0 if module is in domain standard list, 0.5 if adjacent, 0.0 if absent</div>
+        <div class="f-comment">// Final module confidence</div>
+        <div class="f-eq">module_confidence = (param_signal × 0.45) + (github_freq × 0.35) + (template_match × 0.20)</div>
+        <div class="f-comment">// Deduplication: semantic similarity between module names > 0.80 → merge, keep higher confidence</div>
+        <div class="f-teal">if cosine_sim(module_embed_A, module_embed_B) &gt; 0.80: merge, keep max confidence</div>
+        <div class="f-comment">// Output: ranked module list with confidence badges</div>
+        <div class="f-gold">&gt; 0.80 confidence → HIGH (include with full detail in scope)</div>
+        <div class="f-gold">0.55–0.80 → MEDIUM (include with assumption note)</div>
+        <div class="f-gold">&lt; 0.55 → LOW (include in "candidate modules" section, flag for client confirmation)</div>
+      </div>
+      <p><strong>Effort sizing per module:</strong> Each confirmed module is also assigned an initial effort label (SMALL / MEDIUM / LARGE) based on: its complexity pattern in the GitHub repos (number of files, sub-directories), the domain template's complexity rating, and whether any special architectural patterns (real-time, ML, multi-tenant) were detected in the GitHub sources. This feeds directly into the effort estimation in Phase 2.</p>
+    </div>
+  </div>
+
+  <div class="plain-para">After Step 7, the system holds a fully grounded, confidence-scored module list. Every module on that list exists either because the client mentioned something that implies it, because real production projects of this type consistently have it, or both. This is vastly more reliable than any single-source approach.</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     PHASE 2
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="sec-eyebrow" style="color:var(--gold)">Phase 2</div>
+  <h2 class="sec-h2">Analysis &amp; Scoring</h2>
+  <p class="sec-sub">Everything collected in Phase 1 is now computed into a single confidence number — one that actually means what it claims to mean, thanks to gates that prevent garbage from passing through.</p>
+
+  <div class="plain-para gold">Think of Phase 2 as the quality control checkpoint. You've gathered all the raw material. Now you measure it, check it for defects, score it honestly, and decide: is this good enough to show to the client? Or do we need to go back and ask more questions?</div>
+
+  <!-- STEP 8: CONFIDENCE FORMULA -->
+  <div class="step-card gold-accent">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-gold">08</div></div>
+      <div class="step-title-col">
+        <h4>3-Component Confidence Calculation with BLOCKER + CRITICAL Gates</h4>
+        <div class="step-tagline">gates applied first. formula computed second. gate ceiling applied last. score means what it says.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-from2">FROM IDEA 2</span><span class="badge badge-critical">CRITICAL</span></div>
+    </div>
+    <div class="step-body">
+      <div class="formula">
+        <div class="fhead">Full Confidence Formula — v1 merged architecture</div>
+
+        <div class="f-comment">── GATE 1: BLOCKER ─────────────────────────────────────────────</div>
+        <div class="f-gate">IF P-01 OR P-03 state = MISSING:</div>
+        <div class="f-gate">&nbsp;&nbsp;max_allowed_confidence = 40%</div>
+        <div class="f-gate">&nbsp;&nbsp;DO NOT generate any scope output</div>
+        <div class="f-gate">&nbsp;&nbsp;Show only BLOCKER question. BLOCKER rounds do not count against max_rounds.</div>
+        <br>
+        <div class="f-comment">── GATE 2: CRITICAL ────────────────────────────────────────────</div>
+        <div class="f-gold">IF any HIGH param (P-02, P-04) state = MISSING:</div>
+        <div class="f-gold">&nbsp;&nbsp;max_allowed_confidence = 65%</div>
+        <div class="f-gold">IF all HIGH params ≥ PARTIAL-THIN:</div>
+        <div class="f-gold">&nbsp;&nbsp;max_allowed_confidence = 100%  (no artificial cap)</div>
+        <br>
+        <div class="f-comment">── COMPONENT A: COVERAGE SCORE (50% weight, structural, deterministic) ──</div>
+        <div class="f-green">Coverage = Σ(param_score × param_weight) / Σ(max_weight × 1.0) × 100</div>
+        <div class="f-muted">&nbsp;&nbsp;PRESENT → weight × 1.0 | PARTIAL-DEEP → weight × 0.7 | PARTIAL-THIN → weight × 0.3 | MISSING → weight × 0.0</div>
+        <br>
+        <div class="f-comment">── COMPONENT B: LLM QUALITY SCORE (30% weight, qualitative) ─────────</div>
+        <div class="f-blue">LLM_Score = (Axis1 + Axis2 + Axis3 + Axis4 + Axis5) / 50 × 100</div>
+        <div class="f-muted">&nbsp;&nbsp;From Step 5. Unchanged.</div>
+        <br>
+        <div class="f-comment">── COMPONENT C: CONSISTENCY SCORE (20% weight, sanity check, NEW) ───</div>
+        <div class="f-teal">Consistency = 100 − |Coverage − LLM_Score|</div>
+        <div class="f-muted">&nbsp;&nbsp;Coverage 80%, LLM 82% → Consistency 98 (agree → reliable)</div>
+        <div class="f-muted">&nbsp;&nbsp;Coverage 80%, LLM 40% → Consistency 60 (disagree → retrieval or scoring failure)</div>
+        <br>
+        <div class="f-comment">── COMPONENT D: GITHUB VALIDATION BONUS (NEW — from merged architecture) ─</div>
+        <div class="f-cyan">github_bonus = avg(module_confidence) × 5  (adds up to 5 bonus points)</div>
+        <div class="f-muted">&nbsp;&nbsp;High-confidence GitHub module validation rewards inputs that map well to known patterns.</div>
+        <br>
+        <div class="f-comment">── FINAL FORMULA ─────────────────────────────────────────────────</div>
+        <div class="f-eq">Raw = (Coverage × 0.50) + (LLM_Score × 0.30) + (Consistency × 0.20) + github_bonus</div>
+        <div class="f-gold">Confidence = min(max_allowed_confidence, Raw)</div>
+        <br>
+        <div class="f-comment">── DOMAIN THRESHOLD ──────────────────────────────────────────────</div>
+        <div class="f-green">Confidence ≥ domain_threshold → proceed to Phase 3 output path</div>
+        <div class="f-gate">Confidence &lt; domain_threshold → proceed to Phase 3 questioning path</div>
+        <div class="f-muted">&nbsp;&nbsp;Standard domains = 70% | FinTech/Healthcare = 80% | Internal Tool = 62%</div>
+        <div class="f-muted">&nbsp;&nbsp;All thresholds stored in domain template config, not hardcoded.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 9: RISK DETECTION -->
+  <div class="step-card" style="border-color:var(--red-border);">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-red">09</div></div>
+      <div class="step-title-col">
+        <h4>Risk Detection Engine</h4>
+        <div class="step-tagline">pattern matching on module list, parameter gaps, and domain-specific architectural concerns.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-merged">MERGED</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> Scans the confirmed module list and parameter states to detect architectural risks, scope inflation signals, and common pitfalls for this domain. Risk detection runs even on low-confidence passes because risks can exist regardless of confidence level. Output is a risk list with severity (CRITICAL / WARNING / NOTE) used directly in the Stage 1 client output.</p>
+      <div class="detail-block">
+        <div class="detail-block-head">Risk Patterns Detected</div>
+        <ul>
+          <li><strong>Scope Explosion Risk:</strong> If module count exceeds 20 or the GitHub search found repos with team size 10+ and the current team estimate is 2–3, flag: "Scope appears to exceed team capacity. Consider phasing."</li>
+          <li><strong>Real-Time Infrastructure Risk:</strong> If any module uses WebSocket, live tracking, streaming, or chat — flag: "Real-time features require WebSocket infrastructure. Budget for scaling and connection management costs."</li>
+          <li><strong>MISSING Parameter → Architecture Risk:</strong> If P-05 (integrations) is MISSING but P-03 contains "payment" or "notifications" — flag: "Payment and notification integrations were mentioned but not specified. Stripe vs. Razorpay have different compliance requirements."</li>
+          <li><strong>Multi-App Risk:</strong> If the domain classifier detects both mobile app and web platform signals — flag: "Building for both web and mobile simultaneously is 2.5× the scope. Consider mobile-first or web-first."</li>
+          <li><strong>Domain Compliance Risk:</strong> For FinTech and Healthcare — always flag KYC/AML or HIPAA requirements as a WARNING regardless of whether P-10 is PRESENT, because non-compliance is catastrophic.</li>
+          <li><strong>GitHub-Sourced Risk:</strong> If GitHub-sourced similar repos have more than 3 open "security" labelled issues in the same module — flag the module as having known attack surface concerns in production.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 10: EFFORT ESTIMATION -->
+  <div class="step-card green-accent">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-green">10</div></div>
+      <div class="step-title-col">
+        <h4>Effort Estimation Engine</h4>
+        <div class="step-tagline">sprint count, team size, story points, and confidence band. calibrated against github-sourced complexity data.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-merged">MERGED</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> Converts the confirmed, sized module list into a sprint breakdown and overall effort estimate. The key improvement in the merged architecture: effort is calibrated against the actual complexity observed in the GitHub-matched repos, not just a lookup table. A module that consistently occupies 40% of a codebase in similar real projects gets sized LARGE, even if the client described it in one sentence.</p>
+      <div class="formula">
+        <div class="fhead">Effort Estimation Formula</div>
+        <div class="f-comment">// Step A: Base points per module size</div>
+        <div class="f-gold">SMALL module = 8 story points (simple CRUD, 1–2 day frontend, basic API)</div>
+        <div class="f-gold">MEDIUM module = 21 story points (auth, complex UI, webhook, async jobs)</div>
+        <div class="f-gold">LARGE module = 40 story points (real-time, ML, multi-tenant, payment engine)</div>
+        <div class="f-comment">// Step B: Complexity multipliers</div>
+        <div class="f-cyan">domain_complexity = {FinTech: 1.4, Healthcare: 1.35, Marketplace: 1.25, SaaS: 1.1, Internal: 0.85}</div>
+        <div class="f-comment">// Step C: Team size velocity</div>
+        <div class="f-green">team_velocity = {1: 13, 2-3: 26, 4-6: 45, 7-10: 60} story points per 2-week sprint</div>
+        <div class="f-comment">// Step D: Total</div>
+        <div class="f-eq">total_points = Σ(module_points × domain_complexity)</div>
+        <div class="f-eq">sprints = ceil(total_points / team_velocity)</div>
+        <div class="f-comment">// Step E: GitHub calibration adjustment</div>
+        <div class="f-cyan">if github_matched_repos.avg_commits &gt; project_avg: adjust +15% for underestimation bias</div>
+        <div class="f-comment">// Step F: Confidence band on estimate</div>
+        <div class="f-gold">if overall_confidence &gt; 80%: ± 20% band on sprint count</div>
+        <div class="f-gold">if overall_confidence 60–80%: ± 35% band</div>
+        <div class="f-gate">if overall_confidence &lt; 60%: "Estimate unreliable. Improve scope confidence first."</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     PHASE 3
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="sec-eyebrow" style="color:var(--green)">Phase 3</div>
+  <h2 class="sec-h2">Loop or Output</h2>
+  <p class="sec-sub">The confidence score from Phase 2 dictates whether the system generates output now or runs a clarification round. Every loop condition is explicit. Diminishing returns detection prevents wasted rounds.</p>
+
+  <div class="plain-para green">Think of Phase 3 as the decision tree. The system has done all its analysis. Now it either knows enough to produce a trustworthy output, or it knows exactly what's still missing and asks the client about it — intelligently, with multiple choice options, not open-ended blank boxes.</div>
+
+  <!-- STEP 11: LOOP CONDITIONS -->
+  <div class="step-card cyan-accent">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-cyan">11</div></div>
+      <div class="step-title-col">
+        <h4>Threshold Decision &amp; All Loop Exit Conditions</h4>
+        <div class="step-tagline">5 exit conditions. diminishing returns detection. blocker loops run indefinitely.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-from2">FROM IDEA 2</span></div>
+    </div>
+    <div class="step-body">
+      <div class="condition-grid">
+        <div class="condition-card">
+          <h5 style="color:var(--green)">Exit Condition 1 — Threshold Met</h5>
+          <ul>
+            <li>Confidence ≥ domain_threshold (70% standard, 80% FinTech/Healthcare)</li>
+            <li>Proceed to Stage 1 output generation</li>
+            <li>All remaining PARTIAL/MISSING params are documented as assumptions</li>
+          </ul>
+        </div>
+        <div class="condition-card">
+          <h5 style="color:var(--gold)">Exit Condition 2 — Max Rounds Reached</h5>
+          <ul>
+            <li>Default: max_rounds = 4 (configurable per domain)</li>
+            <li>If reached and still below threshold, generate output with confidence warning banner</li>
+            <li>All unresolved MISSING params listed in "What we still need" panel</li>
+          </ul>
+        </div>
+        <div class="condition-card">
+          <h5 style="color:var(--orange)">Exit Condition 3 — Diminishing Returns</h5>
+          <ul>
+            <li>If confidence delta &lt; 4% for 2 consecutive rounds → exit early</li>
+            <li>Note shown: "Further questions unlikely to improve confidence. Proceeding with current score."</li>
+            <li>Prevents useless rounds where the user answers but the pipeline doesn't improve</li>
+          </ul>
+        </div>
+        <div class="condition-card">
+          <h5 style="color:var(--red)">Exit Condition 4 — BLOCKER Unresolvable</h5>
+          <ul>
+            <li>If BLOCKER rounds exceed 5 and P-01 or P-03 is still MISSING</li>
+            <li>Flag for manual review. System cannot proceed.</li>
+            <li>Shareable link generated to send to the client for async completion</li>
+          </ul>
+        </div>
+        <div class="condition-card">
+          <h5 style="color:var(--blue)">Exit Condition 5 — Client Override</h5>
+          <ul>
+            <li>Client clicks "Generate scope anyway" at any round (available after round 1)</li>
+            <li>Output generated with current confidence score displayed prominently</li>
+            <li>All assumptions made explicit in a Warning panel at top of Stage 1</li>
+          </ul>
+        </div>
+      </div>
+      <div class="formula">
+        <div class="fhead">Loop Decision Logic</div>
+        <div class="f-gate">IF BLOCKER_param_state = MISSING → BLOCKER round (pre-round, counter not incremented)</div>
+        <div class="f-gold">ELSE IF confidence ≥ domain_threshold → EXIT LOOP → Stage 1 output</div>
+        <div class="f-gold">ELSE IF round_number ≥ max_rounds → EXIT LOOP → Stage 1 with warning</div>
+        <div class="f-cyan">ELSE IF delta &lt; 4% for 2 consecutive rounds → EXIT LOOP → Stage 1 with diminishing returns note</div>
+        <div class="f-green">ELSE → GENERATE MCQ questions for lowest-scoring MISSING/PARTIAL params → round += 1</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 12: MCQ QUESTIONING -->
+  <div class="step-card purple-accent">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-purple">12</div></div>
+      <div class="step-title-col">
+        <h4>MCQ Question Generation + Structured Reconstruction</h4>
+        <div class="step-tagline">multiple choice with domain scaffold options. no blank boxes. structured answers feed cleaner next run.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-from2">FROM IDEA 2</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> Generates max 3 questions per round. Questions are always multiple choice with domain-specific pre-filled options plus a custom text field. Questions are ordered by: BLOCKER first → HIGH weight MISSING → HIGH weight PARTIAL → MED weight MISSING. Answers are stored by question ID and formatted into structured context blocks before the next pipeline run — not appended as raw text.</p>
+
+      <div class="mcq-example">
+        <div class="mcq-label">Example: Round 1 Question for E-Commerce project — P-03 PARTIAL-THIN</div>
+        <strong style="color:var(--text);font-size:13px;">What core features does your e-commerce platform need?</strong><br><br>
+        <span class="mcq-opt">☐ Product catalogue with categories &amp; search</span>
+        <span class="mcq-opt">☐ Shopping cart &amp; checkout flow</span>
+        <span class="mcq-opt">☐ Payment processing (Stripe / Razorpay / COD)</span>
+        <span class="mcq-opt">☐ Order management &amp; tracking</span>
+        <span class="mcq-opt">☐ Seller / vendor management (marketplace mode)</span>
+        <span class="mcq-opt">☐ Admin dashboard &amp; analytics</span>
+        <span class="mcq-opt">☐ Email / SMS notifications</span>
+        <span class="mcq-opt">☐ Reviews &amp; ratings</span>
+        <span class="mcq-custom">+ Add your own: [custom text field always present]</span>
+      </div>
+
+      <div class="loop-diagram">
+        <div class="loop-step">
+          <div class="loop-num sn-red" style="background:var(--red-dim);color:var(--red);border:1px solid var(--red-border);">B</div>
+          <div class="loop-content">
+            <h5>BLOCKER check — if P-01 or P-03 MISSING, this runs first and only</h5>
+            <p>Targeted BLOCKER question. MCQ format. Does not count against max rounds. Repeated (with different framing) until resolved. No other questions shown until BLOCKER lifts.</p>
+          </div>
+        </div>
+        <div class="loop-step">
+          <div class="loop-num sn-gold" style="background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-border);">1</div>
+          <div class="loop-content">
+            <h5>Run hybrid search + parameter scoring on enriched description</h5>
+            <p>The full Phase 1 pipeline re-runs on the structured enriched input from the previous round. GitHub search only re-runs if domain changes or round 1. Subsequent rounds use cached GitHub results.</p>
+          </div>
+        </div>
+        <div class="loop-step">
+          <div class="loop-num sn-cyan" style="background:var(--cyan-dim);color:var(--cyan);border:1px solid var(--cyan-border);">2</div>
+          <div class="loop-content">
+            <h5>Recalculate confidence — check all exit conditions</h5>
+            <p>New confidence calculated with fresh Coverage, LLM, and Consistency scores. Delta computed. All 5 exit conditions evaluated in order. If exit: proceed to output. If continue: generate questions.</p>
+          </div>
+        </div>
+        <div class="loop-step">
+          <div class="loop-num sn-purple" style="background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-border);">3</div>
+          <div class="loop-content">
+            <h5>Generate max 3 MCQ questions for the highest-impact MISSING/PARTIAL params</h5>
+            <p>Questions prioritised by (param_weight × (1 − current_param_score)). Never repeat a question asked in a previous round. PARTIAL questions quote back the client's own words and target the specific gap — not generic options.</p>
+          </div>
+        </div>
+        <div class="loop-step">
+          <div class="loop-num sn-green" style="background:var(--green-dim);color:var(--green);border:1px solid var(--green-border);">4</div>
+          <div class="loop-content">
+            <h5>Structured reconstruction — format answers as labelled context blocks</h5>
+            <p>Answers are NOT appended raw. Each answer is stored as: <em>[Question ID] → [Selected options] + [Custom text]</em> and formatted in a structured block that the pipeline can parse cleanly in the next run. This means each round produces genuinely better results, not just more text.</p>
+          </div>
+        </div>
+        <div class="loop-step" style="margin-bottom:0;">
+          <div class="loop-num sn-teal" style="background:var(--teal-dim);color:var(--teal);border:1px solid var(--teal-border);">↺</div>
+          <div class="loop-content">
+            <h5>Re-run full pipeline on enriched description — go back to Step 1</h5>
+            <p>The enriched description (original + all round answers in structured format) is now the input for the next pipeline run. Confidence should meaningfully increase. If delta &lt; 4% for 2 rounds, diminishing returns are detected and loop exits.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 13: STAGE 1 OUTPUT -->
+  <div class="step-card green-accent">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num sn-green">13</div></div>
+      <div class="step-title-col">
+        <h4>Stage 1 Output — Client Approval View (with Live Pipeline Visualization)</h4>
+        <div class="step-tagline">plain english. editable sections. confidence breakdown visible. approval gate triggers stage 2.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-merged">MERGED</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>What it does:</strong> Generates the client-facing scope document. This is the first document the client sees and approves. It is written in plain English with no technical jargon. It includes every assumption made for MISSING or PARTIAL parameters, explicitly stated. The client can edit module names, adjust milestone labels, and add notes before clicking APPROVE — at which point a timestamped, locked snapshot is created and Stage 2 is triggered.</p>
+      <p><strong>Live Pipeline Visualization (from Idea 1):</strong> While Stage 1 is being generated, the user sees a real-time step-by-step pipeline animation (the 15-step process) with status indicators showing which steps completed, how long each took, and what was found. This makes the AI's intelligence visible and builds trust. It is the user-experience layer from Idea 1 applied to the much deeper Idea 2 pipeline.</p>
+      <div class="output-grid">
+        <div class="output-card">
+          <div class="oc-head" style="color:var(--gold);">Stage 1 — Client Document Sections</div>
+          <div class="oc-body">
+            <ul>
+              <li>Confidence badge — score shown with 3-component breakdown (Coverage / LLM / Consistency) + GitHub validation flag</li>
+              <li>Project summary — 2–3 plain English sentences, zero jargon</li>
+              <li>Module overview — plain English names, descriptions, effort label (SMALL / MEDIUM / LARGE), GitHub-validated badge</li>
+              <li>Milestone timeline — phased (Month 1: Foundation, Month 2: Core features, Month 3: Polish and launch)</li>
+              <li>"What we assumed" panel — every assumption for every MISSING or PARTIAL param, explicitly stated</li>
+              <li>Missing Items panel — what's still unclear, phrased as questions for the client to answer</li>
+              <li>Editable sections — client can rename modules, add notes, remove items before approving</li>
+              <li>[APPROVE THIS SCOPE] — creates locked, timestamped snapshot. Triggers Stage 2.</li>
+              <li>[REQUEST CHANGES] — returns to questioning loop for specific sections</li>
+              <li>Shareable link — send to client for async review before next meeting</li>
+            </ul>
+          </div>
+        </div>
+        <div class="output-card">
+          <div class="oc-head" style="color:var(--blue);">Stage 2 — Engineer Document Sections</div>
+          <div class="oc-body">
+            <ul>
+              <li>Module breakdown table — name, tech stack, effort S/M/L, annotations (JWT / CRUD / REST / webhook / cron), dependencies</li>
+              <li>Build order / dependency graph — which modules must be completed before others (Auth → DB Schema → API Core → Frontend → Integrations → Testing)</li>
+              <li>Rough database schema — suggested tables, key fields, relationships — enough to start, not final design</li>
+              <li>API surface — ~10–20 endpoint suggestions per module (GET/POST/PUT/DELETE + paths)</li>
+              <li>Auth &amp; RBAC model — user roles × permissions matrix per module</li>
+              <li>Third-party accounts checklist — everything the team needs before day 1 (Stripe, AWS S3, SendGrid, etc.)</li>
+              <li>Sprint breakdown — 2-week sprints, ticket categories, estimated ticket counts per sprint</li>
+              <li>Testing strategy — which modules need unit / integration / E2E tests</li>
+              <li>Security per module — input validation, auth, encryption, rate limiting requirements</li>
+              <li>Environment requirements — dev / staging / prod differences</li>
+              <li>GitHub references — links to the matched repos from Step 6 for engineer reference</li>
+              <li>Risk flags from all PARTIAL params — specific open questions for engineering kickoff</li>
+              <li>Effort summary — total estimated range in weeks + confidence band</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 14: VERSION HISTORY -->
+  <div class="step-card" style="border-color:var(--border2);">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num" style="background:var(--s3);color:var(--muted);border:1px solid var(--border2);">14</div></div>
+      <div class="step-title-col">
+        <h4>Version History + Scope Diff</h4>
+        <div class="step-tagline">every round is snapshotted. round 2+ shows a visual diff of what changed and which questions drove it.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-from2">FROM IDEA 2</span></div>
+    </div>
+    <div class="step-body">
+      <p>Every pipeline run creates a snapshot of all parameter states, module list, and confidence score. From round 2 onwards, a diff is shown to the user: green for newly clarified parameters, gold for parameters improved from MISSING to PARTIAL, red for assumptions that were revised. The diff also shows which specific question in the previous round drove the biggest confidence improvement. This makes the AI's learning process transparent and encourages continued engagement.</p>
+    </div>
+  </div>
+
+  <!-- STEP 15: CONFIG -->
+  <div class="step-card" style="border-color:var(--border2);">
+    <div class="step-head">
+      <div class="step-num-col"><div class="step-num" style="background:var(--s3);color:var(--muted);border:1px solid var(--border2);">15</div></div>
+      <div class="step-title-col">
+        <h4>Config-Driven Architecture — parameters.json + domain templates</h4>
+        <div class="step-tagline">nothing hardcoded. all weights, thresholds, synonyms, and domain templates live in config files.</div>
+      </div>
+      <div class="step-badge-col"><span class="badge badge-from2">FROM IDEA 2</span></div>
+    </div>
+    <div class="step-body">
+      <p><strong>parameters.json:</strong> Contains all 9 base parameter definitions, their tiers (BLOCKER/HIGH/MED/LOW), their weights, their keyword lists, their synonym expansion tables for BM25, and their MCQ option lists per domain. Adding a new parameter means adding a JSON entry — no code change required.</p>
+      <p><strong>domain_templates/[domain].json:</strong> Contains the domain's extra parameters (P-10 to P-12), the confidence threshold, the effort multiplier, the domain entity list for NER, the GitHub search query template, the MCQ option scaffolds for each parameter, and the standard module list for template-match scoring. Adding a new domain means adding a JSON file.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     FULL TECH STACK
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="sec-eyebrow" style="color:var(--purple)">Full Tech Stack</div>
+  <h2 class="sec-h2">Every Technology, Every Layer</h2>
+
+  <div class="param-table-wrap">
+    <table class="param-table">
+      <thead><tr><th>Layer</th><th>Technology</th><th>Purpose</th><th>Why This Choice</th></tr></thead>
+      <tbody>
+        <tr><td>LLM (Primary)</td><td>Claude Sonnet (Anthropic API)</td><td>Domain classification micro-call, parameter state scoring, 5-axis quality scoring, cross-encoder re-ranking, Stage 1 + Stage 2 generation</td><td>Best instruction following for structured JSON output. Superior at "classify this into exactly one of these buckets" tasks.</td></tr>
+        <tr><td>Embeddings</td><td>sentence-transformers / MiniLM-L6-v2</td><td>Semantic chunking cosine similarity, vector search index, GitHub README semantic matching</td><td>Fast, small, free, runs locally. 384-dim embeddings are sufficient for paragraph-level similarity. No API cost per embedding call.</td></tr>
+        <tr><td>Vector Index</td><td>FAISS (Facebook AI Similarity Search)</td><td>In-memory vector index for hybrid search Step 3</td><td>Sub-millisecond retrieval for small document sets. No separate vector DB needed for single-session use.</td></tr>
+        <tr><td>Keyword Search</td><td>BM25 (rank_bm25 Python library)</td><td>Keyword-based retrieval, combined with vector via RRF</td><td>No ML overhead. Domain synonyms injected at query time via config. Catches exact matches that semantics misses.</td></tr>
+        <tr><td>NLP (NER)</td><td>spaCy (en_core_web_sm model)</td><td>Named entity recognition for domain classifier Signal 2</td><td>Lightweight, runs locally, no API cost. Detects org names, product names, domain-specific entities from the input.</td></tr>
+        <tr><td>GitHub Integration</td><td>GitHub REST API v3 (search/repositories, contents)</td><td>Step 6 semantic GitHub search, README fetch, folder tree fetch</td><td>Public API, no auth required for public repos. Rate limit: 10 requests/minute unauthenticated, 5000/hour with token.</td></tr>
+        <tr><td>Backend Framework</td><td>FastAPI (Python)</td><td>REST API serving the pipeline. Async endpoint for streaming pipeline steps to frontend.</td><td>Native async support for non-blocking GitHub API calls. Built-in Pydantic validation for structured pipeline outputs.</td></tr>
+        <tr><td>Frontend Framework</td><td>React + Vite</td><td>Live pipeline visualization, MCQ UI, Stage 1 editable scope, Stage 2 engineer document view</td><td>Component model suits the multi-stage UI. Vite gives fast HMR for development speed.</td></tr>
+        <tr><td>Streaming UX</td><td>Server-Sent Events (SSE)</td><td>Streaming the 15-step pipeline results to the frontend in real time (Idea 1's visualization layer)</td><td>SSE is simpler than WebSocket for one-directional server → client streaming. No reconnection complexity for this use case.</td></tr>
+        <tr><td>Config Management</td><td>JSON files (parameters.json, domain_templates/*.json)</td><td>All weights, thresholds, synonyms, MCQ options, domain entity lists</td><td>Human-readable, version-controllable, no database required for config. New domain = new JSON file.</td></tr>
+        <tr><td>Database (optional)</td><td>SQLite (dev) / PostgreSQL (prod)</td><td>Session persistence, version history snapshots, shareable link state</td><td>SQLite for zero-setup local dev. Postgres for production shareable links and multi-user sessions.</td></tr>
+        <tr><td>Auth (optional)</td><td>Clerk / Supabase Auth</td><td>If multi-user, persistent history, team sharing required</td><td>Either plug-and-play with the React frontend. Only add when needed — core pipeline works without auth.</td></tr>
+        <tr><td>Deployment</td><td>Docker Compose (dev) / Railway or Render (prod)</td><td>Backend + frontend in containers. GitHub API token injected as environment variable.</td><td>No Kubernetes complexity at this stage. Railway/Render handle SSE correctly (no response buffering).</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     VERDICT
+══════════════════════════════════════════ -->
+<div class="section no-border">
+  <div class="verdict">
+    <h3>Final Verdict — What You're Building and Why It's Right</h3>
+    <p>The merged ScopeAI architecture is the only design worth building because it eliminates the fatal weakness of each individual idea. Idea 2 alone produces a sophisticated, confident scope document — but built entirely from AI inference with no external validation. Idea 1 alone has the right instinct (check GitHub!) but no rigour around what to do with the information or how to iterate toward a reliable answer.</p>
+    <p>The merged version does all of it: it classifies the domain with three signals, chunks the input by topic not token count, searches both the input and GitHub simultaneously, scores confidence with gates that make the number honest, asks clarifying questions with structured MCQ options, reconstructs answers in a format that actually improves the next pipeline run, and produces two distinct documents — one that a client can read and approve, and one that an engineer can open on day 1 and start from.</p>
+    <ul>
+      <li><span class="v-icon" style="color:var(--cyan)">★</span><strong style="color:var(--text)"> From Idea 1 (kept):</strong> GitHub semantic search + README & folder tree parsing + module deduplication + frequency scoring + live pipeline visualization (SSE streaming)</li>
+      <li><span class="v-icon" style="color:var(--purple)">★</span><strong style="color:var(--text)"> From Idea 2 (kept entire):</strong> BLOCKER/CRITICAL gates + 3-signal domain classifier + 9 domains + semantic-aware chunking + hybrid 4-stage search + parameter state system + 3-component confidence formula + MCQ questioning + structured reconstruction + diminishing returns detection + two-stage approval output + version history + config-driven architecture</li>
+      <li><span class="v-icon" style="color:var(--teal)">+</span><strong style="color:var(--text)"> New from the merge:</strong> GitHub Validation Bonus in confidence formula + GitHub-calibrated effort estimation + GitHub-sourced risk flags + GitHub reference links in Stage 2 engineer doc + module confidence = param signal + github freq + template match (3-source formula)</li>
+      <li><span class="v-icon" style="color:var(--gold)">✓</span> Rating of the merged architecture: <strong style="color:var(--gold)">9.8 / 10</strong> — the remaining 0.2 is real-world calibration: synonym tables, domain entity dictionaries, and PARTIAL-THIN vs PARTIAL-DEEP thresholds will need tuning after the first 50 real client runs. That data only comes from building it.</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

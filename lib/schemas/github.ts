@@ -1,0 +1,70 @@
+import { z } from "zod";
+
+/**
+ * GitHub repo slug validator. Used everywhere we accept "owner/name" before
+ * making an API call — never pass a string to the GitHub client without
+ * running it through this first to avoid path traversal / injection.
+ */
+export const RepoSlugSchema = z
+  .string()
+  .min(3)
+  .max(140)
+  .regex(/^[\w.-]+\/[\w.-]+$/, "Invalid repo slug");
+export type RepoSlug = z.infer<typeof RepoSlugSchema>;
+
+export const RepoSearchResultSchema = z.object({
+  repo: RepoSlugSchema,
+  url: z.string().url(),
+  description: z.string().max(800),
+  stars: z.number().int().min(0),
+});
+export type RepoSearchResult = z.infer<typeof RepoSearchResultSchema>;
+
+export const GitHubMatchSchema = z.object({
+  repo: RepoSlugSchema,
+  url: z.string().url(),
+  description: z.string().max(800),
+  stars: z.number().int().min(0),
+  similarity: z.number().min(0).max(1),
+  modules_found: z.array(z.string().min(1).max(80)).max(60),
+  /** Modules harvested from the repo's folder tree. */
+  folders_found: z.array(z.string().min(1).max(80)).max(40).default([]),
+  /** One-sentence rationale for why this repo is similar to the project. */
+  why_relevant: z.string().max(280).default(""),
+});
+export type GitHubMatch = z.infer<typeof GitHubMatchSchema>;
+
+export const QueryVariantTelemetrySchema = z.object({
+  label: z.string().max(40),
+  q: z.string().max(400),
+  count: z.number().int().min(0),
+});
+export type QueryVariantTelemetry = z.infer<typeof QueryVariantTelemetrySchema>;
+
+export const GitHubEnrichmentSchema = z.object({
+  matches: z.array(GitHubMatchSchema).max(8),
+  /**
+   * Similarity-weighted module frequency: each occurrence of a module in a
+   * matched repo contributes its repo's similarity score, not 1.0.
+   * Modules in highly-similar repos rank higher than ones in marginal
+   * matches.
+   */
+  module_frequency: z.record(z.string().min(1).max(80), z.number()),
+  query_used: z.string().max(400),
+  /** Telemetry: which query variants ran + how many hits each returned. */
+  variants: z.array(QueryVariantTelemetrySchema).max(8).default([]),
+});
+export type GitHubEnrichment = z.infer<typeof GitHubEnrichmentSchema>;
+
+/**
+ * The shape the extract_modules tool returns per README. Validated before we
+ * do anything with the model output.
+ */
+export const ExtractModulesToolOutputSchema = z.object({
+  modules: z.array(z.string().min(1).max(80)).max(40),
+  similarity_to_project: z.number().min(0).max(1),
+  why_relevant: z.string().max(280).default(""),
+});
+export type ExtractModulesToolOutput = z.infer<
+  typeof ExtractModulesToolOutputSchema
+>;
