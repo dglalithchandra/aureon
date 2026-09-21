@@ -10,7 +10,8 @@
     "lint:fix": "eslint --fix",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\""
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "audit": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.92.0",
