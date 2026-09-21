@@ -1,55 +1,6 @@
 import DOMPurify from "isomorphic-dompurify";
 
 /**
- * Sanitize untrusted strings (LLM output, user input, GitHub READMEs) before
- * any HTML rendering. Always use this rather than `dangerouslySetInnerHTML`
- * directly.
- *
- * Default profile is intentionally restrictive: it strips all scripts,
- * iframes, event handlers, and inline styles. Explicit `allowedTags` may be
- * passed for richer markdown contexts, but each tag should be reviewed.
- */
-export interface SanitizeOptions {
-  allowedTags?: string[];
-  allowedAttrs?: string[];
-}
-
-export function sanitizeHtml(input: string, options?: SanitizeOptions): string {
-  return DOMPurify.sanitize(input, {
-    ALLOWED_TAGS: options?.allowedTags ?? [
-      "b",
-      "i",
-      "em",
-      "strong",
-      "code",
-      "pre",
-      "br",
-      "p",
-      "ul",
-      "ol",
-      "li",
-      "a",
-      "h1",
-      "h2",
-      "h3",
-      "h4",
-      "blockquote",
-      "hr",
-      "table",
-      "thead",
-      "tbody",
-      "tr",
-      "th",
-      "td",
-    ],
-    ALLOWED_ATTR: options?.allowedAttrs ?? ["href", "title", "target", "rel"],
-    ALLOW_DATA_ATTR: false,
-    KEEP_CONTENT: true,
-    USE_PROFILES: { html: true },
-  });
-}
-
-/**
  * Strip all HTML and return plain text. Use when feeding strings into the
  * LLM (e.g. README content) so model output cannot be steered by injected
  * markup or angle-bracket tokens that look like tool-use tags.

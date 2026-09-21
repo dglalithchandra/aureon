@@ -47,8 +47,6 @@ export const PromptModel = {
   HAIKU: "claude-haiku-4-5-20251001",
 } as const;
 
-export type PromptModelId = (typeof PromptModel)[keyof typeof PromptModel];
-
 /**
  * Standard cache_control marker. Attach to the LAST content block of the
  * system prompt so Anthropic caches everything before it. Cache hits cut

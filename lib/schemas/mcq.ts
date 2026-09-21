@@ -37,12 +37,10 @@ export const QuestionGenToolItemSchema = z.object({
   options: z.array(z.string().min(1).max(200)).min(3).max(8),
   is_blocker: z.boolean(),
 });
-export type QuestionGenToolItem = z.infer<typeof QuestionGenToolItemSchema>;
 
 export const QuestionGenToolOutputSchema = z.object({
   questions: z.array(QuestionGenToolItemSchema).min(1).max(3),
 });
-export type QuestionGenToolOutput = z.infer<typeof QuestionGenToolOutputSchema>;
 
 /* ──────────────────────────────────────────────────────────────
  *  Session
@@ -55,7 +53,6 @@ export const SessionStatusSchema = z.enum([
   "ready",
   "finalized",
 ]);
-export type SessionStatus = z.infer<typeof SessionStatusSchema>;
 
 /** The live server-side phase shown by the chat roadmap while a round runs. */
 export const PipelineStageSchema = z.enum([
@@ -96,9 +93,7 @@ export type Session = z.infer<typeof SessionSchema>;
 export const CreateSessionRequestSchema = z.object({
   rawText: z.string().min(1).max(50_000),
 });
-export type CreateSessionRequest = z.infer<typeof CreateSessionRequestSchema>;
 
 export const SubmitAnswersRequestSchema = z.object({
   answers: z.array(MCQAnswerSchema).min(0).max(3),
 });
-export type SubmitAnswersRequest = z.infer<typeof SubmitAnswersRequestSchema>;

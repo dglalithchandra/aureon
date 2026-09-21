@@ -10,7 +10,6 @@ export const RepoSlugSchema = z
   .min(3)
   .max(140)
   .regex(/^[\w.-]+\/[\w.-]+$/, "Invalid repo slug");
-export type RepoSlug = z.infer<typeof RepoSlugSchema>;
 
 export const RepoSearchResultSchema = z.object({
   repo: RepoSlugSchema,
@@ -39,7 +38,6 @@ export const QueryVariantTelemetrySchema = z.object({
   q: z.string().max(400),
   count: z.number().int().min(0),
 });
-export type QueryVariantTelemetry = z.infer<typeof QueryVariantTelemetrySchema>;
 
 export const GitHubEnrichmentSchema = z.object({
   matches: z.array(GitHubMatchSchema).max(8),

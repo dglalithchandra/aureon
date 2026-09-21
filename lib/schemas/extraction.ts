@@ -16,7 +16,6 @@ export const ParameterStateSchema = z.enum([
   "PARTIAL_THIN",
   "MISSING",
 ]);
-export type ParameterState = z.infer<typeof ParameterStateSchema>;
 
 export const ParameterIdSchema = z.enum([
   "P-01",
@@ -41,7 +40,6 @@ export const ParameterSchema = z.object({
   evidence: z.string().max(800).nullable(),
   gap: z.string().max(400).nullable(),
 });
-export type Parameter = z.infer<typeof ParameterSchema>;
 
 export const ModuleCandidateSchema = z.object({
   name: z.string().min(1).max(80),
@@ -122,4 +120,3 @@ export const ExtractRequestSchema = z.object({
   rawText: z.string().min(1).max(50_000),
   priorContext: z.string().max(50_000).optional(),
 });
-export type ExtractRequest = z.infer<typeof ExtractRequestSchema>;

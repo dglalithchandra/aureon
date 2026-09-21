@@ -68,7 +68,6 @@ export const DatabaseTableSchema = z.object({
   fields: z.array(z.string().min(1).max(120)).min(1).max(40),
   relations: z.array(z.string().min(1).max(160)).max(20),
 });
-export type DatabaseTable = z.infer<typeof DatabaseTableSchema>;
 
 export const AuthModelSchema = z.object({
   roles: z.array(z.string().min(1).max(40)).min(1).max(12),
@@ -78,7 +77,6 @@ export const AuthModelSchema = z.object({
     z.array(z.string().min(1).max(160)).max(40),
   ),
 });
-export type AuthModel = z.infer<typeof AuthModelSchema>;
 
 export const SprintSchema = z.object({
   sprint: z.string().min(1).max(40), // "Sprint 1", "Week 3-4"
@@ -86,7 +84,6 @@ export const SprintSchema = z.object({
   story_points: z.number().int().min(0).max(200),
   modules: z.array(z.string().min(1).max(80)).max(20),
 });
-export type Sprint = z.infer<typeof SprintSchema>;
 
 export const TestingStrategyRowSchema = z.object({
   module: z.string().min(1).max(80),
@@ -94,7 +91,6 @@ export const TestingStrategyRowSchema = z.object({
   integration: z.string().min(1).max(200),
   e2e: z.string().min(1).max(200),
 });
-export type TestingStrategyRow = z.infer<typeof TestingStrategyRowSchema>;
 
 export const RiskSeveritySchema = z.enum(["CRITICAL", "WARNING", "NOTE"]);
 export type RiskSeverity = z.infer<typeof RiskSeveritySchema>;
@@ -103,21 +99,18 @@ export const RiskSchema = z.object({
   severity: RiskSeveritySchema,
   description: z.string().min(1).max(400),
 });
-export type Risk = z.infer<typeof RiskSchema>;
 
 export const GitHubReferenceSchema = z.object({
   repo: z.string().min(1).max(140),
   url: z.string().url(),
   why_relevant: z.string().min(1).max(300),
 });
-export type GitHubReference = z.infer<typeof GitHubReferenceSchema>;
 
 export const EffortSummarySchema = z.object({
   total_sprints: z.number().int().min(1).max(60),
   team_size: z.number().int().min(1).max(30),
   confidence_band: z.string().min(1).max(60),
 });
-export type EffortSummary = z.infer<typeof EffortSummarySchema>;
 
 export const EngineerViewSchema = z.object({
   module_table: z.array(EngineerModuleRowSchema).min(1).max(40),
@@ -151,4 +144,3 @@ export const FinalizeRequestSchema = z.object({
   sessionId: z.string().uuid(),
   override: z.boolean().default(false),
 });
-export type FinalizeRequest = z.infer<typeof FinalizeRequestSchema>;

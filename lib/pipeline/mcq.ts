@@ -7,11 +7,7 @@ import {
   QuestionGenToolOutputSchema,
   type MCQQuestion,
 } from "@/lib/schemas/mcq";
-import {
-  type ExtractionResult,
-  type Parameter,
-  type ParameterId,
-} from "@/lib/schemas/extraction";
+import { type ExtractionResult, type ParameterId } from "@/lib/schemas/extraction";
 import { LLMError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
@@ -170,13 +166,3 @@ function formatExtractionForPrompt(e: ExtractionResult): string {
 function truncate(s: string, n: number): string {
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
 }
-
-/* Exposed for test scripts. */
-export const _internal = { ensureOtherOption, formatExtractionForPrompt };
-
-export const __test = {
-  isBlockerExtraction,
-  ensureOtherOption,
-} as const;
-
-export type { Parameter };
