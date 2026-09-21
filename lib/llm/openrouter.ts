@@ -71,9 +71,7 @@ function flattenSystem(
   return system.map((b) => b.text).join("\n\n");
 }
 
-function flattenUserContent(
-  content: Anthropic.MessageParam["content"],
-): string {
+function flattenUserContent(content: Anthropic.MessageParam["content"]): string {
   if (typeof content === "string") return content;
   return content
     .map((block) => {
@@ -215,9 +213,7 @@ async function messagesCreate(
   const model = env.OPENROUTER_MODEL ?? DEFAULT_MODEL;
 
   const messages: OpenAiMessage[] = [];
-  const sys = flattenSystem(
-    params.system as string | AnthropicSystemBlock[] | undefined,
-  );
+  const sys = flattenSystem(params.system as string | AnthropicSystemBlock[] | undefined);
   if (sys) messages.push({ role: "system", content: sys });
 
   for (const m of params.messages) {

@@ -123,8 +123,7 @@ export const submitExtractionTool: Anthropic.Tool = {
         type: "integer",
         minimum: 0,
         maximum: 100,
-        description:
-          "Overall confidence 0-100. Hard cap at 40 if blocker is true.",
+        description: "Overall confidence 0-100. Hard cap at 40 if blocker is true.",
       },
       confidence_reasoning: {
         type: "string",

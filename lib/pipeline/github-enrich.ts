@@ -146,8 +146,7 @@ export async function enrichWithGitHub(
     .join(" ")}`;
   const fetchedSuccessful = fetched
     .filter(
-      (r): r is Extract<typeof r, { status: "fulfilled" }> =>
-        r.status === "fulfilled",
+      (r): r is Extract<typeof r, { status: "fulfilled" }> => r.status === "fulfilled",
     )
     .map((r) => r.value);
 
@@ -249,9 +248,8 @@ export async function enrichWithGitHub(
     durationMs: Date.now() - t0,
     reposSearched: search.results.length,
     variantsRun: search.variantsRun.length,
-    readmesFetched: fetched.filter(
-      (r) => r.status === "fulfilled" && r.value.readme,
-    ).length,
+    readmesFetched: fetched.filter((r) => r.status === "fulfilled" && r.value.readme)
+      .length,
     foldersFetched: fetched.filter(
       (r) => r.status === "fulfilled" && r.value.folders.length > 0,
     ).length,
@@ -261,9 +259,7 @@ export async function enrichWithGitHub(
     avgSimilarity:
       topMatches.length > 0
         ? Math.round(
-            (topMatches.reduce((s, m) => s + m.similarity, 0) /
-              topMatches.length) *
-              100,
+            (topMatches.reduce((s, m) => s + m.similarity, 0) / topMatches.length) * 100,
           ) / 100
         : 0,
   });

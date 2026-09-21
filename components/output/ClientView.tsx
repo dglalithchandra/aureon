@@ -40,7 +40,7 @@ function Section({
       transition={{ duration: 0.5, ease: "easeOut" }}
       className={cn("scroll-mt-28", className)}
     >
-      <h2 className="text-blueprint-text mb-5 font-display text-2xl font-bold sm:text-3xl">
+      <h2 className="text-blueprint-text font-display mb-5 text-2xl font-bold sm:text-3xl">
         {title}
       </h2>
       {children}
@@ -94,9 +94,7 @@ export function ClientView({
                 key={`${m.name}-${i}`}
                 module={m}
                 onChange={(next) => {
-                  const updated = view.modules.map((x) =>
-                    x === m ? next : x,
-                  );
+                  const updated = view.modules.map((x) => (x === m ? next : x));
                   update({ modules: updated });
                 }}
               />
@@ -144,9 +142,7 @@ export function ClientView({
 
       <Section id="open-items" title="Open items">
         {view.open_items.length === 0 ? (
-          <p className="text-blueprint-muted text-sm">
-            Nothing outstanding.
-          </p>
+          <p className="text-blueprint-muted text-sm">Nothing outstanding.</p>
         ) : (
           <ul className="flex flex-col gap-2.5">
             {view.open_items.map((q, i) => (
@@ -158,7 +154,7 @@ export function ClientView({
                 {!readOnly && sessionId && (
                   <Link
                     href={`/chat?s=${sessionId}`}
-                    className="text-blueprint-accent hover:bg-[var(--color-blueprint-accent)]/15 inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--color-blueprint-accent)]/30 px-2.5 py-1 text-xs"
+                    className="text-blueprint-accent inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--color-blueprint-accent)]/30 px-2.5 py-1 text-xs hover:bg-[var(--color-blueprint-accent)]/15"
                   >
                     <MessageSquare size={12} />
                     Clarify
@@ -228,11 +224,7 @@ function CollapsibleSection({
   );
 }
 
-function ReadOnlyModuleCard({
-  module,
-}: {
-  module: ClientModule;
-}): React.ReactElement {
+function ReadOnlyModuleCard({ module }: { module: ClientModule }): React.ReactElement {
   return (
     <div className="border-blueprint-line/20 flex flex-col gap-3 rounded-xl border bg-white/[0.025] p-5 backdrop-blur-md">
       <div className="flex items-start justify-between gap-3">
@@ -243,9 +235,7 @@ function ReadOnlyModuleCard({
           {module.size.toLowerCase()}
         </span>
       </div>
-      <p className="text-blueprint-muted text-sm leading-relaxed">
-        {module.description}
-      </p>
+      <p className="text-blueprint-muted text-sm leading-relaxed">{module.description}</p>
     </div>
   );
 }

@@ -23,9 +23,7 @@ interface SectionEditorProps {
  * Edits are reported to the caller via `onConfirm`. The component itself
  * does not persist anywhere — that's the parent's job (batch save).
  */
-export function SectionEditor(
-  props: SectionEditorProps,
-): React.ReactElement {
+export function SectionEditor(props: SectionEditorProps): React.ReactElement {
   // Bind the editor to `value` via a remount key so the draft state always
   // tracks the canonical value when the parent updates it (no setState-in-effect).
   return <SectionEditorInner key={props.value} {...props} />;
@@ -85,7 +83,7 @@ function SectionEditorInner({
             }}
             aria-label={ariaLabel}
             className={cn(
-              "border-blueprint-line/30 text-blueprint-text bg-blueprint-bg/40 focus-visible:border-[var(--color-blueprint-accent)] flex-1 resize-none rounded-md border px-3 py-2 text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/40",
+              "border-blueprint-line/30 text-blueprint-text bg-blueprint-bg/40 flex-1 resize-none rounded-md border px-3 py-2 text-sm leading-relaxed outline-none focus-visible:border-[var(--color-blueprint-accent)] focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/40",
               inputClassName,
             )}
           />
@@ -104,7 +102,7 @@ function SectionEditorInner({
             }}
             aria-label={ariaLabel}
             className={cn(
-              "border-blueprint-line/30 text-blueprint-text bg-blueprint-bg/40 focus-visible:border-[var(--color-blueprint-accent)] flex-1 rounded-md border px-3 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/40",
+              "border-blueprint-line/30 text-blueprint-text bg-blueprint-bg/40 flex-1 rounded-md border px-3 py-1.5 text-sm outline-none focus-visible:border-[var(--color-blueprint-accent)] focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/40",
               inputClassName,
             )}
           />
@@ -113,7 +111,7 @@ function SectionEditorInner({
           type="button"
           onClick={handleConfirm}
           aria-label="Confirm edit"
-          className="border-[var(--color-blueprint-accent)] text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/15 inline-flex h-8 w-8 items-center justify-center rounded-md border"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--color-blueprint-accent)] text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/15"
         >
           <Check size={14} />
         </button>
@@ -147,10 +145,7 @@ function SectionEditorInner({
   // low-opacity pencil signal "editable" without a hover; both intensify on
   // hover/focus so the affordance is discoverable but not noisy.
   return (
-    <div
-      className={cn("group relative flex items-start gap-2", className)}
-      role="group"
-    >
+    <div className={cn("group relative flex items-start gap-2", className)} role="group">
       <button
         type="button"
         onClick={() => setEditing(true)}
@@ -158,9 +153,9 @@ function SectionEditorInner({
         title={`Click to edit ${ariaLabel}`}
         className={cn(
           "text-blueprint-text flex-1 cursor-text rounded-md px-1.5 py-1 text-left leading-relaxed transition-colors",
-          "decoration-[var(--color-blueprint-accent)]/40 underline decoration-dashed decoration-1 underline-offset-4",
+          "underline decoration-[var(--color-blueprint-accent)]/40 decoration-dashed decoration-1 underline-offset-4",
           "hover:bg-[var(--color-blueprint-accent)]/8 hover:decoration-[var(--color-blueprint-accent)]/80",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/50",
+          "focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/50 focus-visible:outline-none",
           multiline && "whitespace-pre-wrap",
         )}
       >
@@ -171,8 +166,8 @@ function SectionEditorInner({
         aria-label={`Edit ${ariaLabel}`}
         onClick={() => setEditing(true)}
         className={cn(
-          "border-[var(--color-blueprint-accent)]/30 text-[var(--color-blueprint-accent)]/60 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border opacity-60 transition-all",
-          "group-hover:opacity-100 hover:bg-[var(--color-blueprint-accent)]/15 hover:text-[var(--color-blueprint-accent)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/50",
+          "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--color-blueprint-accent)]/30 text-[var(--color-blueprint-accent)]/60 opacity-60 transition-all",
+          "group-hover:opacity-100 hover:bg-[var(--color-blueprint-accent)]/15 hover:text-[var(--color-blueprint-accent)] focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/50 focus-visible:outline-none",
         )}
       >
         <Pencil size={12} />

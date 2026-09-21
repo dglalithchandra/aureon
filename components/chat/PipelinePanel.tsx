@@ -5,10 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { gsap, useGSAP } from "@/lib/gsap-init";
 import type { Session } from "@/lib/schemas/mcq";
 import { ConfidenceMeter } from "@/components/chat/ConfidenceMeter";
-import {
-  StepIndicator,
-  type StepState,
-} from "@/components/chat/StepIndicator";
+import { StepIndicator, type StepState } from "@/components/chat/StepIndicator";
 import { cn } from "@/lib/utils";
 
 interface PipelinePanelProps {
@@ -17,13 +14,7 @@ interface PipelinePanelProps {
   className?: string;
 }
 
-const STEP_IDS = [
-  "extract",
-  "github",
-  "score",
-  "decide",
-  "output",
-] as const;
+const STEP_IDS = ["extract", "github", "score", "decide", "output"] as const;
 type StepId = (typeof STEP_IDS)[number];
 
 const STEP_LABELS: Record<StepId, string> = {
@@ -89,7 +80,10 @@ function deriveSteps(
       const e = lastRound.extraction;
       detail = (
         <ul className="space-y-1">
-          <li>Domain: <span className="text-blueprint-text">{e.domain}</span> ({e.domain_confidence}%)</li>
+          <li>
+            Domain: <span className="text-blueprint-text">{e.domain}</span> (
+            {e.domain_confidence}%)
+          </li>
           <li>Modules detected: {e.modules.length}</li>
           <li>Open questions: {e.open_questions.length}</li>
         </ul>
@@ -100,18 +94,22 @@ function deriveSteps(
       if (!m) {
         detail = (
           <p>
-            No similar open-source projects found — your scope is being built
-            from the AI signal alone.
+            No similar open-source projects found — your scope is being built from the AI
+            signal alone.
           </p>
         );
       } else if (m.matches.length === 0) {
-        detail = <p>No matches surfaced. Query: <code>{m.query_used}</code></p>;
+        detail = (
+          <p>
+            No matches surfaced. Query: <code>{m.query_used}</code>
+          </p>
+        );
       } else {
         detail = (
           <div className="space-y-2">
             <p>
-              {m.matches.length} similar repos via {m.variants?.length ?? 1}{" "}
-              query variants:
+              {m.matches.length} similar repos via {m.variants?.length ?? 1} query
+              variants:
             </p>
             <ul className="space-y-2">
               {m.matches.slice(0, 5).map((r) => (
@@ -142,8 +140,11 @@ function deriveSteps(
     if (id === "score" && init.score === "done") {
       detail = (
         <p>
-          Confidence: <span className="text-blueprint-text">{lastRound.extraction.confidence}/100</span>.
-          Blocker: {lastRound.extraction.blocker ? "yes" : "no"}.
+          Confidence:{" "}
+          <span className="text-blueprint-text">
+            {lastRound.extraction.confidence}/100
+          </span>
+          . Blocker: {lastRound.extraction.blocker ? "yes" : "no"}.
         </p>
       );
     }
@@ -151,9 +152,15 @@ function deriveSteps(
       if (status === "blocker") {
         detail = <p>Goal or features missing — answer the blocker question.</p>;
       } else if (status === "awaiting_answers") {
-        detail = <p>Round {lastRound.round_number + 1}: clarification questions ready.</p>;
+        detail = (
+          <p>Round {lastRound.round_number + 1}: clarification questions ready.</p>
+        );
       } else if (status === "ready") {
-        detail = <p>Threshold met. Click <strong>Generate output</strong>.</p>;
+        detail = (
+          <p>
+            Threshold met. Click <strong>Generate output</strong>.
+          </p>
+        );
       } else if (status === "finalized") {
         detail = <p>Done.</p>;
       }
@@ -172,10 +179,7 @@ export function PipelinePanel({
   className,
 }: PipelinePanelProps): React.ReactElement {
   const root = useRef<HTMLElement | null>(null);
-  const steps = useMemo(
-    () => deriveSteps(session, isAnalyzing),
-    [session, isAnalyzing],
-  );
+  const steps = useMemo(() => deriveSteps(session, isAnalyzing), [session, isAnalyzing]);
   const [expandedId, setExpandedId] = useState<StepId | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 

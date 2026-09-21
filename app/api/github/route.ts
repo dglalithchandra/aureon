@@ -48,10 +48,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json(
-      serializeError(new ValidationError("Invalid JSON body")),
-      { status: 400 },
-    );
+    return NextResponse.json(serializeError(new ValidationError("Invalid JSON body")), {
+      status: 400,
+    });
   }
 
   const parsed = RequestSchema.safeParse(body);
@@ -60,16 +59,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       .slice(0, 3)
       .map((i) => `${i.path.join(".")}: ${i.message}`)
       .join("; ");
-    return NextResponse.json(
-      serializeError(new ValidationError(message)),
-      { status: 400 },
-    );
+    return NextResponse.json(serializeError(new ValidationError(message)), {
+      status: 400,
+    });
   }
 
   // Cache key: domain + sorted module names + top-3 keywords from P-03.
   // Keep this stable so unrelated metadata changes do not bust the cache.
   const { extraction, rawText } = parsed.data;
-  const moduleNames = extraction.modules.map((m) => m.name).sort().join("|");
+  const moduleNames = extraction.modules
+    .map((m) => m.name)
+    .sort()
+    .join("|");
   const keywordsFromP03 =
     extraction.parameters.find((p) => p.id === "P-03")?.evidence ?? "";
   const cacheSource = `${extraction.domain}::${moduleNames}::${keywordsFromP03.slice(0, 200)}`;

@@ -28,15 +28,13 @@ const serverSchema = z
     GITHUB_TOKEN: z.string().optional(),
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(10).optional(),
-  /**
-   * 32+ char secret used to HMAC-sign session ownership cookies.
-   * In production set a real secret; if absent in dev we derive a stable
-   * per-process secret (logged once) to keep DX friendly.
-   */
-  SESSION_SECRET: z.string().min(32).optional(),
-    NODE_ENV: z
-      .enum(["development", "production", "test"])
-      .default("development"),
+    /**
+     * 32+ char secret used to HMAC-sign session ownership cookies.
+     * In production set a real secret; if absent in dev we derive a stable
+     * per-process secret (logged once) to keep DX friendly.
+     */
+    SESSION_SECRET: z.string().min(32).optional(),
+    NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   })
   .superRefine((data, ctx) => {
     // Each provider needs its own credential; we don't fail fast at boot
@@ -46,8 +44,7 @@ const serverSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["ANTHROPIC_API_KEY"],
-        message:
-          "ANTHROPIC_API_KEY required when LLM_PROVIDER=anthropic (the default)",
+        message: "ANTHROPIC_API_KEY required when LLM_PROVIDER=anthropic (the default)",
       });
     }
     if (data.LLM_PROVIDER === "openrouter" && !data.OPENROUTER_API_KEY) {

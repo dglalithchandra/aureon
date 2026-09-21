@@ -151,7 +151,11 @@ check("no raw HTML", !emd.includes("<script") && !emd.includes("<iframe"));
 
 console.log("\n== combined ==");
 const combined = finalOutputToMarkdown({ client, engineer });
-check("contains both H1s", combined.includes("# Project Scope") && combined.includes("# Engineering Build Document"));
+check(
+  "contains both H1s",
+  combined.includes("# Project Scope") &&
+    combined.includes("# Engineering Build Document"),
+);
 check("has separator", combined.includes("---"));
 
 console.log(`\n== ${pass} passed, ${fail} failed ==`);

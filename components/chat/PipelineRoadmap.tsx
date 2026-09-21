@@ -106,8 +106,8 @@ function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milest
         pipelineStage === "extracting"
           ? "Reading requirements"
           : lastRound
-        ? `${lastRound.extraction.modules.length} modules detected`
-        : undefined,
+            ? `${lastRound.extraction.modules.length} modules detected`
+            : undefined,
     },
     {
       id: "github",
@@ -118,12 +118,12 @@ function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milest
         pipelineStage === "github"
           ? "Searching public repos"
           : matches != null
-          ? avgSim != null
-            ? `${matches} repos · ${variantsRun} queries · sim ${avgSim}`
-            : `${matches} similar repos`
-          : init.github === "pending"
-            ? "Pending"
-            : "No matches",
+            ? avgSim != null
+              ? `${matches} repos · ${variantsRun} queries · sim ${avgSim}`
+              : `${matches} similar repos`
+            : init.github === "pending"
+              ? "Pending"
+              : "No matches",
     },
     {
       id: "score",
@@ -147,14 +147,14 @@ function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milest
         pipelineStage === "clarifying"
           ? "Preparing next step"
           : status === "blocker"
-          ? "Need core info"
-          : status === "awaiting_answers"
-            ? "Awaiting answers"
-            : status === "ready"
-              ? "Threshold met"
-              : init.decide === "pending"
-                ? "Pending"
-                : "Recomputing",
+            ? "Need core info"
+            : status === "awaiting_answers"
+              ? "Awaiting answers"
+              : status === "ready"
+                ? "Threshold met"
+                : init.decide === "pending"
+                  ? "Pending"
+                  : "Recomputing",
     },
     {
       id: "output",

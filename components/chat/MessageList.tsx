@@ -49,10 +49,7 @@ export function MessageList({
   }, [messages.length, pendingQuestions.length]);
 
   return (
-    <div
-      ref={containerRef}
-      className="relative flex-1 overflow-y-auto px-4 py-6 sm:px-6"
-    >
+    <div ref={containerRef} className="relative flex-1 overflow-y-auto px-4 py-6 sm:px-6">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
         <AnimatePresence initial={false}>
           {messages.map((m) => (

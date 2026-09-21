@@ -11,10 +11,7 @@ import {
   type Session,
   type SessionRound,
 } from "@/lib/schemas/mcq";
-import type {
-  ExtractionResult,
-  ParameterId,
-} from "@/lib/schemas/extraction";
+import type { ExtractionResult, ParameterId } from "@/lib/schemas/extraction";
 import { ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
@@ -84,13 +81,15 @@ export async function runRound(
 
   // 2) GitHub enrichment runs only on round 0 OR if the domain changed.
   //    On later rounds we re-use the previous enrichment for cost savings.
-  let enrichment = roundNumber === 0
-    ? null
-    : working.rounds[roundNumber - 1]?.github_enrichment ?? null;
+  let enrichment =
+    roundNumber === 0
+      ? null
+      : (working.rounds[roundNumber - 1]?.github_enrichment ?? null);
 
-  const previousDomain = roundNumber === 0
-    ? null
-    : working.rounds[roundNumber - 1]?.extraction.domain ?? null;
+  const previousDomain =
+    roundNumber === 0
+      ? null
+      : (working.rounds[roundNumber - 1]?.extraction.domain ?? null);
 
   const shouldRunEnrichment =
     roundNumber === 0 || (previousDomain && previousDomain !== extractionRaw.domain);
@@ -169,10 +168,7 @@ export async function submitAnswers(
   if (session.status === "ready" || session.status === "finalized") {
     return session;
   }
-  if (
-    session.status !== "awaiting_answers" &&
-    session.status !== "blocker"
-  ) {
+  if (session.status !== "awaiting_answers" && session.status !== "blocker") {
     throw new ValidationError(
       `Cannot submit answers when session status is ${session.status}`,
     );
@@ -195,8 +191,10 @@ export async function submitAnswers(
 
   // Reconstruct enriched_input with a labeled context block per answer.
   const newContextBlock = buildAnswerBlock(currentRound.questions, validatedAnswers);
-  const enrichedInputCandidate =
-    `${session.enriched_input}\n\n${newContextBlock}`.slice(0, 100_000);
+  const enrichedInputCandidate = `${session.enriched_input}\n\n${newContextBlock}`.slice(
+    0,
+    100_000,
+  );
 
   // 50KB cap on user-supplied content (raw_input + answer texts).
   const userBytes = sumUserBytes(session, validatedAnswers);
@@ -270,10 +268,7 @@ function collectAskedParams(session: Session): ParameterId[] {
  *   2. Round number >= MAX_ROUNDS (3)
  *   3. Diminishing returns: confidence delta < DIMINISHING_DELTA for 2 rounds
  */
-function shouldExit(
-  session: Session,
-  newExtraction: ExtractionResult,
-): boolean {
+function shouldExit(session: Session, newExtraction: ExtractionResult): boolean {
   if (newExtraction.confidence >= SESSION_CONFIG.CONFIDENCE_THRESHOLD) {
     return true;
   }
@@ -297,10 +292,7 @@ function shouldExit(
   return false;
 }
 
-function buildAnswerBlock(
-  questions: MCQQuestion[],
-  answers: MCQAnswer[],
-): string {
+function buildAnswerBlock(questions: MCQQuestion[], answers: MCQAnswer[]): string {
   const lines: string[] = [];
   lines.push(`<round_${Date.now()}>`);
   for (const a of answers) {

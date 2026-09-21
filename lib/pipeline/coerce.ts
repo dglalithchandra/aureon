@@ -100,8 +100,7 @@ export function coerceEngineerView(input: unknown): unknown {
         return {
           module,
           unit: typeof value.unit === "string" ? value.unit : "—",
-          integration:
-            typeof value.integration === "string" ? value.integration : "—",
+          integration: typeof value.integration === "string" ? value.integration : "—",
           e2e: typeof value.e2e === "string" ? value.e2e : "—",
         };
       }

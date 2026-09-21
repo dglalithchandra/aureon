@@ -41,11 +41,7 @@ export function Hero(): React.ReactElement {
           },
           0.15,
         )
-        .from(
-          "[data-hero-sub]",
-          { opacity: 0, y: 12, duration: 0.7 },
-          "-=0.4",
-        )
+        .from("[data-hero-sub]", { opacity: 0, y: 12, duration: 0.7 }, "-=0.4")
         .from(
           "[data-hero-cta] > *",
           {
@@ -56,11 +52,7 @@ export function Hero(): React.ReactElement {
           },
           "-=0.4",
         )
-        .from(
-          "[data-hero-scroll]",
-          { opacity: 0, duration: 0.6 },
-          "-=0.2",
-        );
+        .from("[data-hero-scroll]", { opacity: 0, duration: 0.6 }, "-=0.2");
 
       // Continuous bounce on the scroll cue.
       gsap.to("[data-hero-scroll-dot]", {
@@ -92,10 +84,7 @@ export function Hero(): React.ReactElement {
             "radial-gradient(ellipse 70% 60% at 50% 50%, #000 60%, transparent 100%)",
         }}
       >
-        <SplineScene
-          className="h-full w-full"
-          fallback={<WireframeFallback />}
-        />
+        <SplineScene className="h-full w-full" fallback={<WireframeFallback />} />
       </div>
 
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center px-6 py-24 text-center">
@@ -108,7 +97,7 @@ export function Hero(): React.ReactElement {
 
         <h1
           data-hero-headline
-          className="text-blueprint-text mt-6 max-w-4xl font-display text-4xl leading-[1.05] font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
+          className="text-blueprint-text font-display mt-6 max-w-4xl text-4xl leading-[1.05] font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
           style={{ fontStretch: "115%" }}
         >
           {HEADLINE}
@@ -119,7 +108,7 @@ export function Hero(): React.ReactElement {
           className="text-blueprint-muted mt-7 max-w-xl text-base sm:text-lg"
         >
           Paste raw client text. Get a structured scope, validated against{" "}
-          <span className="font-serif italic text-[var(--color-blueprint-text)]">
+          <span className="font-serif text-[var(--color-blueprint-text)] italic">
             real GitHub projects
           </span>
           , in two views — one for the client, one for the engineer.
@@ -131,7 +120,7 @@ export function Hero(): React.ReactElement {
         >
           <Link
             href="/chat"
-            className="group relative inline-flex items-center gap-2 rounded-full border border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 px-7 py-3 text-sm font-medium tracking-wide text-[var(--color-blueprint-accent)] transition-all duration-200 hover:bg-[var(--color-blueprint-accent)]/20 hover:shadow-[0_0_36px_rgba(236,72,153,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]"
+            className="group relative inline-flex items-center gap-2 rounded-full border border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 px-7 py-3 text-sm font-medium tracking-wide text-[var(--color-blueprint-accent)] transition-all duration-200 hover:bg-[var(--color-blueprint-accent)]/20 hover:shadow-[0_0_36px_rgba(236,72,153,0.55)] focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)] focus-visible:outline-none"
           >
             <span className="relative">Start scoping</span>
             <ArrowRight

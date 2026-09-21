@@ -42,7 +42,7 @@ export function BrandedError({
         <p className="text-blueprint-muted font-mono text-[10px] tracking-[0.3em] uppercase">
           ScopeAI · error
         </p>
-        <h1 className="text-blueprint-text mt-3 font-display text-3xl font-bold sm:text-4xl">
+        <h1 className="text-blueprint-text font-display mt-3 text-3xl font-bold sm:text-4xl">
           {title}
         </h1>
         <p className="text-blueprint-muted mt-4 text-sm leading-relaxed sm:text-base">
@@ -53,7 +53,7 @@ export function BrandedError({
             <button
               type="button"
               onClick={onReload}
-              className="border-blueprint-line/30 bg-blueprint-line/5 text-blueprint-text hover:border-[var(--color-blueprint-accent)]/50 inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium"
+              className="border-blueprint-line/30 bg-blueprint-line/5 text-blueprint-text inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium hover:border-[var(--color-blueprint-accent)]/50"
             >
               <RotateCcw size={14} />
               Reload
@@ -62,7 +62,7 @@ export function BrandedError({
           {!hideHome && (
             <Link
               href="/"
-              className="border-[var(--color-blueprint-accent)] text-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 hover:bg-[var(--color-blueprint-accent)]/20 inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 px-5 py-2.5 text-sm font-medium text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/20"
             >
               <Home size={14} />
               Back home

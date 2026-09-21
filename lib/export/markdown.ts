@@ -1,8 +1,4 @@
-import type {
-  ClientView,
-  EngineerView,
-  FinalOutput,
-} from "@/lib/schemas/output";
+import type { ClientView, EngineerView, FinalOutput } from "@/lib/schemas/output";
 
 /**
  * Markdown export. Treats every input string as untrusted: escapes pipes for

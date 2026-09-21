@@ -2,11 +2,7 @@ import "@/lib/server-only";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import type { z } from "zod";
-import {
-  AppError,
-  serializeError,
-  ValidationError,
-} from "@/lib/errors";
+import { AppError, serializeError, ValidationError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import {
   buildSessionCookie,
@@ -22,9 +18,7 @@ export function getClientIp(req: NextRequest): string {
   return req.headers.get("x-real-ip")?.trim() ?? "anonymous";
 }
 
-export async function gateRateLimit(
-  bucketKey: string,
-): Promise<NextResponse | null> {
+export async function gateRateLimit(bucketKey: string): Promise<NextResponse | null> {
   const rate = await checkRateLimit(bucketKey);
   if (rate.success) return null;
   return NextResponse.json(
@@ -91,10 +85,7 @@ export function jsonError(err: unknown, fallbackStatus = 500): NextResponse {
   return NextResponse.json(serializeError(err), { status: fallbackStatus });
 }
 
-export function attachSessionCookie(
-  res: NextResponse,
-  session: Session,
-): NextResponse {
+export function attachSessionCookie(res: NextResponse, session: Session): NextResponse {
   const cookie = buildSessionCookie(session.id);
   res.cookies.set(cookie.name, cookie.value, {
     httpOnly: cookie.httpOnly,
@@ -120,8 +111,7 @@ export function requireSessionOwner(
   return null;
 }
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function validateUuid(id: string): boolean {
   return UUID_RE.test(id);

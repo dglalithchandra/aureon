@@ -3,11 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { gsap, useGSAP } from "@/lib/gsap-init";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ApiError,
   createSession,
@@ -24,24 +20,20 @@ import { InputBar, type InputBarHandle } from "@/components/chat/InputBar";
 import { deriveMessages } from "@/components/chat/messageDerivation";
 import { logger } from "@/lib/logger";
 
-const SESSION_QUERY_KEY = (id: string): readonly unknown[] =>
-  ["session", id] as const;
+const SESSION_QUERY_KEY = (id: string): readonly unknown[] => ["session", id] as const;
 
 const SAMPLE_PROMPTS: ReadonlyArray<{ label: string; text: string }> = [
   {
     label: "SaaS analytics",
-    text:
-      "We need a SaaS analytics platform for ecommerce store owners. Users connect their Shopify or WooCommerce store via OAuth, see dashboards with revenue, top products, and conversion funnels. Stripe billing with Starter and Pro tiers, team invitations, CSV export. 8 weeks, $40k budget, target 50 paying customers in 3 months.",
+    text: "We need a SaaS analytics platform for ecommerce store owners. Users connect their Shopify or WooCommerce store via OAuth, see dashboards with revenue, top products, and conversion funnels. Stripe billing with Starter and Pro tiers, team invitations, CSV export. 8 weeks, $40k budget, target 50 paying customers in 3 months.",
   },
   {
     label: "FinTech invoicing",
-    text:
-      "Freelancers need to invoice clients in different countries and get paid quickly. Generate PDF invoices with tax (GST/VAT), send via email, accept payment via Stripe or Razorpay, see unpaid and overdue invoices. KYC for payouts above $10k. Mobile-first.",
+    text: "Freelancers need to invoice clients in different countries and get paid quickly. Generate PDF invoices with tax (GST/VAT), send via email, accept payment via Stripe or Razorpay, see unpaid and overdue invoices. KYC for payouts above $10k. Mobile-first.",
   },
   {
     label: "E-commerce marketplace",
-    text:
-      "A marketplace for handmade crafts. Sellers list items with photos and pricing, buyers browse and check out via Stripe, platform takes 8% commission, weekly payouts to sellers. Reviews, search by category, basic admin dashboard. Launch in 12 weeks.",
+    text: "A marketplace for handmade crafts. Sellers list items with photos and pricing, buyers browse and check out via Stripe, platform takes 8% commission, weekly payouts to sellers. Reviews, search by category, basic admin dashboard. Launch in 12 weeks.",
   },
 ];
 
@@ -50,9 +42,7 @@ interface ChatLayoutProps {
   initialSessionId: string | null;
 }
 
-export function ChatLayout({
-  initialSessionId,
-}: ChatLayoutProps): React.ReactElement {
+export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactElement {
   const router = useRouter();
   const params = useSearchParams();
   const inputRef = useRef<InputBarHandle>(null);
@@ -140,10 +130,7 @@ export function ChatLayout({
     },
   });
 
-  const messages = useMemo(
-    () => (session ? deriveMessages(session) : []),
-    [session],
-  );
+  const messages = useMemo(() => (session ? deriveMessages(session) : []), [session]);
 
   const pendingQuestions = useMemo(() => {
     if (!session) return [];
@@ -158,9 +145,7 @@ export function ChatLayout({
   }, [session]);
 
   const isAnalyzing =
-    createMutation.isPending ||
-    sessionQuery.isLoading ||
-    session?.status === "analyzing";
+    createMutation.isPending || sessionQuery.isLoading || session?.status === "analyzing";
 
   const inputLocked =
     Boolean(session) || // After first session exists, input is locked (use MCQs).
@@ -192,13 +177,7 @@ export function ChatLayout({
         qc.removeQueries({ queryKey: SESSION_QUERY_KEY(effectiveId) });
       }
     }
-  }, [
-    sessionQuery.isError,
-    sessionQuery.error,
-    router,
-    qc,
-    effectiveId,
-  ]);
+  }, [sessionQuery.isError, sessionQuery.error, router, qc, effectiveId]);
 
   const staleNotice = useMemo(() => {
     if (noticeDismissed) return null;
@@ -264,7 +243,7 @@ export function ChatLayout({
           >
             ← ScopeAI
           </Link>
-          <h1 className="text-blueprint-text mt-2 font-display text-xl font-bold">
+          <h1 className="text-blueprint-text font-display mt-2 text-xl font-bold">
             Build your scope
           </h1>
         </header>
@@ -293,10 +272,7 @@ export function ChatLayout({
       {/* Chat column */}
       <main data-chat-main className="flex min-h-0 flex-1 flex-col">
         {staleNotice && (
-          <StaleNotice
-            message={staleNotice}
-            onDismiss={() => setNoticeDismissed(true)}
-          />
+          <StaleNotice message={staleNotice} onDismiss={() => setNoticeDismissed(true)} />
         )}
 
         {sessionQuery.isError &&
@@ -417,10 +393,10 @@ function EmptyState(): React.ReactElement {
       </p>
       <h2
         data-empty-h
-        className="text-blueprint-text relative mt-4 max-w-xl font-display text-3xl leading-tight font-bold sm:text-4xl"
+        className="text-blueprint-text font-display relative mt-4 max-w-xl text-3xl leading-tight font-bold sm:text-4xl"
       >
         Drop in raw client text.{" "}
-        <span className="font-serif italic text-[var(--color-blueprint-accent)]">
+        <span className="font-serif text-[var(--color-blueprint-accent)] italic">
           We&apos;ll do the rest.
         </span>
       </h2>
@@ -428,9 +404,8 @@ function EmptyState(): React.ReactElement {
         data-empty-p
         className="text-blueprint-muted relative mt-4 max-w-md text-sm leading-relaxed sm:text-base"
       >
-        Messages, call notes, a rough doc — anything. ScopeAI extracts a
-        structured scope and asks targeted questions only when the input is
-        missing something important.
+        Messages, call notes, a rough doc — anything. ScopeAI extracts a structured scope
+        and asks targeted questions only when the input is missing something important.
       </p>
       <p
         data-empty-hint
@@ -499,7 +474,7 @@ function ErrorBanner({
           <button
             type="button"
             onClick={onRetry}
-            className="rounded-md border border-red-500/40 px-2.5 py-1 text-[11px] uppercase tracking-wider hover:bg-red-500/15"
+            className="rounded-md border border-red-500/40 px-2.5 py-1 text-[11px] tracking-wider uppercase hover:bg-red-500/15"
           >
             Dismiss
           </button>

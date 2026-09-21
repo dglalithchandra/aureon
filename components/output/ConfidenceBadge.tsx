@@ -25,12 +25,7 @@ export function ConfidenceBadge({
     return controls.stop;
   }, [badge.score, motionValue]);
 
-  const tone =
-    badge.score >= 80
-      ? "high"
-      : badge.score >= 60
-        ? "mid"
-        : "low";
+  const tone = badge.score >= 80 ? "high" : badge.score >= 60 ? "mid" : "low";
 
   const colors: Record<typeof tone, string> = {
     high: "border-emerald-400/40 bg-emerald-400/10 text-emerald-300",
@@ -69,20 +64,15 @@ export function ConfidenceBadge({
           animate={{ opacity: 1, y: 0 }}
           className="border-blueprint-line/30 bg-blueprint-bg/95 absolute top-full right-0 z-30 mt-2 w-72 rounded-lg border p-4 text-left text-xs shadow-xl backdrop-blur-md"
         >
-          <p className="text-blueprint-text mb-2 font-semibold">
-            Confidence breakdown
-          </p>
+          <p className="text-blueprint-text mb-2 font-semibold">Confidence breakdown</p>
           <ul className="text-blueprint-muted flex flex-col gap-1.5">
             <BarRow label="Coverage" value={badge.breakdown.coverage} />
             <BarRow label="Clarity" value={badge.breakdown.llm_quality} />
-            <BarRow
-              label="Real-world match"
-              value={badge.breakdown.github_validation}
-            />
+            <BarRow label="Real-world match" value={badge.breakdown.github_validation} />
           </ul>
           <p className="text-blueprint-muted mt-3 text-[10.5px] leading-snug">
-            Coverage = parameter completeness · Clarity = how specific the
-            input was · Real-world match = corroboration from similar repos.
+            Coverage = parameter completeness · Clarity = how specific the input was ·
+            Real-world match = corroboration from similar repos.
           </p>
         </motion.div>
       )}
@@ -90,13 +80,7 @@ export function ConfidenceBadge({
   );
 }
 
-function BarRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}): React.ReactElement {
+function BarRow({ label, value }: { label: string; value: number }): React.ReactElement {
   return (
     <li className="flex items-center gap-2">
       <span className="w-32 shrink-0">{label}</span>

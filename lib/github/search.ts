@@ -185,7 +185,8 @@ function buildDomainTerms(domain: string): string[] {
   if (compact.includes("ecommerce")) recognized.push("ecommerce");
   if (compact.includes("fintech")) recognized.push("fintech");
   if (compact.includes("healthcare")) recognized.push("healthcare");
-  if (compact.includes("education") || compact.includes("edtech")) recognized.push("education");
+  if (compact.includes("education") || compact.includes("edtech"))
+    recognized.push("education");
 
   const words = normalized.split(" ").filter((word) => word.length >= 3);
   return uniqueTerms([...recognized, ...words]).slice(0, 3);
@@ -207,9 +208,7 @@ function buildFeaturePhrases(keywords: string[]): string[] {
 }
 
 function featureSpecificity(phrase: string): number {
-  return phrase
-    .split(" ")
-    .filter((word) => !GENERIC_FEATURE_TERMS.has(word)).length;
+  return phrase.split(" ").filter((word) => !GENERIC_FEATURE_TERMS.has(word)).length;
 }
 
 function detectLanguage(stackHint: string): string | null {

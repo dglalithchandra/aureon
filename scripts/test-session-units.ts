@@ -38,10 +38,7 @@ if (!process.env.ANTHROPIC_API_KEY) {
   process.env.ANTHROPIC_API_KEY = "x".repeat(40); // dummy for env validator
 }
 
-import {
-  buildSessionCookie,
-  verifySessionCookie,
-} from "../lib/security/session-cookie";
+import { buildSessionCookie, verifySessionCookie } from "../lib/security/session-cookie";
 import { validateUuid } from "../lib/security/route-helpers";
 import { userContentBytes } from "../lib/storage/session";
 import type { Session } from "../lib/schemas/mcq";
@@ -75,7 +72,10 @@ check("cookie sameSite=lax", cookie.sameSite === "lax");
 check("cookie path /", cookie.path === "/");
 check("cookie has signed value", cookie.value.includes(`${VALID_UUID}.`));
 check("verify accepts own cookie", verifySessionCookie(cookie.value, VALID_UUID));
-check("verify rejects forged sig", !verifySessionCookie(`${VALID_UUID}.deadbeef`, VALID_UUID));
+check(
+  "verify rejects forged sig",
+  !verifySessionCookie(`${VALID_UUID}.deadbeef`, VALID_UUID),
+);
 check("verify rejects id mismatch", !verifySessionCookie(cookie.value, OTHER_UUID));
 check("verify rejects empty", !verifySessionCookie("", VALID_UUID));
 check("verify rejects undefined", !verifySessionCookie(undefined, VALID_UUID));

@@ -12,17 +12,11 @@
  */
 
 function srgbEncode(x: number): number {
-  const c =
-    x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
+  const c = x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
   return Math.round(Math.min(1, Math.max(0, c)) * 255);
 }
 
-function oklabToRgb(
-  L: number,
-  a: number,
-  b: number,
-  alpha: number,
-): string {
+function oklabToRgb(L: number, a: number, b: number, alpha: number): string {
   const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
   const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
   const s_ = L - 0.0894841775 * a - 1.291485548 * b;
@@ -35,9 +29,7 @@ function oklabToRgb(
   const R = srgbEncode(r);
   const G = srgbEncode(g);
   const B = srgbEncode(bl);
-  return alpha >= 1
-    ? `rgb(${R}, ${G}, ${B})`
-    : `rgba(${R}, ${G}, ${B}, ${alpha})`;
+  return alpha >= 1 ? `rgb(${R}, ${G}, ${B})` : `rgba(${R}, ${G}, ${B}, ${alpha})`;
 }
 
 function num(token: string, ref = 1): number {
@@ -54,30 +46,27 @@ export function replaceOklab(value: string): string {
   if (!value || (!value.includes("oklab") && !value.includes("oklch"))) {
     return value;
   }
-  return value.replace(
-    /okl(ab|ch)\(\s*([^)]+)\)/gi,
-    (_m, kind: string, body: string) => {
-      // body = "L a b" or "L C H" optionally "/ alpha"
-      const [main, alphaPart] = body.split("/");
-      const parts = (main ?? "").trim().split(/\s+/);
-      if (parts.length < 3) return "rgb(0,0,0)";
-      const L = num(parts[0]!, 1);
-      let a: number;
-      let b: number;
-      if (kind.toLowerCase() === "ch") {
-        const C = num(parts[1]!, 0.4);
-        const Hdeg = parseFloat(parts[2]!);
-        const h = (Hdeg * Math.PI) / 180;
-        a = C * Math.cos(h);
-        b = C * Math.sin(h);
-      } else {
-        a = num(parts[1]!, 0.4);
-        b = num(parts[2]!, 0.4);
-      }
-      const alpha = alphaPart != null ? num(alphaPart, 1) : 1;
-      return oklabToRgb(L, a, b, Number.isFinite(alpha) ? alpha : 1);
-    },
-  );
+  return value.replace(/okl(ab|ch)\(\s*([^)]+)\)/gi, (_m, kind: string, body: string) => {
+    // body = "L a b" or "L C H" optionally "/ alpha"
+    const [main, alphaPart] = body.split("/");
+    const parts = (main ?? "").trim().split(/\s+/);
+    if (parts.length < 3) return "rgb(0,0,0)";
+    const L = num(parts[0]!, 1);
+    let a: number;
+    let b: number;
+    if (kind.toLowerCase() === "ch") {
+      const C = num(parts[1]!, 0.4);
+      const Hdeg = parseFloat(parts[2]!);
+      const h = (Hdeg * Math.PI) / 180;
+      a = C * Math.cos(h);
+      b = C * Math.sin(h);
+    } else {
+      a = num(parts[1]!, 0.4);
+      b = num(parts[2]!, 0.4);
+    }
+    const alpha = alphaPart != null ? num(alphaPart, 1) : 1;
+    return oklabToRgb(L, a, b, Number.isFinite(alpha) ? alpha : 1);
+  });
 }
 
 const COLOR_PROPS = [

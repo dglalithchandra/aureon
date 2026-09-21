@@ -57,9 +57,7 @@ export interface RateLimitResult {
   reset: number;
 }
 
-export async function checkRateLimit(
-  identifier: string,
-): Promise<RateLimitResult> {
+export async function checkRateLimit(identifier: string): Promise<RateLimitResult> {
   const limiter = getApiRateLimiter();
   if (limiter) {
     const result = await limiter.limit(identifier);

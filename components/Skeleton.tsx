@@ -56,7 +56,9 @@ export function SkeletonKeyframes(): React.ReactElement {
   return (
     <style jsx global>{`
       @keyframes skeleton {
-        100% { transform: translateX(100%); }
+        100% {
+          transform: translateX(100%);
+        }
       }
     `}</style>
   );

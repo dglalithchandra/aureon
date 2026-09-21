@@ -78,9 +78,7 @@ const nextConfig: NextConfig = {
         // updated final_output (rare — only re-finalize updates it) shows
         // up quickly.
         source: "/share/:token*",
-        headers: [
-          { key: "Cache-Control", value: "public, s-maxage=300, max-age=0" },
-        ],
+        headers: [{ key: "Cache-Control", value: "public, s-maxage=300, max-age=0" }],
       },
     ];
   },

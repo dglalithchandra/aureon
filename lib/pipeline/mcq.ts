@@ -1,10 +1,7 @@
 import "@/lib/server-only";
 import { randomUUID } from "node:crypto";
 import { getAnthropic, PromptModel } from "@/lib/llm/anthropic";
-import {
-  generateQuestionsTool,
-  MCQ_SYSTEM_PROMPT,
-} from "@/lib/llm/prompts/mcq";
+import { generateQuestionsTool, MCQ_SYSTEM_PROMPT } from "@/lib/llm/prompts/mcq";
 import {
   MCQQuestionSchema,
   QuestionGenToolOutputSchema,
@@ -47,7 +44,9 @@ export async function generateQuestions(
   const userBlocks: string[] = [];
   userBlocks.push(`<round_number>${roundNumber}</round_number>`);
   userBlocks.push(`<asked_before>${askedBefore.join(", ") || "(none)"}</asked_before>`);
-  userBlocks.push(`<extraction>\n${formatExtractionForPrompt(extraction)}\n</extraction>`);
+  userBlocks.push(
+    `<extraction>\n${formatExtractionForPrompt(extraction)}\n</extraction>`,
+  );
   userBlocks.push("Call generate_clarification_questions now.");
 
   const anthropic = getAnthropic();
@@ -136,8 +135,8 @@ function isBlockerParam(e: ExtractionResult, id: ParameterId): boolean {
 }
 
 function ensureOtherOption(options: string[]): string[] {
-  const lastIsOther = options.length > 0 &&
-    /^other\b/i.test(options[options.length - 1]!.trim());
+  const lastIsOther =
+    options.length > 0 && /^other\b/i.test(options[options.length - 1]!.trim());
   if (lastIsOther) return options;
   if (options.length >= 8) {
     // Replace the last option with "Other (describe)" rather than overflow.

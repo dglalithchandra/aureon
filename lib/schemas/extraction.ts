@@ -99,8 +99,7 @@ export const ExtractionResultStrictSchema = ExtractionResultSchema.superRefine(
 
     const p01 = data.parameters.find((p) => p.id === "P-01");
     const p03 = data.parameters.find((p) => p.id === "P-03");
-    const shouldBlock =
-      p01?.state === "MISSING" || p03?.state === "MISSING";
+    const shouldBlock = p01?.state === "MISSING" || p03?.state === "MISSING";
 
     if (shouldBlock && !data.blocker) {
       ctx.addIssue({

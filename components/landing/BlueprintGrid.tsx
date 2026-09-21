@@ -22,17 +22,13 @@ export function BlueprintGrid({
   drift = true,
   className,
 }: BlueprintGridProps): React.ReactElement {
-  const opacity =
-    intensity === "subtle" ? 0.04 : intensity === "strong" ? 0.12 : 0.07;
+  const opacity = intensity === "subtle" ? 0.04 : intensity === "strong" ? 0.12 : 0.07;
   const size = intensity === "subtle" ? 60 : 40;
 
   return (
     <div
       aria-hidden
-      className={cn(
-        "pointer-events-none absolute inset-0 overflow-hidden",
-        className,
-      )}
+      className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}
     >
       <div
         className={cn("absolute inset-0", drift && "animate-grid-drift")}
@@ -74,11 +70,17 @@ export function BlueprintGrid({
           animation: grid-drift 60s linear infinite;
         }
         @keyframes grid-drift {
-          from { background-position: 0 0; }
-          to   { background-position: ${size * 4}px ${size * 4}px; }
+          from {
+            background-position: 0 0;
+          }
+          to {
+            background-position: ${size * 4}px ${size * 4}px;
+          }
         }
         @media (prefers-reduced-motion: reduce) {
-          .animate-grid-drift { animation: none; }
+          .animate-grid-drift {
+            animation: none;
+          }
         }
       `}</style>
     </div>

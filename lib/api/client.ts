@@ -1,9 +1,6 @@
 import { z } from "zod";
 import { SessionSchema, type MCQAnswer, type Session } from "@/lib/schemas/mcq";
-import {
-  FinalOutputSchema,
-  type FinalOutput,
-} from "@/lib/schemas/output";
+import { FinalOutputSchema, type FinalOutput } from "@/lib/schemas/output";
 
 /**
  * Browser-side API helpers. Every response is Zod-validated before it leaves
@@ -91,8 +88,7 @@ export async function submitAnswers(
   return parsed.session;
 }
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function isUuid(s: string | null | undefined): s is string {
   return typeof s === "string" && UUID_RE.test(s);

@@ -1,9 +1,5 @@
 import "@/lib/server-only";
-import {
-  ephemeralCacheControl,
-  getAnthropic,
-  PromptModel,
-} from "@/lib/llm/anthropic";
+import { ephemeralCacheControl, getAnthropic, PromptModel } from "@/lib/llm/anthropic";
 import {
   CLIENT_VIEW_SYSTEM_PROMPT,
   ENGINEER_VIEW_SYSTEM_PROMPT,
@@ -263,9 +259,7 @@ function buildSharedContext(session: Session): string {
   const lines: string[] = [];
   lines.push("<session>");
   lines.push(`raw_input: ${truncateText(stripHtml(session.raw_input), 4000)}`);
-  lines.push(
-    `enriched_input: ${truncateText(stripHtml(session.enriched_input), 6000)}`,
-  );
+  lines.push(`enriched_input: ${truncateText(stripHtml(session.enriched_input), 6000)}`);
   lines.push(`current_confidence: ${session.current_confidence}`);
   lines.push("</session>");
 
@@ -344,9 +338,7 @@ function buildSharedContext(session: Session): string {
     lines.push("</answers_history>");
   }
 
-  lines.push(
-    "\nProduce your output now. Call the appropriate tool exactly once.",
-  );
+  lines.push("\nProduce your output now. Call the appropriate tool exactly once.");
 
   return truncateText(lines.join("\n"), MAX_CONTEXT_CHARS);
 }

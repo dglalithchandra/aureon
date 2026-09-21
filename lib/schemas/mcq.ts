@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  ExtractionResultSchema,
-  ParameterIdSchema,
-} from "@/lib/schemas/extraction";
+import { ExtractionResultSchema, ParameterIdSchema } from "@/lib/schemas/extraction";
 import { GitHubEnrichmentSchema } from "@/lib/schemas/github";
 import { FinalOutputSchema } from "@/lib/schemas/output";
 

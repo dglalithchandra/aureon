@@ -14,9 +14,7 @@ interface ReadOnlyOutputProps {
   output: FinalOutput;
 }
 
-export function ReadOnlyOutput({
-  output,
-}: ReadOnlyOutputProps): React.ReactElement {
+export function ReadOnlyOutput({ output }: ReadOnlyOutputProps): React.ReactElement {
   const [tab, setTab] = useState<Tab>("client");
 
   return (
@@ -26,10 +24,7 @@ export function ReadOnlyOutput({
           <TabButton active={tab === "client"} onClick={() => setTab("client")}>
             Client View
           </TabButton>
-          <TabButton
-            active={tab === "engineer"}
-            onClick={() => setTab("engineer")}
-          >
+          <TabButton active={tab === "engineer"} onClick={() => setTab("engineer")}>
             Engineer View
           </TabButton>
         </div>

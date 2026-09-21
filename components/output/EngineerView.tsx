@@ -57,7 +57,7 @@ function Section({
       transition={{ duration: 0.5, ease: "easeOut" }}
       className="scroll-mt-28"
     >
-      <h2 className="text-blueprint-text mb-5 font-display text-2xl font-bold sm:text-3xl">
+      <h2 className="text-blueprint-text font-display mb-5 text-2xl font-bold sm:text-3xl">
         {title}
       </h2>
       {children}
@@ -107,9 +107,7 @@ export function EngineerView({
                 <th className="px-4 py-3 font-medium">
                   <button
                     type="button"
-                    onClick={() =>
-                      setSortDir((d) => (d === "asc" ? "desc" : "asc"))
-                    }
+                    onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
                     className="hover:text-blueprint-text inline-flex items-center gap-1"
                   >
                     Size
@@ -131,9 +129,7 @@ export function EngineerView({
                   key={`${m.name}-${i}`}
                   className="border-blueprint-line/10 border-t align-top"
                 >
-                  <td className="text-blueprint-text px-4 py-3 font-medium">
-                    {m.name}
-                  </td>
+                  <td className="text-blueprint-text px-4 py-3 font-medium">{m.name}</td>
                   <td className="px-4 py-3 capitalize">{m.size.toLowerCase()}</td>
                   <td className="text-blueprint-muted px-4 py-3 font-mono text-xs">
                     {m.tech_stack.join(", ")}
@@ -181,10 +177,7 @@ export function EngineerView({
               </span>
               <span className="font-medium">{name}</span>
               {i < view.build_order.length - 1 && (
-                <ArrowDown
-                  className="text-blueprint-line/40 ml-auto"
-                  size={12}
-                />
+                <ArrowDown className="text-blueprint-line/40 ml-auto" size={12} />
               )}
             </li>
           ))}
@@ -199,9 +192,7 @@ export function EngineerView({
                 key={`${t.table}-${i}`}
                 className="border-blueprint-line/15 rounded-xl border bg-white/[0.02] p-5"
               >
-                <h4 className="text-blueprint-text mb-3 font-mono text-sm">
-                  {t.table}
-                </h4>
+                <h4 className="text-blueprint-text mb-3 font-mono text-sm">{t.table}</h4>
                 <pre className="text-blueprint-muted overflow-x-auto font-mono text-[12px] leading-relaxed whitespace-pre-wrap">
                   {t.fields.join("\n")}
                 </pre>
@@ -231,16 +222,10 @@ export function EngineerView({
             </thead>
             <tbody>
               {view.auth_model.roles.map((role) => (
-                <tr
-                  key={role}
-                  className="border-blueprint-line/10 border-t align-top"
-                >
-                  <td className="text-blueprint-text px-4 py-3 font-medium">
-                    {role}
-                  </td>
+                <tr key={role} className="border-blueprint-line/10 border-t align-top">
+                  <td className="text-blueprint-text px-4 py-3 font-medium">{role}</td>
                   <td className="text-blueprint-muted px-4 py-3 font-mono text-xs">
-                    {(view.auth_model.permissions_matrix[role] ?? []).join(", ") ||
-                      "—"}
+                    {(view.auth_model.permissions_matrix[role] ?? []).join(", ") || "—"}
                   </td>
                 </tr>
               ))}
@@ -253,9 +238,7 @@ export function EngineerView({
         <Section id="third-party" title="Third-party checklist">
           <PersistentChecklist
             items={view.third_party_checklist}
-            storageKey={
-              checklistKey ? `scopeai:checklist:${checklistKey}` : null
-            }
+            storageKey={checklistKey ? `scopeai:checklist:${checklistKey}` : null}
           />
         </Section>
       )}
@@ -270,9 +253,7 @@ export function EngineerView({
               <span className="text-blueprint-accent w-24 shrink-0 font-mono text-xs tracking-[0.16em] uppercase">
                 {s.sprint}
               </span>
-              <span className="text-blueprint-text flex-1 font-medium">
-                {s.focus}
-              </span>
+              <span className="text-blueprint-text flex-1 font-medium">{s.focus}</span>
               <span className="text-blueprint-muted shrink-0 font-mono text-xs">
                 {s.story_points} pts
               </span>
@@ -305,15 +286,11 @@ export function EngineerView({
                     <td className="text-blueprint-text px-4 py-3 font-medium">
                       {t.module}
                     </td>
-                    <td className="text-blueprint-muted px-4 py-3 text-xs">
-                      {t.unit}
-                    </td>
+                    <td className="text-blueprint-muted px-4 py-3 text-xs">{t.unit}</td>
                     <td className="text-blueprint-muted px-4 py-3 text-xs">
                       {t.integration}
                     </td>
-                    <td className="text-blueprint-muted px-4 py-3 text-xs">
-                      {t.e2e}
-                    </td>
+                    <td className="text-blueprint-muted px-4 py-3 text-xs">{t.e2e}</td>
                   </tr>
                 ))}
               </tbody>
@@ -326,35 +303,19 @@ export function EngineerView({
         <Section id="security" title="Security per module">
           <div className="border-blueprint-line/15 flex flex-col rounded-xl border bg-white/[0.02] backdrop-blur-md">
             {Object.entries(view.security_per_module).map(([mod, items], i) => (
-              <div
-                key={mod}
-                className={cn(
-                  i > 0 && "border-blueprint-line/10 border-t",
-                )}
-              >
+              <div key={mod} className={cn(i > 0 && "border-blueprint-line/10 border-t")}>
                 <button
                   type="button"
-                  onClick={() =>
-                    setOpenSecurity((cur) => (cur === mod ? null : mod))
-                  }
+                  onClick={() => setOpenSecurity((cur) => (cur === mod ? null : mod))}
                   aria-expanded={openSecurity === mod}
                   className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
                 >
                   <span className="inline-flex items-center gap-2">
-                    <Shield
-                      size={14}
-                      className="text-[var(--color-blueprint-accent)]"
-                    />
-                    <span className="text-blueprint-text font-medium">
-                      {mod}
-                    </span>
-                    <span className="text-blueprint-muted text-xs">
-                      ({items.length})
-                    </span>
+                    <Shield size={14} className="text-[var(--color-blueprint-accent)]" />
+                    <span className="text-blueprint-text font-medium">{mod}</span>
+                    <span className="text-blueprint-muted text-xs">({items.length})</span>
                   </span>
-                  <motion.span
-                    animate={{ rotate: openSecurity === mod ? 180 : 0 }}
-                  >
+                  <motion.span animate={{ rotate: openSecurity === mod ? 180 : 0 }}>
                     <ChevronDown size={16} className="text-blueprint-muted" />
                   </motion.span>
                 </button>
@@ -412,7 +373,7 @@ export function EngineerView({
                 href={r.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="border-blueprint-line/20 hover:border-[var(--color-blueprint-accent)]/40 group flex items-start justify-between gap-3 rounded-xl border bg-white/[0.025] p-4 backdrop-blur-md transition-colors"
+                className="border-blueprint-line/20 group flex items-start justify-between gap-3 rounded-xl border bg-white/[0.025] p-4 backdrop-blur-md transition-colors hover:border-[var(--color-blueprint-accent)]/40"
               >
                 <div className="min-w-0">
                   <p className="text-blueprint-text font-mono text-sm font-semibold">
@@ -424,7 +385,7 @@ export function EngineerView({
                 </div>
                 <ExternalLink
                   size={14}
-                  className="text-blueprint-muted group-hover:text-[var(--color-blueprint-accent)] mt-1 shrink-0"
+                  className="text-blueprint-muted mt-1 shrink-0 group-hover:text-[var(--color-blueprint-accent)]"
                 />
               </a>
             ))}
@@ -435,13 +396,7 @@ export function EngineerView({
   );
 }
 
-function BigStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}): React.ReactElement {
+function BigStat({ label, value }: { label: string; value: number }): React.ReactElement {
   return (
     <div className="flex flex-col">
       <span className="text-blueprint-muted font-mono text-[10px] tracking-[0.18em] uppercase">
@@ -489,10 +444,7 @@ function PersistentChecklist({
       else next.add(label);
       if (typeof window !== "undefined" && storageKey) {
         try {
-          window.localStorage.setItem(
-            storageKey,
-            JSON.stringify(Array.from(next)),
-          );
+          window.localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
         } catch {
           /* ignore quota errors */
         }
@@ -546,9 +498,7 @@ function PersistentChecklist({
               <span
                 className={cn(
                   "text-sm",
-                  isChecked
-                    ? "text-blueprint-muted line-through"
-                    : "text-blueprint-text",
+                  isChecked ? "text-blueprint-muted line-through" : "text-blueprint-text",
                 )}
               >
                 {it}

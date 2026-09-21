@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 
 const SIZE_BADGE: Record<ClientModule["size"], string> = {
   SMALL: "bg-emerald-400/10 text-emerald-300 border-emerald-400/30",
-  MEDIUM: "bg-[var(--color-blueprint-accent)]/10 text-[var(--color-blueprint-accent)] border-[var(--color-blueprint-accent)]/30",
+  MEDIUM:
+    "bg-[var(--color-blueprint-accent)]/10 text-[var(--color-blueprint-accent)] border-[var(--color-blueprint-accent)]/30",
   LARGE: "bg-amber-400/10 text-amber-300 border-amber-400/30",
 };
 
@@ -53,9 +54,7 @@ export function ModuleCard({
             value={module.name}
             disabled={readOnly}
             maxLength={80}
-            onConfirm={(next) =>
-              onChange && onChange({ ...module, name: next })
-            }
+            onConfirm={(next) => onChange && onChange({ ...module, name: next })}
             inputClassName="font-display text-lg font-bold"
             className="text-blueprint-text font-display text-lg font-bold"
           />
@@ -76,18 +75,13 @@ export function ModuleCard({
         disabled={readOnly}
         multiline
         maxLength={400}
-        onConfirm={(next) =>
-          onChange && onChange({ ...module, description: next })
-        }
+        onConfirm={(next) => onChange && onChange({ ...module, description: next })}
         className="text-blueprint-muted text-sm"
       />
 
       {module.github_validated && (
         <div className="text-blueprint-muted inline-flex items-center gap-1.5 text-[11px]">
-          <BadgeCheck
-            size={13}
-            className="text-[var(--color-blueprint-accent)]"
-          />
+          <BadgeCheck size={13} className="text-[var(--color-blueprint-accent)]" />
           Validated against similar open-source projects
         </div>
       )}

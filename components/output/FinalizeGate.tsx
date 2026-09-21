@@ -46,7 +46,7 @@ export function FinalizeGate({
           <p className="text-blueprint-muted font-mono text-[10px] tracking-[0.3em] uppercase">
             Not ready yet · {session.status}
           </p>
-          <h1 className="text-blueprint-text mt-3 font-display text-2xl font-bold sm:text-3xl">
+          <h1 className="text-blueprint-text font-display mt-3 text-2xl font-bold sm:text-3xl">
             {lowConfidenceExhausted
               ? "Confidence too low to lock the scope."
               : "Answer the remaining questions first."}
@@ -58,7 +58,7 @@ export function FinalizeGate({
           </p>
           <Link
             href={`/chat?s=${session.id}`}
-            className="border-[var(--color-blueprint-accent)] text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/15 mt-6 inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium"
+            className="mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-blueprint-accent)] px-5 py-2.5 text-sm font-medium text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/15"
           >
             <ArrowLeft size={14} />
             Back to chat
@@ -76,9 +76,7 @@ export function FinalizeGate({
       // Force the server component to re-render with the freshly persisted output.
       router.refresh();
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "Could not generate output.",
-      );
+      setError(err instanceof ApiError ? err.message : "Could not generate output.");
     } finally {
       setBusy(false);
     }
@@ -94,26 +92,22 @@ export function FinalizeGate({
       >
         <Sparkles
           size={28}
-          className="text-[var(--color-blueprint-accent)] mx-auto mb-4"
+          className="mx-auto mb-4 text-[var(--color-blueprint-accent)]"
         />
         <h1 className="text-blueprint-text font-display text-2xl font-bold sm:text-3xl">
           Ready to generate your scope.
         </h1>
         <p className="text-blueprint-muted mt-3 text-sm">
-          We&apos;ll produce two documents in parallel — a plain-English client
-          view and a concrete engineer build doc. Takes about 20-40 seconds.
+          We&apos;ll produce two documents in parallel — a plain-English client view and a
+          concrete engineer build doc. Takes about 20-40 seconds.
         </p>
         <button
           type="button"
           onClick={handleGenerate}
           disabled={busy}
-          className="border-[var(--color-blueprint-accent)] text-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 hover:bg-[var(--color-blueprint-accent)]/20 mt-6 inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 px-5 py-2.5 text-sm font-medium text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/20 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {busy ? (
-            <Loader2 className="animate-spin" size={14} />
-          ) : (
-            <Sparkles size={14} />
-          )}
+          {busy ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
           {busy ? "Generating…" : "Generate output"}
         </button>
         {error && (

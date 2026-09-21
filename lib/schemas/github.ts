@@ -65,6 +65,4 @@ export const ExtractModulesToolOutputSchema = z.object({
   similarity_to_project: z.number().min(0).max(1),
   why_relevant: z.string().max(280).default(""),
 });
-export type ExtractModulesToolOutput = z.infer<
-  typeof ExtractModulesToolOutputSchema
->;
+export type ExtractModulesToolOutput = z.infer<typeof ExtractModulesToolOutputSchema>;

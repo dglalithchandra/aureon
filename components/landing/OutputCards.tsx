@@ -107,13 +107,9 @@ function TiltCard({
             className="flex h-11 w-11 items-center justify-center rounded-lg border"
             style={{
               borderColor:
-                accent === "gold"
-                  ? "rgba(251,191,36,0.35)"
-                  : "rgba(236,72,153,0.35)",
+                accent === "gold" ? "rgba(251,191,36,0.35)" : "rgba(236,72,153,0.35)",
               backgroundColor:
-                accent === "gold"
-                  ? "rgba(251,191,36,0.08)"
-                  : "rgba(236,72,153,0.08)",
+                accent === "gold" ? "rgba(251,191,36,0.08)" : "rgba(236,72,153,0.08)",
             }}
           >
             <Icon
@@ -160,9 +156,7 @@ export function OutputCards(): React.ReactElement {
 
   useGSAP(
     () => {
-      const heading = root.current?.querySelector<HTMLElement>(
-        "[data-outcards-heading]",
-      );
+      const heading = root.current?.querySelector<HTMLElement>("[data-outcards-heading]");
       if (!heading) return;
       const split = new SplitText(heading, { type: "words" });
       gsap.from(split.words, {
@@ -189,14 +183,13 @@ export function OutputCards(): React.ReactElement {
           </p>
           <h2
             data-outcards-heading
-            className="text-blueprint-text mt-3 font-display text-3xl font-bold sm:text-4xl md:text-5xl"
+            className="text-blueprint-text font-display mt-3 text-3xl font-bold sm:text-4xl md:text-5xl"
           >
             Two views from one input.
           </h2>
           <p className="text-blueprint-muted mt-4 text-base sm:text-lg">
-            One document the client signs off on, one document the engineer
-            opens on day 1.{" "}
-            <span className="font-serif italic">Same source of truth.</span>
+            One document the client signs off on, one document the engineer opens on day
+            1. <span className="font-serif italic">Same source of truth.</span>
           </p>
         </header>
 

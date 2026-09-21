@@ -3,10 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Home, MessageSquarePlus } from "lucide-react";
 import { getSession } from "@/lib/storage/session";
-import {
-  SESSION_COOKIE_NAME,
-  verifySessionCookie,
-} from "@/lib/security/session-cookie";
+import { SESSION_COOKIE_NAME, verifySessionCookie } from "@/lib/security/session-cookie";
 import { FinalizeGate } from "@/components/output/FinalizeGate";
 import { BlueprintGrid } from "@/components/landing/BlueprintGrid";
 
@@ -17,8 +14,7 @@ interface PageProps {
   params: Promise<{ sessionId: string }>;
 }
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function OutputPage({
   params,
@@ -59,16 +55,16 @@ function UnauthorizedView(): React.ReactElement {
         <p className="text-blueprint-muted font-mono text-[10px] tracking-[0.3em] uppercase">
           401 · unauthorized
         </p>
-        <h1 className="text-blueprint-text mt-3 font-display text-2xl font-bold">
+        <h1 className="text-blueprint-text font-display mt-3 text-2xl font-bold">
           You don&apos;t own this session.
         </h1>
         <p className="text-blueprint-muted mt-3 text-sm">
-          The owner needs to share a public link with you. They can generate
-          one from the export menu.
+          The owner needs to share a public link with you. They can generate one from the
+          export menu.
         </p>
         <Link
           href="/chat"
-          className="text-[var(--color-blueprint-accent)] mt-6 inline-flex items-center gap-2 text-sm hover:underline"
+          className="mt-6 inline-flex items-center gap-2 text-sm text-[var(--color-blueprint-accent)] hover:underline"
         >
           Start a new scope →
         </Link>
@@ -86,29 +82,28 @@ function SessionExpiredView(): React.ReactElement {
         aria-hidden
       />
       <div className="relative z-10 max-w-lg">
-        <p className="text-[var(--color-blueprint-accent)] font-mono text-[10px] tracking-[0.3em] uppercase">
+        <p className="font-mono text-[10px] tracking-[0.3em] text-[var(--color-blueprint-accent)] uppercase">
           ScopeAI · session expired
         </p>
-        <h1 className="text-blueprint-text mt-4 font-display text-3xl font-bold sm:text-4xl">
+        <h1 className="text-blueprint-text font-display mt-4 text-3xl font-bold sm:text-4xl">
           That session is gone.
         </h1>
         <p className="text-blueprint-muted mt-4 text-sm leading-relaxed sm:text-base">
-          Sessions live in memory for 24 hours. Yours was wiped — most likely
-          the dev server was restarted, or the link has been sitting open for
-          a while. Start a fresh one and you&apos;ll be back here in a few
-          minutes.
+          Sessions live in memory for 24 hours. Yours was wiped — most likely the dev
+          server was restarted, or the link has been sitting open for a while. Start a
+          fresh one and you&apos;ll be back here in a few minutes.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/chat"
-            className="border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/20 inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_0_30px_rgba(236,72,153,0.35)]"
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 px-5 py-2.5 text-sm font-medium text-[var(--color-blueprint-accent)] shadow-[0_0_30px_rgba(236,72,153,0.35)] hover:bg-[var(--color-blueprint-accent)]/20"
           >
             <MessageSquarePlus size={14} />
             Start a new scope
           </Link>
           <Link
             href="/"
-            className="border-blueprint-line/30 bg-blueprint-line/5 text-blueprint-text hover:border-[var(--color-blueprint-accent)]/50 inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm"
+            className="border-blueprint-line/30 bg-blueprint-line/5 text-blueprint-text inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm hover:border-[var(--color-blueprint-accent)]/50"
           >
             <Home size={14} />
             Back home

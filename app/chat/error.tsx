@@ -7,10 +7,7 @@ interface Props {
   reset: () => void;
 }
 
-export default function ChatError({
-  error,
-  reset,
-}: Props): React.ReactElement {
+export default function ChatError({ error, reset }: Props): React.ReactElement {
   useEffect(() => {
     console.error("[scopeai] /chat error", {
       name: error.name,

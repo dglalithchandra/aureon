@@ -63,11 +63,7 @@ export function deriveMessages(session: Session): ChatMessage[] {
   // If the last round committed answers but no new round arrived yet,
   // surface them so the user sees what they submitted.
   const lastRound = session.rounds[session.rounds.length - 1];
-  if (
-    lastRound &&
-    lastRound.answers.length > 0 &&
-    session.status === "analyzing"
-  ) {
+  if (lastRound && lastRound.answers.length > 0 && session.status === "analyzing") {
     const text = formatAnswersAsUserMessage(lastRound);
     if (text) {
       out.push({
@@ -97,9 +93,7 @@ export function deriveMessages(session: Session): ChatMessage[] {
   return out;
 }
 
-function formatAnswersAsUserMessage(
-  round: Session["rounds"][number],
-): string | null {
+function formatAnswersAsUserMessage(round: Session["rounds"][number]): string | null {
   const lines: string[] = [];
   for (const a of round.answers) {
     const q = round.questions.find((x) => x.id === a.question_id);
@@ -123,9 +117,7 @@ function assistantMarkdownForRound(session: Session, roundIdx: number): string {
       `Got it. I read the input as a **${e.domain}** project (confidence ${e.confidence}/100).`,
     );
   } else {
-    lines.push(
-      `Updated: confidence is now **${e.confidence}/100**.`,
-    );
+    lines.push(`Updated: confidence is now **${e.confidence}/100**.`);
   }
 
   if (e.modules.length > 0) {
@@ -147,9 +139,7 @@ function assistantMarkdownForRound(session: Session, roundIdx: number): string {
       );
     }
   } else if (session.status === "ready") {
-    lines.push(
-      "Confidence is high enough — your scope is ready to open.",
-    );
+    lines.push("Confidence is high enough — your scope is ready to open.");
   }
 
   return lines.join("\n\n");

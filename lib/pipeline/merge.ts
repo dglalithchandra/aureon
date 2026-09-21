@@ -1,5 +1,9 @@
 import "@/lib/server-only";
-import type { ExtractionResult, ModuleCandidate, ModuleSize } from "@/lib/schemas/extraction";
+import type {
+  ExtractionResult,
+  ModuleCandidate,
+  ModuleSize,
+} from "@/lib/schemas/extraction";
 import type { GitHubEnrichment } from "@/lib/schemas/github";
 
 /**

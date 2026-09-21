@@ -25,9 +25,7 @@ function getSecret(): string {
   // would invalidate every prior cookie and 404 the user out). In prod
   // SESSION_SECRET is required.
   if (env.NODE_ENV === "production") {
-    throw new Error(
-      "SESSION_SECRET is required in production. Set a 32+ char secret.",
-    );
+    throw new Error("SESSION_SECRET is required in production. Set a 32+ char secret.");
   }
   const g = globalThis as { __scopeai_dev_secret?: string };
   if (!g.__scopeai_dev_secret) {

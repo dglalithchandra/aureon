@@ -70,9 +70,7 @@ export async function createShareLink(sessionId: string): Promise<string> {
   return token;
 }
 
-export async function resolveShareToken(
-  token: string,
-): Promise<ShareRecord | null> {
+export async function resolveShareToken(token: string): Promise<ShareRecord | null> {
   if (!isShareToken(token)) return null;
   const r = getRedis();
   let raw: unknown;

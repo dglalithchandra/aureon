@@ -2,10 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Download, FileText, Link2, Printer } from "lucide-react";
-import {
-  clientToMarkdown,
-  engineerToMarkdown,
-} from "@/lib/export/markdown";
+import { clientToMarkdown, engineerToMarkdown } from "@/lib/export/markdown";
 import { sanitizeClonedColors } from "@/lib/export/oklab-to-rgb";
 import type { FinalOutput } from "@/lib/schemas/output";
 
@@ -86,8 +83,7 @@ export function ExportMenu({
             // Tailwind v4 emits oklch(); html2canvas can't parse it and
             // throws. Rewrite every resolved oklab/oklch color to rgb in
             // the clone before the canvas renderer reads it.
-            onclone: (clonedDoc: Document) =>
-              sanitizeClonedColors(clonedDoc),
+            onclone: (clonedDoc: Document) => sanitizeClonedColors(clonedDoc),
           },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
           pagebreak: { mode: ["avoid-all", "css", "legacy"] },
@@ -105,7 +101,7 @@ export function ExportMenu({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="border-blueprint-line/30 bg-blueprint-line/5 text-blueprint-text hover:border-[var(--color-blueprint-accent)]/50 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
+        className="border-blueprint-line/30 bg-blueprint-line/5 text-blueprint-text inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium hover:border-[var(--color-blueprint-accent)]/50"
       >
         <Download size={14} />
         Export

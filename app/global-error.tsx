@@ -32,8 +32,7 @@ export default function GlobalError({
           margin: 0,
           backgroundColor: "#0a1628",
           color: "#e0f2fe",
-          fontFamily:
-            "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+          fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
         }}
       >
         <BrandedError onReload={reset} hideHome />

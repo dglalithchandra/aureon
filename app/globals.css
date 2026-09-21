@@ -46,9 +46,9 @@
 
   /* Numeric channel exports — used by inline rgba() in components without
      reaching for a tailwind opacity modifier. */
-  --rgb-line: 168, 85, 247;       /* #a855f7 */
-  --rgb-accent: 236, 72, 153;     /* #ec4899 */
-  --rgb-glow-warm: 251, 191, 36;  /* amber pop for client view */
+  --rgb-line: 168, 85, 247; /* #a855f7 */
+  --rgb-accent: 236, 72, 153; /* #ec4899 */
+  --rgb-glow-warm: 251, 191, 36; /* amber pop for client view */
 
   --font-sans: var(--font-outfit);
   --font-display: var(--font-bricolage);
@@ -114,8 +114,14 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family:
+      var(--font-sans),
+      system-ui,
+      -apple-system,
+      sans-serif;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
     -webkit-font-smoothing: antialiased;
   }
 }
@@ -144,8 +150,13 @@
 }
 
 /* SplitText / GSAP entrance — make sure pre-animated text doesn't FOUC. */
-.split-mask { overflow: hidden; display: inline-block; }
-.split-prep > .word, .split-prep > .char, .split-prep > .line {
+.split-mask {
+  overflow: hidden;
+  display: inline-block;
+}
+.split-prep > .word,
+.split-prep > .char,
+.split-prep > .line {
   visibility: hidden;
 }
 
@@ -166,33 +177,59 @@
 }
 
 @keyframes shine {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Plasma aurora glow for hero / CTA backdrops */
 @utility aurora {
   background-image:
-    radial-gradient(60% 40% at 20% 0%, rgba(var(--rgb-accent), 0.20), transparent 70%),
+    radial-gradient(60% 40% at 20% 0%, rgba(var(--rgb-accent), 0.2), transparent 70%),
     radial-gradient(50% 50% at 80% 30%, rgba(var(--rgb-line), 0.18), transparent 70%),
-    radial-gradient(40% 30% at 50% 100%, rgba(var(--rgb-glow-warm), 0.10), transparent 70%);
+    radial-gradient(40% 30% at 50% 100%, rgba(var(--rgb-glow-warm), 0.1), transparent 70%);
 }
 
 /* Sparkle dust — tiny twinkling specks behind hero/CTA cards */
 @utility plasma-dust {
   background-image:
-    radial-gradient(1.5px 1.5px at 25% 30%, rgba(var(--rgb-accent), 0.6), transparent 70%),
+    radial-gradient(
+      1.5px 1.5px at 25% 30%,
+      rgba(var(--rgb-accent), 0.6),
+      transparent 70%
+    ),
     radial-gradient(1px 1px at 75% 60%, rgba(var(--rgb-line), 0.6), transparent 70%),
     radial-gradient(1px 1px at 15% 75%, rgba(var(--rgb-glow-warm), 0.5), transparent 70%),
-    radial-gradient(1.5px 1.5px at 85% 20%, rgba(var(--rgb-accent), 0.5), transparent 70%),
+    radial-gradient(
+      1.5px 1.5px at 85% 20%,
+      rgba(var(--rgb-accent), 0.5),
+      transparent 70%
+    ),
     radial-gradient(1px 1px at 50% 50%, rgba(var(--rgb-line), 0.5), transparent 70%);
   background-size: 200px 200px;
   animation: dust-drift 30s linear infinite;
 }
 
 @keyframes dust-drift {
-  from { background-position: 0 0, 50px 30px, 80px 100px, 120px 50px, 200px 200px; }
-  to   { background-position: 200px 200px, 250px 230px, 280px 300px, 320px 250px, 400px 400px; }
+  from {
+    background-position:
+      0 0,
+      50px 30px,
+      80px 100px,
+      120px 50px,
+      200px 200px;
+  }
+  to {
+    background-position:
+      200px 200px,
+      250px 230px,
+      280px 300px,
+      320px 250px,
+      400px 400px;
+  }
 }
 
 /* Subtle conic glow used behind premium cards */
@@ -218,7 +255,9 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  .split-prep > .word, .split-prep > .char, .split-prep > .line {
+  .split-prep > .word,
+  .split-prep > .char,
+  .split-prep > .line {
     visibility: visible;
   }
 }

@@ -66,12 +66,12 @@ export function MessageBubble({ message }: MessageBubbleProps): React.ReactEleme
 function UserBubble({ text }: { text: string }): React.ReactElement {
   return (
     <div className="flex max-w-[85%] items-start gap-3">
-      <div className="bg-[var(--color-blueprint-accent)] text-[var(--color-blueprint-bg)] rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
+      <div className="rounded-2xl rounded-tr-sm bg-[var(--color-blueprint-accent)] px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap text-[var(--color-blueprint-bg)]">
         {text}
       </div>
       <span
         aria-hidden
-        className="bg-[var(--color-blueprint-accent)]/20 text-[var(--color-blueprint-accent)] mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+        className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-blueprint-accent)]/20 text-[var(--color-blueprint-accent)]"
       >
         <User size={14} />
       </span>
@@ -92,8 +92,22 @@ function AssistantBubble({ markdown }: { markdown: string }): React.ReactElement
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           allowedElements={[
-            "p", "ul", "ol", "li", "strong", "em", "code", "pre",
-            "h1", "h2", "h3", "h4", "a", "blockquote", "hr", "br",
+            "p",
+            "ul",
+            "ol",
+            "li",
+            "strong",
+            "em",
+            "code",
+            "pre",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "a",
+            "blockquote",
+            "hr",
+            "br",
           ]}
           components={{
             a: (props) => (
@@ -128,7 +142,7 @@ function AssistantBubble({ markdown }: { markdown: string }): React.ReactElement
 function PipelineStatusBubble({ label }: { label: string }): React.ReactElement {
   return (
     <div className="border-blueprint-line/15 text-blueprint-muted bg-blueprint-line/5 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-wide">
-      <span className="bg-[var(--color-blueprint-accent)] block h-1.5 w-1.5 animate-pulse rounded-full" />
+      <span className="block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--color-blueprint-accent)]" />
       <Activity size={11} />
       {label}
     </div>
@@ -167,7 +181,7 @@ function OutputReadyBubble({
   return (
     <div
       ref={ref}
-      className="border-[var(--color-blueprint-accent)]/50 bg-[var(--color-blueprint-accent)]/15 flex max-w-md flex-col gap-3 rounded-2xl border-2 p-5 backdrop-blur-md"
+      className="flex max-w-md flex-col gap-3 rounded-2xl border-2 border-[var(--color-blueprint-accent)]/50 bg-[var(--color-blueprint-accent)]/15 p-5 backdrop-blur-md"
     >
       <p className="text-blueprint-muted font-mono text-[10px] tracking-[0.18em] uppercase">
         Ready · {confidence}% confidence
@@ -175,12 +189,10 @@ function OutputReadyBubble({
       <p className="text-blueprint-text font-display text-xl font-bold">
         Your scope is ready.
       </p>
-      <p className="text-blueprint-muted text-sm">
-        Opening the two-stage view now…
-      </p>
+      <p className="text-blueprint-muted text-sm">Opening the two-stage view now…</p>
       <Link
         href={`/output/${sessionId}`}
-        className="border-[var(--color-blueprint-accent)] text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/15 inline-flex items-center gap-2 self-start rounded-full border px-4 py-2 text-sm font-medium transition-colors"
+        className="inline-flex items-center gap-2 self-start rounded-full border border-[var(--color-blueprint-accent)] px-4 py-2 text-sm font-medium text-[var(--color-blueprint-accent)] transition-colors hover:bg-[var(--color-blueprint-accent)]/15"
       >
         Open scope now
         <ArrowRight size={14} />

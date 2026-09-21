@@ -1,9 +1,5 @@
 import "@/lib/server-only";
-import {
-  ephemeralCacheControl,
-  getAnthropic,
-  PromptModel,
-} from "@/lib/llm/anthropic";
+import { ephemeralCacheControl, getAnthropic, PromptModel } from "@/lib/llm/anthropic";
 import {
   EXTRACTION_SYSTEM_PROMPT,
   submitExtractionTool,
@@ -40,9 +36,7 @@ export async function runExtraction(
   const userBlocks: string[] = [];
   userBlocks.push(`<client_input>\n${cleanedRaw}\n</client_input>`);
   if (cleanedPrior) {
-    userBlocks.push(
-      `<prior_round_context>\n${cleanedPrior}\n</prior_round_context>`,
-    );
+    userBlocks.push(`<prior_round_context>\n${cleanedPrior}\n</prior_round_context>`);
   }
   userBlocks.push(
     "Call submit_extraction now with your complete analysis. Do not respond with any other text.",

@@ -85,9 +85,10 @@ async function call<T>(
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   // Node's undici exposes set-cookie via getSetCookie().
-  type ResWithGetSetCookie = Response & { headers: Headers & { getSetCookie?: () => string[] } };
-  const setCookies =
-    (res as ResWithGetSetCookie).headers.getSetCookie?.() ?? null;
+  type ResWithGetSetCookie = Response & {
+    headers: Headers & { getSetCookie?: () => string[] };
+  };
+  const setCookies = (res as ResWithGetSetCookie).headers.getSetCookie?.() ?? null;
   const newCookies = parseCookies(setCookies);
   const merged = [...cookies];
   for (const nc of newCookies) {
@@ -110,12 +111,7 @@ const SAMPLE_PROMPT =
 interface SessionResponse {
   session: {
     id: string;
-    status:
-      | "analyzing"
-      | "awaiting_answers"
-      | "blocker"
-      | "ready"
-      | "finalized";
+    status: "analyzing" | "awaiting_answers" | "blocker" | "ready" | "finalized";
     current_confidence: number;
     rounds: Array<{
       questions: Array<{ id: string; options: string[] }>;
@@ -204,9 +200,7 @@ async function main(): Promise<void> {
     }
     session = r2.data.session;
     cookies = r2.cookies;
-    console.log(
-      `  status=${session.status} · conf=${session.current_confidence}`,
-    );
+    console.log(`  status=${session.status} · conf=${session.current_confidence}`);
   }
 
   if (session.status !== "ready" && session.status !== "finalized") {

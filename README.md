@@ -60,3 +60,4 @@ Smart Clarification
 Build-Ready Scope
    ↓
 Client View + Engineer View
+```

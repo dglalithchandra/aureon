@@ -112,15 +112,13 @@ export function MCQCard({
       <header className="mb-4 flex items-center gap-2">
         <span
           className={cn(
-            "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[10px] font-mono tracking-[0.18em] uppercase",
+            "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 font-mono text-[10px] tracking-[0.18em] uppercase",
             questions.some((q) => q.is_blocker)
               ? "border-red-500/40 bg-red-500/10 text-red-300"
               : "border-[var(--color-blueprint-accent)]/40 bg-[var(--color-blueprint-accent)]/10 text-[var(--color-blueprint-accent)]",
           )}
         >
-          {questions.some((q) => q.is_blocker) ? (
-            <AlertCircle size={11} />
-          ) : null}
+          {questions.some((q) => q.is_blocker) ? <AlertCircle size={11} /> : null}
           {questions.some((q) => q.is_blocker) ? "blocker" : "clarify"}
         </span>
         <h3 className="text-blueprint-text font-display text-base font-semibold">
@@ -134,11 +132,7 @@ export function MCQCard({
         {questions.map((q) => {
           const draft = drafts[q.id] ?? { selected: new Set<string>(), custom: "" };
           return (
-            <fieldset
-              key={q.id}
-              data-mcq-q
-              className="flex flex-col gap-3"
-            >
+            <fieldset key={q.id} data-mcq-q className="flex flex-col gap-3">
               <legend className="text-blueprint-text text-sm font-semibold">
                 {q.question}
               </legend>
@@ -153,8 +147,8 @@ export function MCQCard({
                         "group flex cursor-pointer items-center gap-3 rounded-lg border px-3.5 py-2.5 text-sm transition-colors",
                         "focus-within:ring-2 focus-within:ring-[var(--color-blueprint-accent)]/60",
                         checked
-                          ? "border-[var(--color-blueprint-accent)]/60 bg-[var(--color-blueprint-accent)]/[0.18] text-blueprint-text"
-                          : "border-blueprint-line/20 hover:border-[var(--color-blueprint-accent)]/40 text-blueprint-text/90",
+                          ? "text-blueprint-text border-[var(--color-blueprint-accent)]/60 bg-[var(--color-blueprint-accent)]/[0.18]"
+                          : "border-blueprint-line/20 text-blueprint-text/90 hover:border-[var(--color-blueprint-accent)]/40",
                       )}
                     >
                       <input
@@ -217,7 +211,7 @@ export function MCQCard({
             "border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/15 text-[var(--color-blueprint-accent)]",
             "hover:bg-[var(--color-blueprint-accent)]/25",
             "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[var(--color-blueprint-accent)]/15",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/60",
+            "focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/60 focus-visible:outline-none",
           )}
         >
           {pending ? <Loader2 className="animate-spin" size={14} /> : null}

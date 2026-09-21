@@ -2,7 +2,13 @@
 import Link from "next/link";
 import { useRef } from "react";
 import { ArrowRight } from "lucide-react";
-import { gsap, useGSAP, ScrollTrigger, SplitText, ScrambleTextPlugin } from "@/lib/gsap-init";
+import {
+  gsap,
+  useGSAP,
+  ScrollTrigger,
+  SplitText,
+  ScrambleTextPlugin,
+} from "@/lib/gsap-init";
 import { BlueprintGrid } from "@/components/landing/BlueprintGrid";
 
 void ScrollTrigger;
@@ -88,7 +94,7 @@ export function CTA(): React.ReactElement {
           <Link
             href="/chat"
             data-cta-btn
-            className="group inline-flex items-center gap-2 rounded-full border border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 px-8 py-3.5 text-sm font-medium tracking-wide text-[var(--color-blueprint-accent)] transition-all duration-200 hover:bg-[var(--color-blueprint-accent)]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]"
+            className="group inline-flex items-center gap-2 rounded-full border border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 px-8 py-3.5 text-sm font-medium tracking-wide text-[var(--color-blueprint-accent)] transition-all duration-200 hover:bg-[var(--color-blueprint-accent)]/20 focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)] focus-visible:outline-none"
           >
             Start scoping
             <ArrowRight
@@ -99,9 +105,8 @@ export function CTA(): React.ReactElement {
         </div>
 
         <p className="text-blueprint-muted mt-10 max-w-md text-xs leading-relaxed">
-          Your input is processed in-session, not stored beyond 24 hours. No
-          tracking pixels. No third-party analytics. No accounts required to
-          try it.
+          Your input is processed in-session, not stored beyond 24 hours. No tracking
+          pixels. No third-party analytics. No accounts required to try it.
         </p>
 
         <div className="border-blueprint-line/20 mt-16 flex w-full max-w-md items-center justify-between border-t pt-6">

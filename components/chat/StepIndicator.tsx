@@ -100,21 +100,19 @@ export function StepIndicator({
         aria-controls={`step-detail-${step.id}`}
         className={cn(
           "group flex w-full items-start gap-3 rounded-md px-2 py-2 text-left transition-colors",
-          "hover:bg-blueprint-line/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/60",
+          "hover:bg-blueprint-line/10 focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/60 focus-visible:outline-none",
         )}
       >
         <span
           ref={iconRef}
           className={cn(
-            "mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-mono will-change-transform",
-            step.state === "pending" &&
-              "border-blueprint-line/30 text-blueprint-muted",
+            "mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-mono text-[11px] will-change-transform",
+            step.state === "pending" && "border-blueprint-line/30 text-blueprint-muted",
             step.state === "running" &&
-              "border-[var(--color-blueprint-accent)] text-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 shadow-[0_0_12px_rgba(236,72,153,0.5)]",
+              "border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 text-[var(--color-blueprint-accent)] shadow-[0_0_12px_rgba(236,72,153,0.5)]",
             step.state === "done" &&
-              "border-[var(--color-blueprint-accent)] text-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10",
-            step.state === "error" &&
-              "border-red-500/60 text-red-400 bg-red-500/10",
+              "border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 text-[var(--color-blueprint-accent)]",
+            step.state === "error" && "border-red-500/60 bg-red-500/10 text-red-400",
           )}
           aria-hidden
         >

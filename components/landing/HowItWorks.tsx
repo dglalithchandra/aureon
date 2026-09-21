@@ -113,9 +113,7 @@ export function HowItWorks(): React.ReactElement {
           containerAnimation: horiz,
           onToggle: ({ isActive }) => {
             gsap.to(card, {
-              borderColor: isActive
-                ? "rgba(236,72,153,0.7)"
-                : "rgba(168,85,247,0.2)",
+              borderColor: isActive ? "rgba(236,72,153,0.7)" : "rgba(168,85,247,0.2)",
               boxShadow: isActive
                 ? "0 0 38px rgba(236,72,153,0.22)"
                 : "0 0 0 rgba(0,0,0,0)",
@@ -148,7 +146,7 @@ export function HowItWorks(): React.ReactElement {
           </p>
           <h2
             data-howit-heading
-            className="text-blueprint-text mt-3 font-display text-3xl font-bold sm:text-4xl md:text-5xl"
+            className="text-blueprint-text font-display mt-3 text-3xl font-bold sm:text-4xl md:text-5xl"
           >
             From raw text to engineer-ready in five steps.
           </h2>
@@ -177,9 +175,7 @@ export function HowItWorks(): React.ReactElement {
                 <h3 className="text-blueprint-text font-display text-2xl font-semibold">
                   {title}
                 </h3>
-                <p className="text-blueprint-muted text-sm leading-relaxed">
-                  {desc}
-                </p>
+                <p className="text-blueprint-muted text-sm leading-relaxed">{desc}</p>
                 <div
                   className="from-blueprint-accent/0 via-blueprint-accent/40 to-blueprint-accent/0 mt-auto h-px bg-gradient-to-r"
                   aria-hidden

@@ -1,8 +1,7 @@
 "use client";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 
-const SUPPORTS_INTERSECTION_OBSERVER =
-  typeof IntersectionObserver !== "undefined";
+const SUPPORTS_INTERSECTION_OBSERVER = typeof IntersectionObserver !== "undefined";
 
 /**
  * Spline scene wrapper with double-gating:
@@ -32,9 +31,7 @@ export function SplineScene({
   const containerRef = useRef<HTMLDivElement | null>(null);
   // If the browser cannot observe intersection, just load immediately —
   // computed at render time so the effect does not need to setState eagerly.
-  const [shouldLoad, setShouldLoad] = useState(
-    !SUPPORTS_INTERSECTION_OBSERVER,
-  );
+  const [shouldLoad, setShouldLoad] = useState(!SUPPORTS_INTERSECTION_OBSERVER);
   const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {

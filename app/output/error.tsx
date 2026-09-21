@@ -7,10 +7,7 @@ interface Props {
   reset: () => void;
 }
 
-export default function OutputError({
-  error,
-  reset,
-}: Props): React.ReactElement {
+export default function OutputError({ error, reset }: Props): React.ReactElement {
   useEffect(() => {
     console.error("[scopeai] /output error", {
       name: error.name,

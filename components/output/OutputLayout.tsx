@@ -2,22 +2,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  ArrowLeft,
-  Check,
-  Loader2,
-  Pencil,
-  RefreshCw,
-  Save,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Check, Loader2, Pencil, RefreshCw, Save, X } from "lucide-react";
 import { gsap, useGSAP, ScrollTrigger } from "@/lib/gsap-init";
 
 void ScrollTrigger;
-import {
-  ApiError,
-  patchFinalOutput,
-} from "@/lib/api/client";
+import { ApiError, patchFinalOutput } from "@/lib/api/client";
 import type { FinalOutput } from "@/lib/schemas/output";
 import { ConfidenceBadge } from "@/components/output/ConfidenceBadge";
 import { ClientView } from "@/components/output/ClientView";
@@ -130,9 +119,7 @@ export function OutputLayout({
       setDraft(next);
       setEditing(false);
     } catch (err) {
-      setSaveError(
-        err instanceof ApiError ? err.message : "Could not save edits.",
-      );
+      setSaveError(err instanceof ApiError ? err.message : "Could not save edits.");
     } finally {
       setSaving(false);
     }
@@ -195,7 +182,7 @@ export function OutputLayout({
                   setTitleDraft(title);
                   setTitleEditing(true);
                 }}
-                className="text-blueprint-text flex min-w-0 max-w-full items-center gap-1.5 text-base font-semibold sm:text-lg"
+                className="text-blueprint-text flex max-w-full min-w-0 items-center gap-1.5 text-base font-semibold sm:text-lg"
                 aria-label="Edit project title"
                 title={title}
               >
@@ -218,7 +205,7 @@ export function OutputLayout({
                 <button
                   type="button"
                   onClick={handleResetTab}
-                  className="text-blueprint-muted hover:text-blueprint-text inline-flex items-center gap-1.5 rounded-full border border-blueprint-line/30 px-3 py-1.5 text-xs"
+                  className="text-blueprint-muted hover:text-blueprint-text border-blueprint-line/30 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs"
                 >
                   <RefreshCw size={12} />
                   Reset {tab}
@@ -226,7 +213,7 @@ export function OutputLayout({
                 <button
                   type="button"
                   onClick={handleCancelEdit}
-                  className="text-blueprint-muted hover:text-blueprint-text inline-flex items-center gap-1.5 rounded-full border border-blueprint-line/30 px-3 py-1.5 text-xs"
+                  className="text-blueprint-muted hover:text-blueprint-text border-blueprint-line/30 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs"
                 >
                   <X size={12} />
                   Cancel
@@ -254,7 +241,7 @@ export function OutputLayout({
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="text-blueprint-text border-blueprint-line/30 hover:border-[var(--color-blueprint-accent)]/50 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs"
+                className="text-blueprint-text border-blueprint-line/30 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs hover:border-[var(--color-blueprint-accent)]/50"
               >
                 <Pencil size={12} />
                 Edit
@@ -263,7 +250,7 @@ export function OutputLayout({
             <button
               type="button"
               onClick={() => setShareOpen(true)}
-              className="border-emerald-400/40 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium"
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20"
             >
               <Check size={12} />
               Approve & share
@@ -278,16 +265,10 @@ export function OutputLayout({
         </div>
 
         <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 sm:px-6">
-          <TabButton
-            active={tab === "client"}
-            onClick={() => setTab("client")}
-          >
+          <TabButton active={tab === "client"} onClick={() => setTab("client")}>
             Client View
           </TabButton>
-          <TabButton
-            active={tab === "engineer"}
-            onClick={() => setTab("engineer")}
-          >
+          <TabButton active={tab === "engineer"} onClick={() => setTab("engineer")}>
             Engineer View
           </TabButton>
         </div>
@@ -313,15 +294,10 @@ export function OutputLayout({
                   view={draft.client}
                   readOnly={!editing}
                   sessionId={sessionId}
-                  onChange={(client) =>
-                    setDraft((d) => ({ ...d, client }))
-                  }
+                  onChange={(client) => setDraft((d) => ({ ...d, client }))}
                 />
               ) : (
-                <EngineerView
-                  view={draft.engineer}
-                  checklistKey={sessionId}
-                />
+                <EngineerView view={draft.engineer} checklistKey={sessionId} />
               )}
             </motion.div>
           </AnimatePresence>
@@ -374,11 +350,7 @@ function TabButton({
       className="relative px-3 py-2 text-sm"
       aria-pressed={active}
     >
-      <span
-        className={cn(
-          active ? "text-blueprint-text" : "text-blueprint-muted",
-        )}
-      >
+      <span className={cn(active ? "text-blueprint-text" : "text-blueprint-muted")}>
         {children}
       </span>
       {active && (

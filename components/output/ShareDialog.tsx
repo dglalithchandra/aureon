@@ -15,17 +15,12 @@ export function ShareDialog(props: ShareDialogProps): React.ReactElement {
   // Remount on open transitions so internal state is always derived fresh.
   return (
     <AnimatePresence>
-      {props.open && (
-        <ShareDialogInner key={`${props.sessionId}-open`} {...props} />
-      )}
+      {props.open && <ShareDialogInner key={`${props.sessionId}-open`} {...props} />}
     </AnimatePresence>
   );
 }
 
-function ShareDialogInner({
-  sessionId,
-  onClose,
-}: ShareDialogProps): React.ReactElement {
+function ShareDialogInner({ sessionId, onClose }: ShareDialogProps): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,11 +36,7 @@ function ShareDialogInner({
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(
-          err instanceof ApiError
-            ? err.message
-            : "Could not create share link.",
-        );
+        setError(err instanceof ApiError ? err.message : "Could not create share link.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -100,8 +91,8 @@ function ShareDialogInner({
           Share read-only link
         </h2>
         <p className="text-blueprint-muted mt-2 text-sm">
-          Anyone with this link can view the scope. Edits require the
-          owner&apos;s session cookie. Link expires in 30 days.
+          Anyone with this link can view the scope. Edits require the owner&apos;s session
+          cookie. Link expires in 30 days.
         </p>
 
         <div className="mt-5 flex flex-col gap-2">
@@ -112,7 +103,7 @@ function ShareDialogInner({
             </div>
           )}
           {error && (
-            <p className="text-red-300 text-sm" role="alert">
+            <p className="text-sm text-red-300" role="alert">
               {error}
             </p>
           )}
@@ -129,7 +120,7 @@ function ShareDialogInner({
                 type="button"
                 onClick={copy}
                 className={cn(
-                  "border-[var(--color-blueprint-accent)] text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/15 inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-xs font-medium",
+                  "inline-flex h-9 items-center gap-1.5 rounded-md border border-[var(--color-blueprint-accent)] px-3 text-xs font-medium text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/15",
                   copied && "border-emerald-400 text-emerald-300",
                 )}
               >

@@ -40,10 +40,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json(
-      serializeError(new ValidationError("Invalid JSON body")),
-      { status: 400 },
-    );
+    return NextResponse.json(serializeError(new ValidationError("Invalid JSON body")), {
+      status: 400,
+    });
   }
 
   const parsed = ExtractRequestSchema.safeParse(body);
@@ -52,10 +51,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       .slice(0, 3)
       .map((i) => `${i.path.join(".")}: ${i.message}`)
       .join("; ");
-    return NextResponse.json(
-      serializeError(new ValidationError(message)),
-      { status: 400 },
-    );
+    return NextResponse.json(serializeError(new ValidationError(message)), {
+      status: 400,
+    });
   }
 
   try {
