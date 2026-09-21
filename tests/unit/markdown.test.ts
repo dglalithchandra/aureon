@@ -1,19 +1,10 @@
-/**
- * Smoke tests for the markdown exporters.
- *   npx tsx scripts/test-markdown.ts
- *
- * Confirms:
- *   - Client + Engineer markdown rendering for a representative payload
- *   - Pipe-in-cell escaping
- *   - URL sanitization (javascript: → #)
- *   - No raw HTML emitted
- */
+import { describe, expect, it } from "vitest";
 import {
   clientToMarkdown,
   engineerToMarkdown,
   finalOutputToMarkdown,
-} from "../lib/export/markdown";
-import type { ClientView, EngineerView } from "../lib/schemas/output";
+} from "@/lib/export/markdown";
+import type { ClientView, EngineerView } from "@/lib/schemas/output";
 
 const client: ClientView = {
   project_summary:
@@ -80,12 +71,7 @@ const engineer: EngineerView = {
   },
   third_party_checklist: ["Stripe — create account, set up webhook endpoint"],
   sprint_breakdown: [
-    {
-      sprint: "Sprint 1",
-      focus: "Auth + sessions",
-      story_points: 26,
-      modules: ["Auth"],
-    },
+    { sprint: "Sprint 1", focus: "Auth + sessions", story_points: 26, modules: ["Auth"] },
   ],
   testing_strategy: [
     {
@@ -103,60 +89,59 @@ const engineer: EngineerView = {
       url: "https://github.com/ok/repo",
       why_relevant: "similar auth flow",
     },
-    {
-      repo: "bad",
-      url: "javascript:alert(1)",
-      why_relevant: "should be sanitized",
-    },
+    { repo: "bad", url: "javascript:alert(1)", why_relevant: "should be sanitized" },
   ],
   effort_summary: { total_sprints: 6, team_size: 3, confidence_band: "±20%" },
 };
 
-let pass = 0;
-let fail = 0;
-function check(name: string, cond: boolean, detail?: string): void {
-  if (cond) {
-    pass++;
-    console.log(`  ✓ ${name}`);
-  } else {
-    fail++;
-    console.log(`  ✗ ${name}${detail ? ` — ${detail}` : ""}`);
-  }
-}
+describe("clientToMarkdown", () => {
+  const md = clientToMarkdown(client);
 
-console.log("== clientToMarkdown ==");
-const cmd = clientToMarkdown(client);
-check("starts with H1", cmd.startsWith("# Project Scope"));
-check("contains confidence", cmd.includes("72/100"));
-check("contains modules table", cmd.includes("| # | Module |"));
-check(
-  "escapes pipe in cell",
-  cmd.includes("pipe \\| character"),
-  "Found pipe was not escaped",
-);
-check("no raw <script>", !cmd.includes("<script"));
-check("no raw <iframe>", !cmd.includes("<iframe"));
+  it("renders the document header and confidence", () => {
+    expect(md.startsWith("# Project Scope")).toBe(true);
+    expect(md).toContain("72/100");
+  });
 
-console.log("\n== engineerToMarkdown ==");
-const emd = engineerToMarkdown(engineer);
-check("starts with H1", emd.startsWith("# Engineering Build Document"));
-check("includes module table", emd.includes("| Module | Size | Stack"));
-check("includes build order", emd.includes("## Build order"));
-check("renders SQL fence", emd.includes("```sql"));
-check("RBAC table present", emd.includes("| admin |"));
-check("checklist uses checkbox", emd.includes("- [ ] "));
-check("javascript: URL sanitized", emd.includes("](#)"));
-check("legitimate URL preserved", emd.includes("https://github.com/ok/repo"));
-check("no raw HTML", !emd.includes("<script") && !emd.includes("<iframe"));
+  it("renders the modules table and escapes pipes inside cells", () => {
+    expect(md).toContain("| # | Module |");
+    expect(md).toContain("pipe \\| character");
+  });
 
-console.log("\n== combined ==");
-const combined = finalOutputToMarkdown({ client, engineer });
-check(
-  "contains both H1s",
-  combined.includes("# Project Scope") &&
-    combined.includes("# Engineering Build Document"),
-);
-check("has separator", combined.includes("---"));
+  it("emits no raw HTML", () => {
+    expect(md).not.toContain("<script");
+    expect(md).not.toContain("<iframe");
+  });
+});
 
-console.log(`\n== ${pass} passed, ${fail} failed ==`);
-if (fail > 0) process.exit(1);
+describe("engineerToMarkdown", () => {
+  const md = engineerToMarkdown(engineer);
+
+  it("renders every section", () => {
+    expect(md.startsWith("# Engineering Build Document")).toBe(true);
+    expect(md).toContain("| Module | Size | Stack");
+    expect(md).toContain("## Build order");
+    expect(md).toContain("```sql");
+    expect(md).toContain("| admin |");
+    expect(md).toContain("- [ ] ");
+  });
+
+  it("replaces a javascript: URL with # and keeps https links", () => {
+    expect(md).toContain("](#)");
+    expect(md).not.toContain("javascript:");
+    expect(md).toContain("https://github.com/ok/repo");
+  });
+
+  it("emits no raw HTML", () => {
+    expect(md).not.toContain("<script");
+    expect(md).not.toContain("<iframe");
+  });
+});
+
+describe("finalOutputToMarkdown", () => {
+  it("combines both documents with a separator", () => {
+    const md = finalOutputToMarkdown({ client, engineer });
+    expect(md).toContain("# Project Scope");
+    expect(md).toContain("# Engineering Build Document");
+    expect(md).toContain("---");
+  });
+});

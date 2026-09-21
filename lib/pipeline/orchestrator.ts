@@ -267,8 +267,10 @@ function collectAskedParams(session: Session): ParameterId[] {
  *   1. Confidence >= threshold (70)
  *   2. Round number >= MAX_ROUNDS (3)
  *   3. Diminishing returns: confidence delta < DIMINISHING_DELTA for 2 rounds
+ *
+ * Exported for unit tests.
  */
-function shouldExit(session: Session, newExtraction: ExtractionResult): boolean {
+export function shouldExit(session: Session, newExtraction: ExtractionResult): boolean {
   if (newExtraction.confidence >= SESSION_CONFIG.CONFIDENCE_THRESHOLD) {
     return true;
   }

@@ -1,0 +1,236 @@
+import type { z } from "zod";
+import type {
+  ExtractionResult,
+  ParameterId,
+  ParameterStateSchema,
+} from "@/lib/schemas/extraction";
+import type { ExtractModulesToolOutput } from "@/lib/schemas/github";
+import type {
+  QuestionGenToolOutputSchema,
+  Session,
+  SessionRound,
+} from "@/lib/schemas/mcq";
+import type { ClientView, EngineerView } from "@/lib/schemas/output";
+
+/**
+ * Schema-valid fixtures shared by unit tests and the mock Anthropic server.
+ * Every factory returns a fresh object, so tests may mutate the result.
+ */
+
+type ParameterState = z.infer<typeof ParameterStateSchema>;
+type QuestionGenToolOutput = z.infer<typeof QuestionGenToolOutputSchema>;
+
+export const MOCK_TOOL_NAMES = [
+  "submit_extraction",
+  "generate_clarification_questions",
+  "submit_client_view",
+  "submit_engineer_view",
+  "extract_modules",
+] as const;
+export type MockToolName = (typeof MOCK_TOOL_NAMES)[number];
+
+const PARAMETER_NAMES: Record<ParameterId, string> = {
+  "P-01": "Goal",
+  "P-02": "Users",
+  "P-03": "Features",
+  "P-04": "Tech constraints",
+  "P-05": "Integrations",
+  "P-06": "Non-functional requirements",
+  "P-07": "Budget",
+  "P-08": "Timeline",
+  "P-09": "Success metrics",
+};
+
+const DEFAULT_STATES: Record<ParameterId, ParameterState> = {
+  "P-01": "PRESENT",
+  "P-02": "PARTIAL_THIN",
+  "P-03": "PRESENT",
+  "P-04": "MISSING",
+  "P-05": "PARTIAL_THIN",
+  "P-06": "MISSING",
+  "P-07": "MISSING",
+  "P-08": "MISSING",
+  "P-09": "MISSING",
+};
+
+/**
+ * Evidence is kept to words in lib/github/search.ts GENERIC_FEATURE_TERMS and
+ * P-04 has no evidence (no `language:` hint), so with domain "Zz" the default
+ * extraction makes buildQueryVariants return [] and no GitHub call happens.
+ */
+const DEFAULT_EVIDENCE: Partial<Record<ParameterId, string>> = {
+  "P-01": "Internal tool so the team can manage client accounts.",
+  "P-02": "Account managers.",
+  "P-03": "User accounts, admin roles and login.",
+  "P-05": "Some kind of email service.",
+};
+
+export function makeParameters(
+  states: Partial<Record<ParameterId, ParameterState>> = {},
+): ExtractionResult["parameters"] {
+  const ids = Object.keys(PARAMETER_NAMES) as ParameterId[];
+  return ids.map((id) => {
+    const state = states[id] ?? DEFAULT_STATES[id];
+    return {
+      id,
+      name: PARAMETER_NAMES[id],
+      state,
+      evidence: state === "MISSING" ? null : (DEFAULT_EVIDENCE[id] ?? null),
+      gap: state === "PRESENT" ? null : `More detail needed on ${PARAMETER_NAMES[id]}.`,
+    };
+  });
+}
+
+export function makeExtraction(
+  overrides: Partial<ExtractionResult> = {},
+): ExtractionResult {
+  return {
+    domain: "Zz",
+    domain_confidence: 40,
+    parameters: makeParameters(),
+    modules: [
+      {
+        name: "Auth",
+        description: "Sign-in and sessions for staff.",
+        size: "MEDIUM",
+        source_signal: "Mentioned: login",
+        github_validated: false,
+      },
+      {
+        name: "Admin",
+        description: "Admin screens to manage roles.",
+        size: "SMALL",
+        source_signal: "Mentioned: admin roles",
+        github_validated: false,
+      },
+      {
+        name: "Users",
+        description: "User account records.",
+        size: "SMALL",
+        source_signal: "Mentioned: user accounts",
+        github_validated: false,
+      },
+    ],
+    assumptions: ["Single organisation, no multi-tenancy."],
+    open_questions: ["Who are the primary users?"],
+    confidence: 45,
+    confidence_reasoning:
+      "Goal and features are stated; users, budget and timeline are thin.",
+    blocker: false,
+    ...overrides,
+  };
+}
+
+export function makeQuestionsPayload(
+  parameterIds: ParameterId[] = ["P-02", "P-07", "P-08"],
+): QuestionGenToolOutput {
+  return {
+    questions: parameterIds.map((id) => ({
+      parameter_id: id,
+      question: `Which option best describes the ${PARAMETER_NAMES[id]}?`,
+      options: ["Option A", "Option B", "Option C"],
+      is_blocker: false,
+    })),
+  };
+}
+
+export function makeClientView(): ClientView {
+  return {
+    project_summary:
+      "An internal tool that lets account managers look after client accounts in one place.",
+    modules: [
+      {
+        name: "Auth",
+        description: "Staff sign-in.",
+        size: "MEDIUM",
+        github_validated: false,
+      },
+    ],
+    milestones: [{ phase: "Month 1", name: "Foundation", deliverables: ["Sign-in"] }],
+    assumptions: ["Single organisation."],
+    open_items: ["Confirm the budget."],
+    // Deliberately wrong: generateOutput must overwrite the LLM's badge.
+    confidence_badge: {
+      score: 12,
+      breakdown: { coverage: 1, llm_quality: 2, github_validation: 3 },
+    },
+  };
+}
+
+export function makeEngineerView(): EngineerView {
+  return {
+    module_table: [
+      {
+        name: "Auth",
+        tech_stack: ["Next.js"],
+        size: "MEDIUM",
+        dependencies: [],
+        api_endpoints: ["POST /api/login"],
+        notes: "HttpOnly session cookie.",
+      },
+    ],
+    build_order: ["Auth"],
+    database_sketch: [{ table: "users", fields: ["id UUID"], relations: [] }],
+    auth_model: { roles: ["admin"], permissions_matrix: { admin: ["accounts:write"] } },
+    third_party_checklist: [],
+    sprint_breakdown: [
+      { sprint: "Sprint 1", focus: "Auth", story_points: 13, modules: ["Auth"] },
+    ],
+    testing_strategy: [],
+    security_per_module: { Auth: ["Rate-limit login"] },
+    risks: [{ severity: "NOTE", description: "Budget unknown." }],
+    github_references: [],
+    // Deliberately wrong: generateOutput must overwrite the band.
+    effort_summary: { total_sprints: 3, team_size: 2, confidence_band: "LLM guess" },
+  };
+}
+
+export function makeExtractModulesPayload(): ExtractModulesToolOutput {
+  return {
+    modules: ["Auth", "Billing", "Dashboard"],
+    similarity_to_project: 0.7,
+    why_relevant: "Same account-management dashboard with role-based access",
+  };
+}
+
+export function defaultToolPayload(tool: MockToolName): unknown {
+  switch (tool) {
+    case "submit_extraction":
+      return makeExtraction();
+    case "generate_clarification_questions":
+      return makeQuestionsPayload();
+    case "submit_client_view":
+      return makeClientView();
+    case "submit_engineer_view":
+      return makeEngineerView();
+    case "extract_modules":
+      return makeExtractModulesPayload();
+  }
+}
+
+export function makeRound(overrides: Partial<SessionRound> = {}): SessionRound {
+  return {
+    round_number: 0,
+    extraction: makeExtraction(),
+    github_enrichment: null,
+    questions: [],
+    answers: [],
+    ...overrides,
+  };
+}
+
+export function makeSession(overrides: Partial<Session> = {}): Session {
+  return {
+    id: "12345678-1234-4abc-8def-1234567890ab",
+    raw_input: "hello",
+    enriched_input: "hello",
+    rounds: [],
+    status: "analyzing",
+    pipeline_stage: "extracting",
+    current_confidence: 0,
+    final_output: null,
+    created_at: 0,
+    updated_at: 0,
+    ...overrides,
+  };
+}
