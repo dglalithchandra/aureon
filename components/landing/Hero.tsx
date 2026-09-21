@@ -92,7 +92,7 @@ export function Hero(): React.ReactElement {
           data-hero-eyebrow
           className="text-blueprint-muted font-mono text-[11px] tracking-[0.3em] uppercase"
         >
-          ScopeAI · v1
+          Aureon · v1
         </span>
 
         <h1

@@ -45,7 +45,7 @@ const instrument = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "ScopeAI — Turn raw client requirements into engineer-ready scope",
+  title: "Aureon — Turn raw client requirements into engineer-ready scope",
   description:
     "Paste raw client requirements and get a structured project summary, validated against real-world GitHub repositories, with a two-stage approval flow for clients and engineers.",
   robots: { index: true, follow: true },

@@ -111,7 +111,7 @@ export function CTA(): React.ReactElement {
 
         <div className="border-blueprint-line/20 mt-16 flex w-full max-w-md items-center justify-between border-t pt-6">
           <span className="text-blueprint-muted font-mono text-[10px] tracking-[0.25em] uppercase">
-            ScopeAI · v1
+            Aureon · v1
           </span>
           <span className="text-blueprint-muted font-mono text-[10px] tracking-[0.2em]">
             built by humans, finished by AI

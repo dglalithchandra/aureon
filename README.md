@@ -1,22 +1,22 @@
-# ScopeBuilder AI
+# Aureon
 
 ### From vague ideas to build-ready scope.
 
 > **Know what you know. Expose what you don't. Ask what matters.**
 
-ScopeBuilder AI is an intelligent project-scoping system that transforms
+Aureon is an intelligent project-scoping system that transforms
 incomplete client ideas into structured, measurable and build-ready
 requirements before development begins.
 
 ---
 
-## 🚀 What is ScopeBuilder?
+## 🚀 What is Aureon?
 
 Most project failures don't begin with bad code.
 
 They begin with an unclear idea.
 
-ScopeBuilder helps turn an incomplete idea into a clear project scope by
+Aureon helps turn an incomplete idea into a clear project scope by
 identifying what is already known, what is missing, and what needs to be
 clarified before development starts.
 
