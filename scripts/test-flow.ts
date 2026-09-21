@@ -1,9 +1,10 @@
 /**
  * End-to-end smoke test.
  *
- *   1. POST /api/session            (round 0)
- *   2. POST /api/session/[id]/answer (if questions present)
- *   3. POST /api/finalize            (when status=ready)
+ *   1. POST /api/session             (create; status=analyzing)
+ *   2. POST /api/session/[id]/run    (round 0)
+ *   3. POST /api/session/[id]/answer (if questions present)
+ *   4. POST /api/finalize            (when status=ready)
  *
  * Usage:
  *   npx next dev --port 3000           # in another terminal
@@ -166,19 +167,35 @@ async function main(): Promise<void> {
     "session cookie set",
     r1.cookies.some((c) => c.name === "scopeai_session"),
   );
-  let session = r1.data.session;
+  check("created session is analyzing", r1.data.session.status === "analyzing");
+  let cookies = r1.cookies;
+
+  // Step 2 — creating a session no longer runs the pipeline; /run does.
+  console.log("Step 2 · POST /api/session/[id]/run");
+  const rRun = await call<SessionResponse & ErrorResponse>(
+    "POST",
+    `/api/session/${r1.data.session.id}/run`,
+    undefined,
+    cookies,
+  );
+  check("run status 200", rRun.status === 200);
+  if (rRun.status !== 200) {
+    console.error(`  ${rRun.data?.error?.code} ${rRun.data?.error?.message}`);
+    process.exit(1);
+  }
+  let session = rRun.data.session;
+  cookies = rRun.cookies;
   console.log(
     `  domain analyzed in ${Date.now() - t0}ms · status=${session.status} · conf=${session.current_confidence}`,
   );
 
-  // Step 2 — answer rounds until ready or rounds exhausted.
-  let cookies = r1.cookies;
+  // Step 3 — answer rounds until ready or rounds exhausted.
   let safety = 4;
   while (
     (session.status === "awaiting_answers" || session.status === "blocker") &&
     safety-- > 0
   ) {
-    console.log(`Step 2.${4 - safety} · answering round`);
+    console.log(`Step 3.${4 - safety} · answering round`);
     const round = session.rounds[session.rounds.length - 1];
     if (!round) break;
     const answers = round.questions.map((q) => ({
@@ -208,8 +225,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Step 3 — finalize.
-  console.log("Step 3 · POST /api/finalize");
+  // Step 4 — finalize.
+  console.log("Step 4 · POST /api/finalize");
   const t3 = Date.now();
   const r3 = await call<FinalizeResponse & ErrorResponse>(
     "POST",
