@@ -6,7 +6,7 @@ Audit date: 2026-09-21 · Commit audited: `f095b6b` (local `main`) plus the READ
 
 ---
 
-## Final Phase status (updated 2026-09-22, after BUG-01, SEC-02, BUG-08, BUG-02, ROB-01, OPS-01 and PERF-01)
+## Final Phase status (updated 2026-09-22, after BUG-01, SEC-02, BUG-08, BUG-02, ROB-01, OPS-01, PERF-01, BUG-03, BUG-04 and DATA-01)
 
 Work happens on the `final-phase` branch (committed locally, **not pushed yet**). This table is the tracker for the Final Phase: update it whenever an issue is fixed.
 
@@ -16,6 +16,9 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 
 | ID | Severity | Status | Commits | What was done |
 |---|---|:-:|---|---|
+| BUG-03 | High | ✅ | `bfb5ab4` | Signed 1-year `scopeai_owner` cookie with a random `owner_id`, stored on each session; ownership = equality, checked before the session lock. The cookie is set only when missing, so a new session never locks the browser out of older ones. Sessions without `owner_id` keep the legacy per-session cookie. Verified in the browser: two finalized sessions, both `/output/:id` pages open. |
+| BUG-04 | High | ✅ | `bfb5ab4` | Share = snapshot `{sessionId, owner_id, title, final_output, created_at}` with its own 30-day TTL; the session's active link is reused; the share page renders only from the snapshot ("Snapshot taken <date>. Re-share to include later edits."). `DELETE /api/share/[token]` (owner only) and "Revoke link" / "Create a new link" in the dialog. Absolute URLs from `NEXT_PUBLIC_APP_URL` when set. Links created before this change stop resolving (they stored no snapshot). |
+| DATA-01 | Medium | ✅ | `bfb5ab4` | Production needs Upstash unless `ALLOW_MEMORY_STORE=1`: checked in `getServerEnv` and at server start (`instrumentation.ts`; verified: `next start` without Upstash serves 500 with the reason logged). `putSession` and `createShareLink` throw on Redis write errors → 503 `STORAGE_UNAVAILABLE`. Reads and the rate limiter still fall back quietly. |
 | PERF-01 | Medium | ✅ | `ab01709` | BM25 on name + description + topics before any fetch; README and a non-recursive root tree (search `default_branch`, no `repos.get`) for the top 8 only, plus one `src/` or `app/` tree while the budget lasts; README analysis 6 at a time in parallel; at most 26 requests per enrichment, counted by an Octokit hook (test: the worst case sends exactly 26); whole enrichment cached 24 h in Redis by a hash of the query variants. |
 | BUG-02 | High | ✅ | `7e9e94a` | A failed round is saved as status `error` with `last_error` (answers kept) and rethrown as 502. `/run` resumes `error` and `analyzing` sessions idle for 120 s. The chat shows "The AI service had a problem. Your answers are saved." with Retry. Verified in the browser: 3× 529 → Retry panel → Retry → questions. |
 | ROB-01 | Medium | ✅ | `7e9e94a` | Blocker invariant repaired (confidence capped at 40) instead of rejected; one repair retry with the validation issues; one 1.5× `max_tokens` retry; bad output → 502 not 400; OpenRouter `length` → `max_tokens`; 45 s timeouts on OpenRouter and Anthropic. |
@@ -42,15 +45,13 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 
 | # | ID | Severity | Notes |
 |:-:|---|---|---|
-| 1 | BUG-04 | High | Store a snapshot on share. |
-| 2 | BUG-05 | High | `SCOPING.blockerMaxRounds` and `blockerCap` are ready in config. |
-| 3 | GOAL-02 | Medium | Build GitHub references on the server. |
-| 4 | GOAL-01 / DOC-01 | High / Medium | Finish the README and landing claims (see above). |
-| 5 | BUG-03 | High | `owner_id` cookie. |
-| 6 | BUG-06 + BUG-07 | Medium | Prompt assembly and text normalisation (touch the same lines). |
-| 7 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. |
-| 8 | DATA-01, BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | |
-| 9 | SEC-04, SEC-05, BUG-10, BUG-11, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
+| 1 | BUG-05 | High | `SCOPING.blockerMaxRounds` and `blockerCap` are ready in config. |
+| 2 | GOAL-02 | Medium | Build GitHub references on the server. |
+| 3 | GOAL-01 / DOC-01 | High / Medium | Finish the README and landing claims (see above). |
+| 4 | BUG-06 + BUG-07 | Medium | Prompt assembly and text normalisation (touch the same lines). |
+| 5 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. |
+| 6 | BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | UX-01's locked, timestamped snapshot now exists (BUG-04). |
+| 7 | SEC-04, SEC-05, BUG-10, BUG-11, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
 
 ### On hold (owner's decision)
 
