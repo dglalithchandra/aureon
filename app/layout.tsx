@@ -7,7 +7,6 @@ import {
   Instrument_Serif,
 } from "next/font/google";
 import "./globals.css";
-import { SkeletonKeyframes } from "@/components/Skeleton";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -67,7 +66,6 @@ export default function RootLayout({
         <link rel="preconnect" href="https://api.github.com" />
       </head>
       <body className="bg-blueprint-bg text-blueprint-text flex min-h-full flex-col font-sans">
-        <SkeletonKeyframes />
         {children}
       </body>
     </html>
