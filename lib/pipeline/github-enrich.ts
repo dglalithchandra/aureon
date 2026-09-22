@@ -40,9 +40,17 @@ export const GITHUB_REQUEST_BUDGET = 26;
 /** Enrichments are cached per query-variant set for a day. */
 const ENRICHMENT_CACHE_TTL_SECONDS = 24 * 60 * 60;
 
+/**
+ * Most a single repo can contribute to a module's weight (SEC-04). Below the
+ * threshold a new module needs, so one repo — or one injected README — can
+ * never add a module on its own.
+ */
+const MAX_REPO_WEIGHT = 0.8;
+
 const EMPTY_ENRICHMENT: GitHubEnrichment = {
   matches: [],
   module_frequency: {},
+  module_repos: {},
   query_used: "",
   variants: [],
 };
@@ -278,10 +286,11 @@ async function enrichUncached(
   // hits register a small signal). Modules from highly-similar repos rank
   // far above modules from marginal ones.
   const frequency: Record<string, number> = {};
+  const repoCount: Record<string, number> = {};
   const canonicalNameByKey = new Map<string, string>();
 
   for (const m of topMatches) {
-    const weight = Math.max(0.1, m.similarity);
+    const weight = Math.min(MAX_REPO_WEIGHT, Math.max(0.1, m.similarity));
     const seenInRepo = new Set<string>();
     const allModules = [...m.modules_found, ...m.folders_found];
     for (const mod of allModules) {
@@ -292,6 +301,7 @@ async function enrichUncached(
       if (!canonicalNameByKey.has(k)) canonicalNameByKey.set(k, mod);
       const display = canonicalNameByKey.get(k)!;
       frequency[display] = (frequency[display] ?? 0) + weight;
+      repoCount[display] = (repoCount[display] ?? 0) + 1;
     }
   }
 
@@ -303,6 +313,7 @@ async function enrichUncached(
   const result: GitHubEnrichment = {
     matches: topMatches,
     module_frequency: frequency,
+    module_repos: repoCount,
     query_used: search.query,
     variants: search.variantsRun,
   };

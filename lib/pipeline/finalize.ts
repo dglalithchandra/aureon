@@ -17,11 +17,15 @@ import {
 import type { Session } from "@/lib/schemas/mcq";
 import { BudgetExceededError, LLMError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { stripHtml, truncateText } from "@/lib/security/sanitize";
+import { promptSafe, promptText, truncateText } from "@/lib/text/prompt-safe";
 import { coerceClientView, coerceEngineerView } from "@/lib/pipeline/coerce";
 import { parameterWeight, stateMultiplier } from "@/lib/config/scoping";
 
 const MAX_CONTEXT_CHARS = 40_000;
+/** How much of the brief the finalize context may carry (BUG-06). */
+const MAX_RAW_INPUT_CHARS = 12_000;
+/** Rough room kept for the extraction and GitHub sections. */
+const RESERVED_CONTEXT_CHARS = 8_000;
 
 /**
  * Run client + engineer LLM calls in parallel and return the validated
@@ -254,10 +258,17 @@ function buildSharedContext(session: Session): string {
   const extraction = lastRound.extraction;
   const enrichment = lastRound.github_enrichment;
 
+  // Everything the user told us, in full: answers first so a long brief or a
+  // long GitHub section can never crowd them out (BUG-06).
+  const answers = answersHistory(session);
+  const rawAllowance = Math.min(
+    MAX_RAW_INPUT_CHARS,
+    Math.max(1_000, MAX_CONTEXT_CHARS - answers.length - RESERVED_CONTEXT_CHARS),
+  );
+
   const lines: string[] = [];
   lines.push("<session>");
-  lines.push(`raw_input: ${truncateText(stripHtml(session.raw_input), 4000)}`);
-  lines.push(`enriched_input: ${truncateText(stripHtml(session.enriched_input), 6000)}`);
+  lines.push(`raw_input: ${promptText(session.raw_input, rawAllowance)}`);
   lines.push(`current_confidence: ${session.current_confidence}`);
   lines.push("</session>");
 
@@ -269,9 +280,9 @@ function buildSharedContext(session: Session): string {
   for (const p of extraction.parameters) {
     lines.push(`  ${p.id} ${p.name} [${p.state}]`);
     if (p.evidence) {
-      lines.push(`    evidence: "${truncateText(p.evidence, 240)}"`);
+      lines.push(`    evidence: "${promptText(p.evidence, 240)}"`);
     }
-    if (p.gap) lines.push(`    gap: ${truncateText(p.gap, 200)}`);
+    if (p.gap) lines.push(`    gap: ${promptText(p.gap, 200)}`);
   }
   lines.push("modules:");
   for (const m of extraction.modules) {
@@ -289,15 +300,17 @@ function buildSharedContext(session: Session): string {
   }
   lines.push("</extraction>");
 
+  if (answers) lines.push(`\n${answers}`);
+
   if (enrichment) {
     lines.push("\n<github_matches>");
     lines.push(`query: ${enrichment.query_used}`);
     for (const m of enrichment.matches) {
       lines.push(`  ${m.repo} (★${m.stars}, sim ${m.similarity.toFixed(2)})`);
       lines.push(`    url: ${m.url}`);
-      lines.push(`    description: ${truncateText(m.description, 240)}`);
+      lines.push(`    description: ${promptText(m.description, 240)}`);
       if (m.why_relevant) {
-        lines.push(`    why_relevant: ${truncateText(m.why_relevant, 240)}`);
+        lines.push(`    why_relevant: ${promptText(m.why_relevant, 240)}`);
       }
       if (m.modules_found.length > 0) {
         lines.push(`    modules: ${m.modules_found.slice(0, 12).join(", ")}`);
@@ -316,27 +329,35 @@ function buildSharedContext(session: Session): string {
     lines.push("</github_matches>");
   }
 
-  if (session.rounds.length > 1) {
-    lines.push("\n<answers_history>");
-    for (const r of session.rounds) {
-      if (r.answers.length === 0) continue;
-      lines.push(`round ${r.round_number}:`);
-      for (const a of r.answers) {
-        const q = r.questions.find((x) => x.id === a.question_id);
-        if (!q) continue;
-        lines.push(`  param=${q.parameter_id} q=${truncateText(q.question, 120)}`);
-        if (a.selected_options.length > 0) {
-          lines.push(`    selected: ${a.selected_options.join(" | ")}`);
-        }
-        if (a.custom_text) {
-          lines.push(`    custom:   ${truncateText(a.custom_text, 240)}`);
-        }
+  // The closing instruction is appended after any trimming, so it is never
+  // the part that gets cut.
+  return `${truncateText(lines.join("\n"), MAX_CONTEXT_CHARS)}\n\nProduce your output now. Call the appropriate tool exactly once.`;
+}
+
+/**
+ * Every answer and added description the user gave, in full: this is the
+ * most specific information in the whole context (BUG-06).
+ */
+function answersHistory(session: Session): string {
+  const lines: string[] = [];
+  for (const r of session.rounds) {
+    const parts: string[] = [];
+    for (const a of r.answers) {
+      const q = r.questions.find((x) => x.id === a.question_id);
+      if (!q) continue;
+      parts.push(`  param=${q.parameter_id} q=${promptText(q.question, 200)}`);
+      if (a.selected_options.length > 0) {
+        parts.push(`    selected: ${promptSafe(a.selected_options.join(" | "))}`);
       }
+      if (a.custom_text) parts.push(`    custom:   ${promptSafe(a.custom_text)}`);
     }
-    lines.push("</answers_history>");
+    if (r.added_description) {
+      parts.push(`    added description: ${promptSafe(r.added_description)}`);
+    }
+    if (parts.length > 0) {
+      lines.push(`round ${r.round_number}:`, ...parts);
+    }
   }
-
-  lines.push("\nProduce your output now. Call the appropriate tool exactly once.");
-
-  return truncateText(lines.join("\n"), MAX_CONTEXT_CHARS);
+  if (lines.length === 0) return "";
+  return ["<answers_history>", ...lines, "</answers_history>"].join("\n");
 }

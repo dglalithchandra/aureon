@@ -1,5 +1,14 @@
 import { z } from "zod";
 import { SCOPING } from "@/lib/config/scoping";
+import { budgetExceededMessage, utf8Bytes, withinBudget } from "@/lib/text/budget";
+
+/** The one size limit for user-typed text, in UTF-8 bytes (BUG-10). */
+const userText = z.string().superRefine((value, ctx) => {
+  const bytes = utf8Bytes(value);
+  if (!withinBudget(bytes)) {
+    ctx.addIssue({ code: "custom", message: budgetExceededMessage(bytes) });
+  }
+});
 import { ExtractionResultSchema, ParameterIdSchema } from "@/lib/schemas/extraction";
 import { GitHubEnrichmentSchema } from "@/lib/schemas/github";
 import {
@@ -140,7 +149,7 @@ export type Session = z.infer<typeof SessionSchema>;
  * ────────────────────────────────────────────────────────────── */
 
 export const CreateSessionRequestSchema = z.object({
-  rawText: z.string().min(1).max(50_000),
+  rawText: z.string().min(1).pipe(userText),
 });
 
 export const SubmitAnswersRequestSchema = z.object({
@@ -149,5 +158,5 @@ export const SubmitAnswersRequestSchema = z.object({
 
 /** A fuller description supplied while the session is "needs_input". */
 export const DescribeRequestSchema = z.object({
-  text: z.string().trim().min(1).max(50_000),
+  text: z.string().trim().min(1).pipe(userText),
 });

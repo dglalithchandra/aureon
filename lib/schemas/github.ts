@@ -52,6 +52,11 @@ export const GitHubEnrichmentSchema = z.object({
    * matches.
    */
   module_frequency: z.record(z.string().min(1).max(80), z.number()),
+  /**
+   * How many DIFFERENT matched repos mentioned each module. A module a
+   * single repo invented cannot be added to the scope (SEC-04).
+   */
+  module_repos: z.record(z.string().min(1).max(80), z.number().int().min(0)).default({}),
   query_used: z.string().max(400),
   /** Telemetry: which query variants ran + how many hits each returned. */
   variants: z.array(QueryVariantTelemetrySchema).max(8).default([]),
@@ -59,9 +64,17 @@ export const GitHubEnrichmentSchema = z.object({
 export type GitHubEnrichment = z.infer<typeof GitHubEnrichmentSchema>;
 
 /**
- * The shape the extract_modules tool returns per README. Validated before we
- * do anything with the model output.
+ * A module name mined from somebody else's README (SEC-04). READMEs are
+ * untrusted text, so a name may only be a plain label — no punctuation to
+ * smuggle instructions through, and short enough to be a name.
  */
+export const ReadmeModuleNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(40)
+  .regex(/^[A-Za-z0-9 &/-]+$/);
+
 export const ExtractModulesToolOutputSchema = z.object({
   modules: z.array(z.string().min(1).max(80)).max(40),
   similarity_to_project: z.number().min(0).max(1),

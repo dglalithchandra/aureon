@@ -3,7 +3,6 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { putSession } from "@/lib/storage/session";
 import { FinalOutputSchema } from "@/lib/schemas/output";
-import { deepSanitize } from "@/lib/security/deep-sanitize";
 import {
   jsonError,
   loadOwnedSession,
@@ -77,21 +76,13 @@ export async function PATCH(
       );
     }
 
-    const sanitized = deepSanitize(final_output);
-    // Re-validate after sanitize to catch any string that became too short
-    // (e.g. a single-char string that DOMPurify trimmed to "").
-    const reparsed = FinalOutputSchema.safeParse(sanitized);
-    if (!reparsed.success) {
-      const message = reparsed.error.issues
-        .slice(0, 3)
-        .map((i) => `${i.path.join(".")}: ${i.message}`)
-        .join("; ");
-      throw new ValidationError(`Sanitized payload invalid: ${message}`);
-    }
-
+    // Stored verbatim: the bounds above are the guard, and every sink —
+    // React text nodes, react-markdown with its element allow-list — escapes
+    // what it renders. An HTML sanitiser here deleted real content such as
+    // "List<Order>" and "<5 users & R&D" (BUG-07).
     const updated = {
       ...session,
-      final_output: reparsed.data,
+      final_output,
       updated_at: Date.now(),
     };
     await putSession(updated);

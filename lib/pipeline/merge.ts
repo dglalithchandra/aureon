@@ -4,7 +4,7 @@ import type {
   ModuleCandidate,
   ModuleSize,
 } from "@/lib/schemas/extraction";
-import type { GitHubEnrichment } from "@/lib/schemas/github";
+import { ReadmeModuleNameSchema, type GitHubEnrichment } from "@/lib/schemas/github";
 
 /**
  * Merge GitHub enrichment signals into the extraction.
@@ -27,12 +27,17 @@ export function mergeGitHubSignals(
   if (Object.keys(freq).length === 0) return extraction;
 
   // Frequency is now similarity-weighted (a float). Pick the highest-weighted
-  // canonical name per key.
-  const lowerFreq: Record<string, { name: string; weight: number }> = {};
+  // canonical name per key, and keep how many repos vouched for it.
+  const repos = enrichment.module_repos;
+  const lowerFreq: Record<string, { name: string; weight: number; repos: number }> = {};
   for (const [name, weight] of Object.entries(freq)) {
     const k = canonicalModuleKey(name);
     const prev = lowerFreq[k];
-    if (!prev || weight > prev.weight) lowerFreq[k] = { name, weight };
+    const entry = { name, weight, repos: repos[name] ?? 0 };
+    if (!prev) lowerFreq[k] = entry;
+    else if (weight > prev.weight)
+      lowerFreq[k] = { ...entry, repos: prev.repos + entry.repos };
+    else lowerFreq[k] = { ...prev, repos: prev.repos + entry.repos };
   }
 
   const matchedKeys = new Set<string>();
@@ -46,15 +51,22 @@ export function mergeGitHubSignals(
     return m;
   });
 
-  // Threshold: roughly "at least one strong match contributed it OR two
-  // marginal matches did". With weights mostly between 0.3 and 0.95, 1.0
-  // requires either 1.5x average match strength or 2 mediocre ones.
+  // A module nobody asked for is only added when several repos agree on it:
+  // weight 1.0 (no single repo can contribute more than 0.8) AND at least two
+  // different repos. One repo — or one injected README — cannot invent a
+  // module and have it shown as "GitHub-validated" (SEC-04).
   const NEW_MODULE_WEIGHT_THRESHOLD = 1.0;
+  const NEW_MODULE_MIN_REPOS = 2;
 
   // Sort candidates by descending weight so we add the strongest first.
   const sortedNew = Object.entries(lowerFreq)
     .filter(([k]) => !matchedKeys.has(k))
-    .filter(([, info]) => info.weight >= NEW_MODULE_WEIGHT_THRESHOLD)
+    .filter(
+      ([, info]) =>
+        info.weight >= NEW_MODULE_WEIGHT_THRESHOLD &&
+        info.repos >= NEW_MODULE_MIN_REPOS &&
+        ReadmeModuleNameSchema.safeParse(info.name).success,
+    )
     .sort((a, b) => b[1].weight - a[1].weight);
 
   for (const [, info] of sortedNew) {
@@ -63,7 +75,7 @@ export function mergeGitHubSignals(
       name: info.name,
       description: `Common ${info.name} module observed in similar open-source projects.`,
       size: defaultSizeForName(info.name),
-      source_signal: `GitHub-validated · weight ${info.weight.toFixed(2)} across top matches`,
+      source_signal: `GitHub-validated · weight ${info.weight.toFixed(2)} across ${info.repos} matches`,
       github_validated: true,
     });
   }

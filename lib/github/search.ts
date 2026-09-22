@@ -5,7 +5,7 @@ import {
   reserveGitHubRequest,
 } from "@/lib/github/client";
 import { RepoSlugSchema, type RepoSearchResult } from "@/lib/schemas/github";
-import { stripHtml, truncateText } from "@/lib/security/sanitize";
+import { promptText } from "@/lib/text/prompt-safe";
 import { GitHubError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
@@ -268,7 +268,7 @@ async function runSearch(query: string): Promise<RepoSearchResult[]> {
     results.push({
       repo: slugCheck.data,
       url: item.html_url,
-      description: truncateText(stripHtml(item.description ?? ""), 800),
+      description: promptText(item.description ?? "", 800),
       stars: item.stargazers_count,
       topics: (item.topics ?? []).slice(0, 40).map((t) => t.slice(0, 50)),
       default_branch: item.default_branch || "main",
@@ -404,7 +404,7 @@ export async function fetchReadme(repo: string): Promise<string | null> {
     } else if (typeof res.data.content === "string") {
       raw = res.data.content;
     }
-    return truncateText(stripHtml(raw), README_MAX_CHARS);
+    return promptText(raw, README_MAX_CHARS);
   } catch (err) {
     const status = (err as { status?: number }).status;
     if (status === 404) return null;

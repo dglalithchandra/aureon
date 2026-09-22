@@ -20,6 +20,7 @@ const RAW_INPUT =
 const NO_GITHUB_QUERY = {
   matches: [],
   module_frequency: {},
+  module_repos: {},
   query_used: "",
   variants: [],
 };

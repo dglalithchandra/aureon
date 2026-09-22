@@ -4,9 +4,10 @@ import { PromptModel } from "@/lib/llm/anthropic";
 import { callToolWithRepair } from "@/lib/llm/structured";
 import {
   ExtractModulesToolOutputSchema,
+  ReadmeModuleNameSchema,
   type ExtractModulesToolOutput,
 } from "@/lib/schemas/github";
-import { stripHtml, truncateText } from "@/lib/security/sanitize";
+import { promptText } from "@/lib/text/prompt-safe";
 import { logger } from "@/lib/logger";
 import { BudgetExceededError } from "@/lib/errors";
 
@@ -60,8 +61,8 @@ export async function extractModulesFromReadme(
   projectDescription: string,
   readme: string,
 ): Promise<ExtractModulesToolOutput | null> {
-  const cleanProject = truncateText(stripHtml(projectDescription), PROJECT_DESC_MAX);
-  const cleanReadme = truncateText(stripHtml(readme), README_MAX);
+  const cleanProject = promptText(projectDescription, PROJECT_DESC_MAX);
+  const cleanReadme = promptText(readme, README_MAX);
 
   const t0 = Date.now();
   let outcome;
@@ -105,17 +106,23 @@ export async function extractModulesFromReadme(
     return null;
   }
 
-  // Normalize module names: collapse whitespace, title-case-ish dedupe.
+  // Normalize module names: collapse whitespace, dedupe case-insensitively,
+  // and keep only plain labels — a README is untrusted text (SEC-04).
   const seen = new Set<string>();
   const modules: string[] = [];
+  let rejected = 0;
   for (const m of outcome.data.modules) {
-    const norm = m.replace(/\s+/g, " ").trim();
-    if (!norm) continue;
-    const key = norm.toLowerCase();
+    const parsed = ReadmeModuleNameSchema.safeParse(m.replace(/\s+/g, " "));
+    if (!parsed.success) {
+      rejected++;
+      continue;
+    }
+    const key = parsed.data.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    modules.push(norm);
+    modules.push(parsed.data);
   }
+  if (rejected > 0) logger.warn("github.extract_modules.name_rejected", { rejected });
 
   return {
     modules,

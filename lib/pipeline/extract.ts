@@ -11,13 +11,20 @@ import {
 } from "@/lib/schemas/extraction";
 import { BudgetExceededError, LLMError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { stripHtml, truncateText } from "@/lib/security/sanitize";
+import { promptSafe, truncateText } from "@/lib/text/prompt-safe";
 
-const MAX_INPUT_CHARS = 50_000;
-const MAX_PRIOR_CONTEXT_CHARS = 50_000;
+/**
+ * Characters the user message may use. The answers from earlier rounds are
+ * written first and the raw brief gets what is left, so a long brief can
+ * never push the answers out of the prompt (BUG-06).
+ */
+const PROMPT_BUDGET_CHARS = 50_000;
+/** The brief always keeps at least this much, even against long answers. */
+const MIN_RAW_CHARS = 2_000;
 
 interface RunExtractionOptions {
   rawText: string;
+  /** Answers and added descriptions from earlier rounds, already formatted. */
   priorContext?: string;
 }
 
@@ -29,10 +36,18 @@ interface RunExtractionOptions {
 export async function runExtraction(
   opts: RunExtractionOptions,
 ): Promise<ExtractionResult> {
-  const cleanedRaw = truncateText(stripHtml(opts.rawText), MAX_INPUT_CHARS);
-  const cleanedPrior = opts.priorContext
-    ? truncateText(stripHtml(opts.priorContext), MAX_PRIOR_CONTEXT_CHARS)
+  // Reserve the budget for the answers first: they are the newest and most
+  // specific information the model has (BUG-06). The caller already made the
+  // text inside those blocks prompt-safe, so the block tags stay intact.
+  const prior = (opts.priorContext ?? "").trim();
+  const cleanedPrior = prior
+    ? truncateText(prior, PROMPT_BUDGET_CHARS - MIN_RAW_CHARS)
     : null;
+  const rawBudget = Math.max(
+    MIN_RAW_CHARS,
+    PROMPT_BUDGET_CHARS - (cleanedPrior?.length ?? 0),
+  );
+  const cleanedRaw = truncateText(promptSafe(opts.rawText), rawBudget);
 
   const userBlocks: string[] = [];
   userBlocks.push(`<client_input>\n${cleanedRaw}\n</client_input>`);

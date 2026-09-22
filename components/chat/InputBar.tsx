@@ -11,9 +11,10 @@ import {
 import { ArrowUp, Loader2, Sparkles } from "lucide-react";
 import { gsap, useGSAP } from "@/lib/gsap-init";
 import { cn } from "@/lib/utils";
+import { USER_CONTENT_BUDGET_BYTES } from "@/lib/text/budget";
 
-const MAX_BYTES = 50_000;
-const WARN_BYTES = 45_000;
+const MAX_BYTES = USER_CONTENT_BUDGET_BYTES;
+const WARN_BYTES = Math.round(USER_CONTENT_BUDGET_BYTES * 0.9);
 const MAX_VISIBLE_LINES = 12;
 
 interface InputBarProps {

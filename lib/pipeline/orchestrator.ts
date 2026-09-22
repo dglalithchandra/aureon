@@ -15,9 +15,13 @@ import type { ExtractionResult, ParameterId } from "@/lib/schemas/extraction";
 import { AppError, BudgetExceededError, LLMError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { SCOPING } from "@/lib/config/scoping";
+import { budgetExceededMessage, utf8Bytes, withinBudget } from "@/lib/text/budget";
+import { promptSafe } from "@/lib/text/prompt-safe";
 
-/** Combined byte cap on raw_input plus every answer's text. */
-const USER_CONTENT_BUDGET_BYTES = 50_000;
+/** One budget for the brief, every answer and every description (BUG-10). */
+function requireWithinBudget(bytes: number): void {
+  if (!withinBudget(bytes)) throw new ValidationError(budgetExceededMessage(bytes));
+}
 
 /* ──────────────────────────────────────────────────────────────
  *  Public API
@@ -150,8 +154,13 @@ async function executeRound(
     status: working.status,
   });
 
-  // 1) Run the LLM extraction on the current enriched_input.
-  const extractionRaw = await runExtraction({ rawText: working.enriched_input });
+  // 1) Run the LLM extraction on the brief plus everything added since, as
+  //    separate blocks: the answers are written first and never truncated
+  //    away, however long the brief is (BUG-06).
+  const extractionRaw = await runExtraction({
+    rawText: working.raw_input,
+    priorContext: priorContext(working.rounds),
+  });
 
   // 2) GitHub enrichment runs only on round 0 OR if the domain changed.
   //    On later rounds we re-use the previous enrichment for cost savings.
@@ -295,20 +304,8 @@ export function applyAnswers(session: Session, answers: MCQAnswer[]): Session {
     validatedAnswers.push(a);
   }
 
-  // Reconstruct enriched_input with a labeled context block per answer.
-  const newContextBlock = buildAnswerBlock(currentRound.questions, validatedAnswers);
-  const enrichedInputCandidate = `${session.enriched_input}\n\n${newContextBlock}`.slice(
-    0,
-    100_000,
-  );
-
-  // 50KB cap on user-supplied content (raw_input + answer texts).
-  const userBytes = sumUserBytes(session, validatedAnswers);
-  if (userBytes > USER_CONTENT_BUDGET_BYTES) {
-    throw new ValidationError(
-      `User content exceeds ${USER_CONTENT_BUDGET_BYTES} byte budget`,
-    );
-  }
+  // One budget for everything the user typed, in UTF-8 bytes (BUG-10).
+  requireWithinBudget(sumUserBytes(session, validatedAnswers));
 
   // Persist the answers on the current round and advance.
   const updatedRounds = [...session.rounds];
@@ -320,7 +317,7 @@ export function applyAnswers(session: Session, answers: MCQAnswer[]): Session {
   return {
     ...session,
     rounds: updatedRounds,
-    enriched_input: enrichedInputCandidate,
+    enriched_input: enrichedInput(session, updatedRounds),
     status: "analyzing",
     pipeline_stage: "extracting",
     updated_at: Date.now(),
@@ -353,21 +350,10 @@ export function applyDescription(session: Session, text: string): Session {
   if (!description) {
     throw new ValidationError("Describe the goal and main features in a few sentences");
   }
-  const userBytes = sumUserBytes(session, []) + Buffer.byteLength(description, "utf8");
-  if (userBytes > USER_CONTENT_BUDGET_BYTES) {
-    throw new ValidationError(
-      `User content exceeds ${USER_CONTENT_BUDGET_BYTES} byte budget`,
-    );
-  }
+  requireWithinBudget(sumUserBytes(session, []) + utf8Bytes(description));
 
   // The next round re-extracts from everything: the original text, every
   // answer so far and this description.
-  const enrichedInputCandidate =
-    `${session.enriched_input}\n\n${buildDescriptionBlock(description)}`.slice(
-      0,
-      100_000,
-    );
-
   const updatedRounds = [...session.rounds];
   updatedRounds[updatedRounds.length - 1] = {
     ...currentRound,
@@ -377,7 +363,7 @@ export function applyDescription(session: Session, text: string): Session {
   return {
     ...session,
     rounds: updatedRounds,
-    enriched_input: enrichedInputCandidate,
+    enriched_input: enrichedInput(session, updatedRounds),
     status: "analyzing",
     pipeline_stage: "extracting",
     updated_at: Date.now(),
@@ -473,45 +459,72 @@ export function shouldExit(session: Session, newExtraction: ExtractionResult): b
   return false;
 }
 
-function buildAnswerBlock(questions: MCQQuestion[], answers: MCQAnswer[]): string {
+/** One round's answers, or "" when it has none. */
+function buildAnswerBlock(round: SessionRound): string {
   const lines: string[] = [];
-  lines.push(`<round_${Date.now()}>`);
-  for (const a of answers) {
-    const q = questions.find((x) => x.id === a.question_id);
+  for (const a of round.answers) {
+    const q = round.questions.find((x) => x.id === a.question_id);
     if (!q) continue;
+    // The user's own words go inside our tags, so they must not close them.
     lines.push(`Parameter: ${q.parameter_id}`);
-    lines.push(`Question: ${q.question}`);
+    lines.push(`Question: ${promptSafe(q.question)}`);
     if (a.selected_options.length > 0) {
-      lines.push(`Selected: ${a.selected_options.join(" | ")}`);
+      lines.push(`Selected: ${promptSafe(a.selected_options.join(" | "))}`);
     }
     if (a.custom_text) {
-      lines.push(`Custom: ${a.custom_text}`);
+      lines.push(`Custom: ${promptSafe(a.custom_text)}`);
     }
     lines.push("");
   }
-  lines.push(`</round_${Date.now()}>`);
-  return lines.join("\n");
+  if (lines.length === 0) return "";
+  // The round number is written once, so the tags always match (BUG-11).
+  const n = round.round_number + 1;
+  return [`<round n="${n}">`, ...lines, `</round>`].join("\n");
 }
 
-function buildDescriptionBlock(description: string): string {
-  const tag = `added_description_${Date.now()}`;
-  return [`<${tag}>`, description, `</${tag}>`].join("\n");
+/**
+ * Everything the user added after the brief — answers and descriptions — in
+ * stable, matching tags (BUG-11). This is what the extraction prompt keeps
+ * whole; the raw brief takes whatever budget is left (BUG-06).
+ */
+function priorContext(rounds: SessionRound[]): string {
+  const blocks: string[] = [];
+  for (const round of rounds) {
+    const answers = buildAnswerBlock(round);
+    if (answers) blocks.push(answers);
+    if (round.added_description) {
+      blocks.push(buildDescriptionBlock(round));
+    }
+  }
+  return blocks.join("\n\n");
+}
+
+/** The stored transcript: the brief followed by everything added since. */
+function enrichedInput(session: Session, rounds: SessionRound[]): string {
+  const prior = priorContext(rounds);
+  return prior ? `${session.raw_input}\n\n${prior}` : session.raw_input;
+}
+
+function buildDescriptionBlock(round: SessionRound): string {
+  return [
+    `<added_description n="${round.round_number + 1}">`,
+    promptSafe(round.added_description ?? ""),
+    "</added_description>",
+  ].join("\n");
 }
 
 function sumUserBytes(session: Session, newAnswers: MCQAnswer[]): number {
-  let total = Buffer.byteLength(session.raw_input, "utf8");
+  let total = utf8Bytes(session.raw_input);
   for (const r of session.rounds) {
     for (const a of r.answers) total += answerBytes(a);
-    if (r.added_description) {
-      total += Buffer.byteLength(r.added_description, "utf8");
-    }
+    if (r.added_description) total += utf8Bytes(r.added_description);
   }
   for (const a of newAnswers) total += answerBytes(a);
   return total;
 }
 
 function answerBytes(a: MCQAnswer): number {
-  let n = a.custom_text ? Buffer.byteLength(a.custom_text, "utf8") : 0;
-  for (const opt of a.selected_options) n += Buffer.byteLength(opt, "utf8");
+  let n = a.custom_text ? utf8Bytes(a.custom_text) : 0;
+  for (const opt of a.selected_options) n += utf8Bytes(opt);
   return n;
 }
