@@ -14,9 +14,24 @@ describe("buildQueryVariants", () => {
     ]);
   });
 
-  it("still finds the topic for a mixed-case label such as 'SaaS'", () => {
+  it("keeps mixed-case labels such as 'SaaS' whole", () => {
+    // Regression: the camelCase split used to turn "SaaS" into the query "saa".
     const variants = buildQueryVariants({ domain: "SaaS", keywords: [] });
-    expect(variants[0]).toEqual({ label: "topic-broad", q: `topic:saas ${QUALITY}` });
+    expect(variants).toEqual([
+      { label: "topic-broad", q: `topic:saas ${QUALITY}` },
+      { label: "domain-broad", q: `saas ${QUALITY} ${IN_FIELDS}` },
+    ]);
+  });
+
+  it.each([
+    ["PostgreSQL", "postgresql"],
+    ["GraphQL", "graphql"],
+    ["FinTech", "fintech"],
+  ])("does not split the acronym or compound in %s", (domain, first) => {
+    const domainVariant = buildQueryVariants({ domain, keywords: [] }).find(
+      (v) => v.label === "domain-broad",
+    );
+    expect(domainVariant?.q.startsWith(`${first} `)).toBe(true);
   });
 
   it("recognises the parts of compound domain labels", () => {

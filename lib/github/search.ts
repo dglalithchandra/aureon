@@ -144,12 +144,16 @@ export function buildQueryVariants(input: BuildQueryInput): NamedQuery[] {
 }
 
 function normalizeSearchText(value: string): string {
-  return value
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .toLowerCase()
-    .replace(/[^a-z0-9 -]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    value
+      // Split camelCase words ("InvoiceExport" → "Invoice Export") but not a
+      // trailing capital or acronym ("SaaS", "PostgreSQL", "GraphQL").
+      .replace(/([a-z])([A-Z][a-z])/g, "$1 $2")
+      .toLowerCase()
+      .replace(/[^a-z0-9 -]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 }
 
 function uniqueTerms(values: string[]): string[] {
