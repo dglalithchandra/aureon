@@ -11,6 +11,7 @@ import {
   requireJsonContentType,
   requireSessionOwner,
   validateUuid,
+  withSessionLock,
 } from "@/lib/security/route-helpers";
 import { RATE_LIMITS } from "@/lib/security/rate-limit";
 
@@ -46,16 +47,18 @@ export async function POST(
 
   try {
     const { answers } = await readJsonBody(req, SubmitAnswersRequestSchema);
-    const session = await getSession(id);
-    if (!session) {
-      return NextResponse.json(
-        { error: { code: "NOT_FOUND", message: "Session not found or expired" } },
-        { status: 404 },
-      );
-    }
-    const updated = await submitAnswers(session, answers, putSession);
-    await putSession(updated);
-    return NextResponse.json({ session: updated });
+    return await withSessionLock(id, async () => {
+      const session = await getSession(id);
+      if (!session) {
+        return NextResponse.json(
+          { error: { code: "NOT_FOUND", message: "Session not found or expired" } },
+          { status: 404 },
+        );
+      }
+      const updated = await submitAnswers(session, answers, putSession);
+      await putSession(updated);
+      return NextResponse.json({ session: updated });
+    });
   } catch (err) {
     return jsonError(err);
   }

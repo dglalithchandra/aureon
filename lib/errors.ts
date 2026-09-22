@@ -12,6 +12,7 @@ export type ErrorCode =
   | "NOT_FOUND"
   | "UNAUTHORIZED"
   | "BUDGET_EXCEEDED"
+  | "IN_PROGRESS"
   | "INTERNAL_ERROR";
 
 export class AppError extends Error {

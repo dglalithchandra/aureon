@@ -4,6 +4,7 @@ import {
   isFatalPollStatus,
   nextPollInterval,
   pollDelayMs,
+  showAlreadyWorking,
 } from "@/components/chat/polling";
 
 describe("pollDelayMs", () => {
@@ -81,5 +82,13 @@ describe("status classification", () => {
       false,
     ]);
     expect([401, 404, 429, 500].map(isBusyStatus)).toEqual([false, false, true, false]);
+  });
+});
+
+describe("showAlreadyWorking", () => {
+  it("shows the notice after a 409 only while the round is still analyzing", () => {
+    expect(showAlreadyWorking(true, "analyzing")).toBe(true);
+    expect(showAlreadyWorking(true, "awaiting_answers")).toBe(false);
+    expect(showAlreadyWorking(false, "analyzing")).toBe(false);
   });
 });

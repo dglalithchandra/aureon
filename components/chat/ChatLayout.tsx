@@ -11,6 +11,7 @@ import {
   isUuid,
   runSession,
   submitAnswers,
+  type SessionActionResult,
 } from "@/lib/api/client";
 import type { MCQAnswer, Session } from "@/lib/schemas/mcq";
 import { PipelinePanel } from "@/components/chat/PipelinePanel";
@@ -22,6 +23,7 @@ import {
   isBusyStatus,
   isFatalPollStatus,
   nextPollInterval,
+  showAlreadyWorking,
 } from "@/components/chat/polling";
 import { logger } from "@/lib/logger";
 
@@ -101,7 +103,11 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
   // answers), bump the cache so the polling loop picks it up.
   // Nothing to do here besides keep the query enabled.
 
-  const createMutation = useMutation<Session, ApiError, string>({
+  // Set when the server answered 409 IN_PROGRESS: another request owns the
+  // round, so we keep polling and say so instead of showing an error.
+  const [alreadyWorking, setAlreadyWorking] = useState(false);
+
+  const createMutation = useMutation<SessionActionResult, ApiError, string>({
     mutationFn: async (rawText: string) => {
       // Create the owned session first so the polling query can show the
       // actual server-side pipeline stage while this request is still running.
@@ -110,8 +116,12 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
       router.replace(`/chat?s=${created.id}`, { scroll: false });
       return runSession(created.id);
     },
-    onSuccess: (s) => {
+    onMutate: () => {
+      setAlreadyWorking(false);
+    },
+    onSuccess: ({ session: s, inProgress }) => {
       qc.setQueryData(SESSION_QUERY_KEY(s.id), s);
+      setAlreadyWorking(inProgress);
     },
     onError: (err) => {
       logger.error("chat.create_failed", { code: err.code, status: err.status });
@@ -119,12 +129,13 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
   });
 
   const answerMutation = useMutation<
-    Session,
+    SessionActionResult,
     ApiError,
     { sessionId: string; answers: MCQAnswer[] }
   >({
     mutationFn: ({ sessionId: id, answers }) => submitAnswers(id, answers),
     onMutate: ({ sessionId: id }) => {
+      setAlreadyWorking(false);
       // Optimistically flip the cached session into "analyzing" so the
       // pipeline panel and input bar lock instantly. The poll will catch up.
       const prev = qc.getQueryData<Session>(SESSION_QUERY_KEY(id));
@@ -137,8 +148,9 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
       }
       return { prev };
     },
-    onSuccess: (s) => {
+    onSuccess: ({ session: s, inProgress }) => {
       qc.setQueryData(SESSION_QUERY_KEY(s.id), s);
+      setAlreadyWorking(inProgress);
     },
     onError: (err, vars, ctx) => {
       // Roll back if we have prior state.
@@ -298,7 +310,13 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
 
         {sessionQuery.isError &&
           sessionQuery.error instanceof ApiError &&
-          isBusyStatus(sessionQuery.error.status) && <BusyNotice />}
+          isBusyStatus(sessionQuery.error.status) && (
+            <BusyNotice message="The server is busy right now — retrying automatically…" />
+          )}
+
+        {showAlreadyWorking(alreadyWorking, session?.status) && (
+          <BusyNotice message="Already working on it…" />
+        )}
 
         {sessionQuery.isError &&
           sessionQuery.error instanceof ApiError &&
@@ -481,15 +499,13 @@ function StaleNotice({
   );
 }
 
-function BusyNotice(): React.ReactElement {
+function BusyNotice({ message }: { message: string }): React.ReactElement {
   return (
     <div
       role="status"
       className="border-b border-amber-400/30 bg-amber-400/10 px-6 py-3 text-sm text-amber-200"
     >
-      <div className="mx-auto w-full max-w-3xl">
-        The server is busy right now — retrying automatically…
-      </div>
+      <div className="mx-auto w-full max-w-3xl">{message}</div>
     </div>
   );
 }

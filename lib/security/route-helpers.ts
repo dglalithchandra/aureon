@@ -11,6 +11,13 @@ import {
 } from "@/lib/security/session-cookie";
 import type { Session } from "@/lib/schemas/mcq";
 import { logger } from "@/lib/logger";
+import { getSession } from "@/lib/storage/session";
+import {
+  acquireLock,
+  releaseLock,
+  SESSION_LOCK_TTL_SECONDS,
+  sessionLockKey,
+} from "@/lib/storage/lock";
 
 export { getClientIp } from "@/lib/security/client-ip";
 
@@ -109,6 +116,45 @@ export function requireSessionOwner(
     );
   }
   return null;
+}
+
+/**
+ * 409 for a session another request is already working on. Carries the
+ * current session so the client can keep polling instead of showing an error.
+ */
+export function inProgressResponse(session: Session | null): NextResponse {
+  return NextResponse.json(
+    {
+      error: { code: "IN_PROGRESS", message: "Already working on this session." },
+      session,
+    },
+    { status: 409 },
+  );
+}
+
+/**
+ * Run `work` while holding the session's single-flight lock (BUG-08). The
+ * lock is taken before `work` reads the session and always released after.
+ * If another request holds it, answers 409 IN_PROGRESS without running `work`.
+ */
+export async function withSessionLock(
+  sessionId: string,
+  work: () => Promise<NextResponse>,
+): Promise<NextResponse> {
+  const key = sessionLockKey(sessionId);
+  const token = await acquireLock(key, SESSION_LOCK_TTL_SECONDS);
+  if (!token) return inProgressResponse(await getSession(sessionId));
+  try {
+    return await work();
+  } finally {
+    // A failed release is not fatal: the lock expires after its TTL.
+    await releaseLock(key, token).catch((err: unknown) => {
+      logger.warn("session_lock.release_failure", {
+        sessionId,
+        message: err instanceof Error ? err.message : "unknown",
+      });
+    });
+  }
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

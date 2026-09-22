@@ -8,6 +8,7 @@ import {
   jsonError,
   requireSessionOwner,
   validateUuid,
+  withSessionLock,
 } from "@/lib/security/route-helpers";
 import { RATE_LIMITS } from "@/lib/security/rate-limit";
 
@@ -44,23 +45,27 @@ export async function POST(
   if (unauthorized) return unauthorized;
 
   try {
-    const session = await getSession(id);
-    if (!session) {
-      return NextResponse.json(
-        { error: { code: "NOT_FOUND", message: "Session not found or expired" } },
-        { status: 404 },
-      );
-    }
+    // The lock makes a concurrent duplicate /run answer 409 instead of
+    // starting a second LLM pipeline for the same session.
+    return await withSessionLock(id, async () => {
+      const session = await getSession(id);
+      if (!session) {
+        return NextResponse.json(
+          { error: { code: "NOT_FOUND", message: "Session not found or expired" } },
+          { status: 404 },
+        );
+      }
 
-    // A completed session is safe to return unchanged; this protects against
-    // a duplicate browser request accidentally triggering an extra LLM call.
-    if (session.status !== "analyzing") {
-      return NextResponse.json({ session });
-    }
+      // A completed round is safe to return unchanged: a duplicate request
+      // that arrives after the first finished does not trigger an LLM call.
+      if (session.status !== "analyzing") {
+        return NextResponse.json({ session });
+      }
 
-    const updated = await runRound(session, putSession);
-    await putSession(updated);
-    return NextResponse.json({ session: updated });
+      const updated = await runRound(session, putSession);
+      await putSession(updated);
+      return NextResponse.json({ session: updated });
+    });
   } catch (err) {
     return jsonError(err);
   }

@@ -29,6 +29,17 @@ export interface PollState {
   analyzingForMs: number;
 }
 
+/**
+ * After a 409 IN_PROGRESS, show "Already working on it…" for as long as the
+ * session is still analyzing (another request owns the round).
+ */
+export function showAlreadyWorking(
+  inProgress: boolean,
+  sessionStatus: string | undefined,
+): boolean {
+  return inProgress && sessionStatus === "analyzing";
+}
+
 /** react-query `refetchInterval` value: a delay in ms, or false to stop. */
 export function nextPollInterval(state: PollState): number | false {
   if (isFatalPollStatus(state.errorStatus)) return false;

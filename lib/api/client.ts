@@ -40,6 +40,33 @@ async function readError(res: Response): Promise<ApiError> {
 
 const SessionResponseSchema = z.object({ session: SessionSchema });
 
+/**
+ * Outcome of an action that runs the pipeline. `inProgress` means another
+ * request is already working on this session (HTTP 409 IN_PROGRESS): not an
+ * error — the caller keeps polling `session` until it leaves "analyzing".
+ */
+export interface SessionActionResult {
+  session: Session;
+  inProgress: boolean;
+}
+
+async function readSessionAction(res: Response): Promise<SessionActionResult> {
+  if (res.status === 409) {
+    let body: unknown = null;
+    try {
+      body = await res.json();
+    } catch {
+      /* fallthrough */
+    }
+    const parsed = SessionResponseSchema.safeParse(body);
+    if (parsed.success) return { session: parsed.data.session, inProgress: true };
+    throw new ApiError("IN_PROGRESS", "Already working on this session.", 409);
+  }
+  if (!res.ok) throw await readError(res);
+  const parsed = SessionResponseSchema.parse(await res.json());
+  return { session: parsed.session, inProgress: false };
+}
+
 export async function createSession(rawText: string): Promise<Session> {
   const res = await fetch("/api/session", {
     method: "POST",
@@ -53,14 +80,12 @@ export async function createSession(rawText: string): Promise<Session> {
 }
 
 /** Start the initial pipeline round after its owned session is available. */
-export async function runSession(sessionId: string): Promise<Session> {
+export async function runSession(sessionId: string): Promise<SessionActionResult> {
   const res = await fetch(`/api/session/${sessionId}/run`, {
     method: "POST",
     credentials: "same-origin",
   });
-  if (!res.ok) throw await readError(res);
-  const parsed = SessionResponseSchema.parse(await res.json());
-  return parsed.session;
+  return readSessionAction(res);
 }
 
 export async function fetchSession(sessionId: string): Promise<Session> {
@@ -76,16 +101,14 @@ export async function fetchSession(sessionId: string): Promise<Session> {
 export async function submitAnswers(
   sessionId: string,
   answers: MCQAnswer[],
-): Promise<Session> {
+): Promise<SessionActionResult> {
   const res = await fetch(`/api/session/${sessionId}/answer`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ answers }),
     credentials: "same-origin",
   });
-  if (!res.ok) throw await readError(res);
-  const parsed = SessionResponseSchema.parse(await res.json());
-  return parsed.session;
+  return readSessionAction(res);
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
