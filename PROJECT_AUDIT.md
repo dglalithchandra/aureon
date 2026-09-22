@@ -6,7 +6,7 @@ Audit date: 2026-09-21 · Commit audited: `f095b6b` (local `main`) plus the READ
 
 ---
 
-## Final Phase status (updated 2026-09-22, after BUG-01, SEC-02, BUG-08, BUG-02 and ROB-01)
+## Final Phase status (updated 2026-09-22, after BUG-01, SEC-02, BUG-08, BUG-02, ROB-01, OPS-01 and PERF-01)
 
 Work happens on the `final-phase` branch (committed locally, **not pushed yet**). This table is the tracker for the Final Phase: update it whenever an issue is fixed.
 
@@ -16,6 +16,7 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 
 | ID | Severity | Status | Commits | What was done |
 |---|---|:-:|---|---|
+| PERF-01 | Medium | ✅ | `ab01709` | BM25 on name + description + topics before any fetch; README and a non-recursive root tree (search `default_branch`, no `repos.get`) for the top 8 only, plus one `src/` or `app/` tree while the budget lasts; README analysis 6 at a time in parallel; at most 26 requests per enrichment, counted by an Octokit hook (test: the worst case sends exactly 26); whole enrichment cached 24 h in Redis by a hash of the query variants. |
 | BUG-02 | High | ✅ | `7e9e94a` | A failed round is saved as status `error` with `last_error` (answers kept) and rethrown as 502. `/run` resumes `error` and `analyzing` sessions idle for 120 s. The chat shows "The AI service had a problem. Your answers are saved." with Retry. Verified in the browser: 3× 529 → Retry panel → Retry → questions. |
 | ROB-01 | Medium | ✅ | `7e9e94a` | Blocker invariant repaired (confidence capped at 40) instead of rejected; one repair retry with the validation issues; one 1.5× `max_tokens` retry; bad output → 502 not 400; OpenRouter `length` → `max_tokens`; 45 s timeouts on OpenRouter and Anthropic. |
 | BUG-08 | Medium | ✅ | `3368eb7` | Per-session single-flight lock (`SET NX EX`, Lua compare-and-delete; TTL = maxDuration + 30 s) on run, answer and finalize. A duplicate gets 409 `IN_PROGRESS` with the session; the chat keeps polling and shows "Already working on it…". Verified in the browser: duplicate answer → 409, 4 model calls total, no second pipeline. |
@@ -33,6 +34,7 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 
 | ID | Severity | Status | Commits | What is left |
 |---|---|:-:|---|---|
+| OPS-01 | High | 🟡 | `ab01709` | Done in code: `/run`, `/answer` and `/finalize` answer 202 and queue a job (Upstash QStash → signed `POST /api/jobs/[type]`; `after()` when `QSTASH_TOKEN` is unset); lock TTL 300 + 30 s; SSE `GET /api/session/[id]/events` with polling as fallback; finalize runs the two views as separate jobs and the output page shows each as it lands; Retry for a job that stopped making progress; `durationMs` per stage, round, view and job. Verified in the browser against the mock AI: every API response well under 2 s once warm (the first request after `next start` took 3.4 s: cold start). Left: create the QStash project and measure on a Vercel preview with `ANTHROPIC_API_KEY` and `GITHUB_TOKEN` (`npx tsx scripts/test-flow.ts --runs=10`: all responses < 2 s, round p95 < 45 s). |
 | GOAL-01 | High | 🟡 | `8b468d0` `1dfab49` | Name is consistent. README still claims vector search and scope diff; `TechStack.tsx` still says "Powered by Claude Sonnet 4.6". |
 | DOC-01 | Medium | 🟡 | `ca04202` | The local README with the six false statements was replaced by `origin/main`'s README; a Testing section was added. Still missing: setup/run steps, an Implemented/Planned table, and `FinalizeGate` still says "about 20-40 seconds". |
 
@@ -46,10 +48,9 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 | 4 | GOAL-01 / DOC-01 | High / Medium | Finish the README and landing claims (see above). |
 | 5 | BUG-03 | High | `owner_id` cookie. |
 | 6 | BUG-06 + BUG-07 | Medium | Prompt assembly and text normalisation (touch the same lines). |
-| 7 | OPS-01 + PERF-01 | High / Medium | Parallel Haiku calls, fetch less from GitHub, split finalize (45 s timeouts already added in ROB-01). A request the platform kills leaves the session `analyzing`: `/run` resumes it after 120 s, but the chat has no Retry for that case yet. |
-| 8 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. |
-| 9 | DATA-01, BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | |
-| 10 | SEC-04, SEC-05, BUG-10, BUG-11, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
+| 7 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. |
+| 8 | DATA-01, BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | |
+| 9 | SEC-04, SEC-05, BUG-10, BUG-11, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
 
 ### On hold (owner's decision)
 
@@ -59,6 +60,7 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 - Check the mobile pipeline panel in a real browser.
 - Set a monthly spend limit in the Anthropic console, and `LLM_DAILY_CALL_LIMIT` in the Vercel environment if 2000 calls/day is not right.
 - Self-hosting (not Vercel) needs a reverse proxy that appends the client IP to `X-Forwarded-For`; otherwise the rate-limit key can be spoofed.
+- Create an Upstash QStash project and set `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY` and `QSTASH_NEXT_SIGNING_KEY` in Vercel (Production and Preview). Enable "Protection Bypass for Automation" for protected previews. Then run `test-flow.ts --runs=10` against the preview to close OPS-01.
 
 ---
 
