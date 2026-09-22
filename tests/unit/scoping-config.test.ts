@@ -1,0 +1,82 @@
+import { describe, expect, it } from "vitest";
+import { parameterWeight, SCOPING, stateMultiplier } from "@/lib/config/scoping";
+import {
+  ExtractionResultStrictSchema,
+  ParameterIdSchema,
+} from "@/lib/schemas/extraction";
+import { makeExtraction, makeParameters } from "../fixtures/llm";
+
+describe("SCOPING config", () => {
+  it("defines all 9 parameters in order with their tier and weight", () => {
+    expect(SCOPING.parameters.map((p) => [p.id, p.tier, p.weight])).toEqual([
+      ["P-01", "BLOCKER", 5],
+      ["P-02", "HIGH", 4],
+      ["P-03", "BLOCKER", 5],
+      ["P-04", "HIGH", 3.5],
+      ["P-05", "MED", 2.5],
+      ["P-06", "MED", 2],
+      ["P-07", "MED", 2],
+      ["P-08", "MED", 2],
+      ["P-09", "LOW", 1],
+    ]);
+    expect(SCOPING.parameters.map((p) => p.id)).toEqual(ParameterIdSchema.options);
+    for (const p of SCOPING.parameters) {
+      expect(p.name.length).toBeGreaterThan(0);
+      expect(p.description.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("defines the state multipliers", () => {
+    expect(SCOPING.stateMultipliers).toEqual({
+      PRESENT: 1,
+      PARTIAL_DEEP: 0.7,
+      PARTIAL_THIN: 0.3,
+      MISSING: 0,
+    });
+    expect(stateMultiplier("PARTIAL_DEEP")).toBe(0.7);
+  });
+
+  it("defines the round and cap rules", () => {
+    expect({
+      confidenceThreshold: SCOPING.confidenceThreshold,
+      maxRounds: SCOPING.maxRounds,
+      diminishingDelta: SCOPING.diminishingDelta,
+      criticalCap: SCOPING.criticalCap,
+      blockerCap: SCOPING.blockerCap,
+      blockerMaxRounds: SCOPING.blockerMaxRounds,
+    }).toEqual({
+      confidenceThreshold: 70,
+      maxRounds: 3,
+      diminishingDelta: 4,
+      criticalCap: 65,
+      blockerCap: 40,
+      blockerMaxRounds: 3,
+    });
+  });
+
+  it("looks up weights by id", () => {
+    expect(parameterWeight("P-04")).toBe(3.5);
+    expect(parameterWeight("P-09")).toBe(1);
+  });
+});
+
+describe("blocker invariant uses SCOPING.blockerCap", () => {
+  const blocked = (confidence: number) =>
+    makeExtraction({
+      parameters: makeParameters({ "P-03": "MISSING" }),
+      blocker: true,
+      confidence,
+    });
+
+  it("accepts confidence exactly at the cap", () => {
+    expect(ExtractionResultStrictSchema.safeParse(blocked(40)).success).toBe(true);
+  });
+
+  it("rejects confidence above the cap", () => {
+    const result = ExtractionResultStrictSchema.safeParse(blocked(41));
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe(
+      "confidence must be <= 40 when P-01 or P-03 is MISSING",
+    );
+  });
+});

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SCOPING } from "@/lib/config/scoping";
 
 /**
  * Extraction schemas — the structured shape the LLM must return.
@@ -69,7 +70,8 @@ export type ExtractionResult = z.infer<typeof ExtractionResultSchema>;
 /**
  * Refined validator — enforces the BLOCKER invariant the LLM is told to obey.
  * If P-01 or P-03 is MISSING then blocker MUST be true and confidence
- * MUST be <= 40. We re-check here so a misbehaving LLM cannot bypass the gate.
+ * MUST be <= SCOPING.blockerCap. We re-check here so a misbehaving LLM cannot
+ * bypass the gate.
  */
 export const ExtractionResultStrictSchema = ExtractionResultSchema.superRefine(
   (data, ctx) => {
@@ -106,11 +108,11 @@ export const ExtractionResultStrictSchema = ExtractionResultSchema.superRefine(
         message: "blocker must be true when P-01 or P-03 is MISSING",
       });
     }
-    if (shouldBlock && data.confidence > 40) {
+    if (shouldBlock && data.confidence > SCOPING.blockerCap) {
       ctx.addIssue({
         code: "custom",
         path: ["confidence"],
-        message: "confidence must be <= 40 when P-01 or P-03 is MISSING",
+        message: `confidence must be <= ${SCOPING.blockerCap} when P-01 or P-03 is MISSING`,
       });
     }
   },

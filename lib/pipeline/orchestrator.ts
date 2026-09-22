@@ -14,16 +14,10 @@ import {
 import type { ExtractionResult, ParameterId } from "@/lib/schemas/extraction";
 import { ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { SCOPING } from "@/lib/config/scoping";
 
-/* ──────────────────────────────────────────────────────────────
- *  Configuration
- * ────────────────────────────────────────────────────────────── */
-export const SESSION_CONFIG = {
-  CONFIDENCE_THRESHOLD: 70,
-  MAX_ROUNDS: 3, // total clarification rounds — round 0 is the initial extract
-  DIMINISHING_DELTA: 4,
-  USER_CONTENT_BUDGET_BYTES: 50_000,
-} as const;
+/** Combined byte cap on raw_input plus every answer's text. */
+const USER_CONTENT_BUDGET_BYTES = 50_000;
 
 /* ──────────────────────────────────────────────────────────────
  *  Public API
@@ -198,9 +192,9 @@ export async function submitAnswers(
 
   // 50KB cap on user-supplied content (raw_input + answer texts).
   const userBytes = sumUserBytes(session, validatedAnswers);
-  if (userBytes > SESSION_CONFIG.USER_CONTENT_BUDGET_BYTES) {
+  if (userBytes > USER_CONTENT_BUDGET_BYTES) {
     throw new ValidationError(
-      `User content exceeds ${SESSION_CONFIG.USER_CONTENT_BUDGET_BYTES} byte budget`,
+      `User content exceeds ${USER_CONTENT_BUDGET_BYTES} byte budget`,
     );
   }
 
@@ -264,17 +258,17 @@ function collectAskedParams(session: Session): ParameterId[] {
 
 /**
  * Decide if the loop should exit. Three exit criteria:
- *   1. Confidence >= threshold (70)
- *   2. Round number >= MAX_ROUNDS (3)
- *   3. Diminishing returns: confidence delta < DIMINISHING_DELTA for 2 rounds
+ *   1. Confidence >= SCOPING.confidenceThreshold
+ *   2. Completed rounds >= SCOPING.maxRounds
+ *   3. Diminishing returns: confidence delta < SCOPING.diminishingDelta for 2 rounds
  *
  * Exported for unit tests.
  */
 export function shouldExit(session: Session, newExtraction: ExtractionResult): boolean {
-  if (newExtraction.confidence >= SESSION_CONFIG.CONFIDENCE_THRESHOLD) {
+  if (newExtraction.confidence >= SCOPING.confidenceThreshold) {
     return true;
   }
-  if (session.rounds.length >= SESSION_CONFIG.MAX_ROUNDS) {
+  if (session.rounds.length >= SCOPING.maxRounds) {
     return true;
   }
   if (session.rounds.length >= 2) {
@@ -283,10 +277,7 @@ export function shouldExit(session: Session, newExtraction: ExtractionResult): b
     if (prev !== undefined && prevPrev !== undefined) {
       const d1 = newExtraction.confidence - prev;
       const d2 = prev - prevPrev;
-      if (
-        d1 < SESSION_CONFIG.DIMINISHING_DELTA &&
-        d2 < SESSION_CONFIG.DIMINISHING_DELTA
-      ) {
+      if (d1 < SCOPING.diminishingDelta && d2 < SCOPING.diminishingDelta) {
         return true;
       }
     }

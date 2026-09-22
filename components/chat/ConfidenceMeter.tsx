@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { gsap } from "@/lib/gsap-init";
+import { SCOPING } from "@/lib/config/scoping";
 
 interface ConfidenceMeterProps {
   value: number;
@@ -14,7 +15,7 @@ interface ConfidenceMeterProps {
  */
 export function ConfidenceMeter({
   value,
-  threshold = 70,
+  threshold = SCOPING.confidenceThreshold,
 }: ConfidenceMeterProps): React.ReactElement {
   const numberRef = useRef<HTMLSpanElement | null>(null);
   const barRef = useRef<HTMLSpanElement | null>(null);

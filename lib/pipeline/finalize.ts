@@ -18,6 +18,7 @@ import { LLMError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { stripHtml, truncateText } from "@/lib/security/sanitize";
 import { coerceClientView, coerceEngineerView } from "@/lib/pipeline/coerce";
+import { parameterWeight, stateMultiplier } from "@/lib/config/scoping";
 
 const MAX_CONTEXT_CHARS = 40_000;
 
@@ -91,30 +92,13 @@ function computeConfidenceBadge(session: Session): {
   const round = session.rounds[session.rounds.length - 1]!;
   const ex = round.extraction;
 
-  const STATE_MULT: Record<string, number> = {
-    PRESENT: 1,
-    PARTIAL_DEEP: 0.7,
-    PARTIAL_THIN: 0.3,
-    MISSING: 0,
-  };
-  // Tier weights mirror the extraction rubric (BLOCKER 5, HIGH 4/3.5, …).
-  const WEIGHT: Record<string, number> = {
-    "P-01": 5,
-    "P-02": 4,
-    "P-03": 5,
-    "P-04": 3.5,
-    "P-05": 2.5,
-    "P-06": 2,
-    "P-07": 2,
-    "P-08": 2,
-    "P-09": 1,
-  };
+  // Same weights and multipliers the extraction prompt is generated from.
   let num = 0;
   let den = 0;
   for (const p of ex.parameters) {
-    const w = WEIGHT[p.id] ?? 1;
+    const w = parameterWeight(p.id);
     den += w;
-    num += w * (STATE_MULT[p.state] ?? 0);
+    num += w * stateMultiplier(p.state);
   }
   const coverage = den > 0 ? Math.round((num / den) * 100) : 0;
 

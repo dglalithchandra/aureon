@@ -1,4 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { SCOPING, type ScopingConfig } from "@/lib/config/scoping";
 
 /**
  * The submit_extraction tool. The LLM is forced to call this tool — there
@@ -123,7 +124,7 @@ export const submitExtractionTool: Anthropic.Tool = {
         type: "integer",
         minimum: 0,
         maximum: 100,
-        description: "Overall confidence 0-100. Hard cap at 40 if blocker is true.",
+        description: `Overall confidence 0-100. Hard cap at ${SCOPING.blockerCap} if blocker is true.`,
       },
       confidence_reasoning: {
         type: "string",
@@ -133,12 +134,35 @@ export const submitExtractionTool: Anthropic.Tool = {
       },
       blocker: {
         type: "boolean",
-        description:
-          "True iff P-01 (Goal) or P-03 (Features) is MISSING. When true, confidence MUST be <= 40.",
+        description: `True iff P-01 (Goal) or P-03 (Features) is MISSING. When true, confidence MUST be <= ${SCOPING.blockerCap}.`,
       },
     },
   },
 };
+
+/**
+ * The "Confidence scoring" section of the system prompt, generated from
+ * lib/config/scoping.ts so the weights and caps the model is told always
+ * match the ones the server uses.
+ */
+export function buildScoringRubric(config: ScopingConfig = SCOPING): string {
+  const weights = config.parameters.map((p) => `${p.id}: ${p.weight}`).join(", ");
+  const multipliers = Object.entries(config.stateMultipliers)
+    .map(([state, m]) => `${state}=${m.toFixed(1)}`)
+    .join(", ");
+  const coveragePct = Math.round(config.promptCoverageBlend * 100);
+  return [
+    "# Confidence scoring",
+    "",
+    "Use this rubric for the overall confidence number 0-100:",
+    "  - Coverage component: weighted average of parameter states. Weights:",
+    `      ${weights}`,
+    `      State multipliers: ${multipliers}`,
+    "  - Quality component: are features described precisely enough to build? Are user roles defined? Are NFRs stated?",
+    `  - Blend ~${coveragePct}% coverage + ${100 - coveragePct}% quality. Round to integer.`,
+    `  - Cap at ${config.blockerCap} if blocker.`,
+  ].join("\n");
+}
 
 /**
  * System prompt. Cached on every call (cache_control: ephemeral on the last
@@ -218,22 +242,14 @@ P-09 — Success Metrics / Definition of Done
 
 If P-01 OR P-03 is MISSING:
   - Set blocker = true
-  - Set confidence <= 40 (no exceptions)
+  - Set confidence <= ${SCOPING.blockerCap} (no exceptions)
   - Still extract everything else you can — the BLOCKER question generator runs separately
 
 If both P-01 and P-03 have any non-MISSING state:
   - Set blocker = false
   - Compute confidence honestly (see scoring below)
 
-# Confidence scoring
-
-Use this rubric for the overall confidence number 0-100:
-  - Coverage component: weighted average of parameter states. Weights:
-      P-01: 5, P-02: 4, P-03: 5, P-04: 3.5, P-05: 2.5, P-06: 2, P-07: 2, P-08: 2, P-09: 1
-      State multipliers: PRESENT=1.0, PARTIAL_DEEP=0.7, PARTIAL_THIN=0.3, MISSING=0.0
-  - Quality component: are features described precisely enough to build? Are user roles defined? Are NFRs stated?
-  - Blend ~70% coverage + 30% quality. Round to integer.
-  - Cap at 40 if blocker.
+${buildScoringRubric()}
 
 # Module extraction
 

@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import { ApiError, finalizeSession } from "@/lib/api/client";
 import type { Session } from "@/lib/schemas/mcq";
+import { SCOPING } from "@/lib/config/scoping";
 import { OutputLayout } from "@/components/output/OutputLayout";
 
 interface FinalizeGateProps {
@@ -39,7 +40,8 @@ export function FinalizeGate({
 
   if (session.status !== "ready") {
     const lowConfidenceExhausted =
-      session.rounds.length >= 3 && session.current_confidence < 70;
+      session.rounds.length >= SCOPING.maxRounds &&
+      session.current_confidence < SCOPING.confidenceThreshold;
     return (
       <main className="bg-blueprint-bg flex min-h-[100dvh] items-center justify-center px-6 py-16 text-center">
         <div className="max-w-lg">
@@ -53,7 +55,7 @@ export function FinalizeGate({
           </h1>
           <p className="text-blueprint-muted mt-3 text-sm">
             {lowConfidenceExhausted
-              ? `Three clarification rounds didn't lift confidence above the threshold (currently ${session.current_confidence}/100). Add a paragraph of detail in the chat — even one new sentence about goal or features can move the needle.`
+              ? `${SCOPING.maxRounds} clarification rounds didn't lift confidence above the threshold of ${SCOPING.confidenceThreshold} (currently ${session.current_confidence}/100). Add a paragraph of detail in the chat — even one new sentence about goal or features can move the needle.`
               : "ScopeAI needs a bit more information before it can generate the two-stage output. Head back to the chat to continue."}
           </p>
           <Link

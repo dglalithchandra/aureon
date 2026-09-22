@@ -11,6 +11,7 @@ import type {
   SessionRound,
 } from "@/lib/schemas/mcq";
 import type { ClientView, EngineerView } from "@/lib/schemas/output";
+import { SCOPING } from "@/lib/config/scoping";
 
 /**
  * Schema-valid fixtures shared by unit tests and the mock Anthropic server.
@@ -29,17 +30,9 @@ export const MOCK_TOOL_NAMES = [
 ] as const;
 export type MockToolName = (typeof MOCK_TOOL_NAMES)[number];
 
-const PARAMETER_NAMES: Record<ParameterId, string> = {
-  "P-01": "Goal",
-  "P-02": "Users",
-  "P-03": "Features",
-  "P-04": "Tech constraints",
-  "P-05": "Integrations",
-  "P-06": "Non-functional requirements",
-  "P-07": "Budget",
-  "P-08": "Timeline",
-  "P-09": "Success metrics",
-};
+const PARAMETER_NAMES = Object.fromEntries(
+  SCOPING.parameters.map((p) => [p.id, p.name]),
+) as Record<ParameterId, string>;
 
 const DEFAULT_STATES: Record<ParameterId, ParameterState> = {
   "P-01": "PRESENT",
