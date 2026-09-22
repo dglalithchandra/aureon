@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 /**
- * Strict CSP for ScopeAI.
+ * Strict CSP for Aureon.
  *
  * Notes on `'unsafe-inline'` for script-src:
  *   - Required by Next.js inline runtime hydration scripts in dev (replaced

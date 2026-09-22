@@ -15,7 +15,7 @@ export function getOctokit(): Octokit {
   const env = getServerEnv();
   client = new Octokit({
     auth: env.GITHUB_TOKEN,
-    userAgent: "scopeai/0.1",
+    userAgent: "aureon/0.1",
     request: { timeout: 10_000 },
   });
   return client;

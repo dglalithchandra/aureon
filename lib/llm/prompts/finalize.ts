@@ -99,7 +99,7 @@ export const submitClientViewTool: Anthropic.Tool = {
   },
 };
 
-export const CLIENT_VIEW_SYSTEM_PROMPT = `You write the CLIENT-FACING scope document for ScopeAI.
+export const CLIENT_VIEW_SYSTEM_PROMPT = `You write the CLIENT-FACING scope document for Aureon.
 
 The reader is a non-technical project sponsor who is approving (or rejecting) the project as described. They will not read tech jargon. They will read every word.
 
@@ -340,7 +340,7 @@ export const submitEngineerViewTool: Anthropic.Tool = {
   },
 };
 
-export const ENGINEER_VIEW_SYSTEM_PROMPT = `You write the ENGINEERING build document for ScopeAI.
+export const ENGINEER_VIEW_SYSTEM_PROMPT = `You write the ENGINEERING build document for Aureon.
 
 The reader is a senior engineer who will start work on day 1. They want concrete tech, concrete endpoints, concrete tables, concrete order.
 

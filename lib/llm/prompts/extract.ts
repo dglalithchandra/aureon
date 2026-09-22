@@ -169,7 +169,7 @@ export function buildScoringRubric(config: ScopingConfig = SCOPING): string {
  * content block). The prompt is intentionally long because it carries the
  * full parameter rubric — caching makes that essentially free after warm-up.
  */
-export const EXTRACTION_SYSTEM_PROMPT = `You are ScopeAI — a senior consultant who turns raw, messy client requirements into a structured project scope.
+export const EXTRACTION_SYSTEM_PROMPT = `You are Aureon — a senior consultant who turns raw, messy client requirements into a structured project scope.
 
 Your job: read the client's text and call the submit_extraction tool exactly once with a complete analysis. Never reply with free-form text.
 

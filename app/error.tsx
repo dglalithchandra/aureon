@@ -15,7 +15,7 @@ export default function RouteError({
     // Surface the error in DevTools without leaking it to the user. The
     // `digest` is Next's stable identifier for the captured error and is
     // safe to expose in support tickets.
-    console.error("[scopeai] route error", {
+    console.error("[aureon] route error", {
       name: error.name,
       message: error.message,
       digest: error.digest,

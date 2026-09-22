@@ -9,7 +9,7 @@ interface Props {
 
 export default function ChatError({ error, reset }: Props): React.ReactElement {
   useEffect(() => {
-    console.error("[scopeai] /chat error", {
+    console.error("[aureon] /chat error", {
       name: error.name,
       message: error.message,
       digest: error.digest,

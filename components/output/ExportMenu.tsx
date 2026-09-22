@@ -43,7 +43,7 @@ export function ExportMenu({
       activeTab === "client"
         ? clientToMarkdown(output.client)
         : engineerToMarkdown(output.engineer);
-    const filename = `scopeai-${activeTab}.md`;
+    const filename = `aureon-${activeTab}.md`;
     const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -75,7 +75,7 @@ export function ExportMenu({
       await factory(target)
         .set({
           margin: [12, 12, 12, 12],
-          filename: `scopeai-${activeTab}.pdf`,
+          filename: `aureon-${activeTab}.pdf`,
           image: { type: "jpeg", quality: 0.95 },
           html2canvas: {
             scale: 2,

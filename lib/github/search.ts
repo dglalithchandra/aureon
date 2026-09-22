@@ -10,7 +10,7 @@ const SEARCH_LIMIT = 16;
 const FOLDER_FETCH_MAX_FOLDERS = 12;
 
 /**
- * Map a free-form ScopeAI domain label to a GitHub topic when one is widely
+ * Map a free-form Aureon domain label to a GitHub topic when one is widely
  * used. Topics are far more precise than keyword matches because they're
  * curated by repo owners.
  */

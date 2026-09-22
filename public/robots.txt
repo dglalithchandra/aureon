@@ -1,4 +1,4 @@
-# ScopeAI robots policy.
+# Aureon robots policy.
 # Only the marketing landing page is indexable. Everything else is per-user
 # state (chat sessions, output editor, share tokens) or API surface.
 

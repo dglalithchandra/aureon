@@ -56,7 +56,7 @@ export function FinalizeGate({
           <p className="text-blueprint-muted mt-3 text-sm">
             {lowConfidenceExhausted
               ? `${SCOPING.maxRounds} clarification rounds didn't lift confidence above the threshold of ${SCOPING.confidenceThreshold} (currently ${session.current_confidence}/100). Add a paragraph of detail in the chat — even one new sentence about goal or features can move the needle.`
-              : "ScopeAI needs a bit more information before it can generate the two-stage output. Head back to the chat to continue."}
+              : "Aureon needs a bit more information before it can generate the two-stage output. Head back to the chat to continue."}
           </p>
           <Link
             href={`/chat?s=${session.id}`}

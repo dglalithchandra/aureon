@@ -83,7 +83,7 @@ function SessionExpiredView(): React.ReactElement {
       />
       <div className="relative z-10 max-w-lg">
         <p className="font-mono text-[10px] tracking-[0.3em] text-[var(--color-blueprint-accent)] uppercase">
-          ScopeAI · session expired
+          Aureon · session expired
         </p>
         <h1 className="text-blueprint-text font-display mt-4 text-3xl font-bold sm:text-4xl">
           That session is gone.

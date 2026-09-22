@@ -18,7 +18,7 @@ export default function GlobalError({
   reset,
 }: GlobalErrorProps): React.ReactElement {
   useEffect(() => {
-    console.error("[scopeai] global error", {
+    console.error("[aureon] global error", {
       name: error.name,
       message: error.message,
       digest: error.digest,

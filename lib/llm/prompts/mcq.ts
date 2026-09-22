@@ -56,7 +56,7 @@ export const generateQuestionsTool: Anthropic.Tool = {
   },
 };
 
-export const MCQ_SYSTEM_PROMPT = `You write clarification questions for ScopeAI's iterative scoping interview.
+export const MCQ_SYSTEM_PROMPT = `You write clarification questions for Aureon's iterative scoping interview.
 
 Inputs you receive:
   - The current ExtractionResult (domain, all 9 parameters with state/evidence/gap, modules, confidence).

@@ -243,8 +243,8 @@ async function messagesCreate(
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://scopeai.local",
-        "X-Title": "ScopeAI",
+        "HTTP-Referer": "https://aureon.local",
+        "X-Title": "Aureon",
       },
       body: JSON.stringify(body),
     },

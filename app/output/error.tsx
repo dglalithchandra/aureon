@@ -9,7 +9,7 @@ interface Props {
 
 export default function OutputError({ error, reset }: Props): React.ReactElement {
   useEffect(() => {
-    console.error("[scopeai] /output error", {
+    console.error("[aureon] /output error", {
       name: error.name,
       message: error.message,
       digest: error.digest,

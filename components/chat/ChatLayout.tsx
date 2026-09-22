@@ -241,7 +241,7 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
             href="/"
             className="text-blueprint-muted hover:text-blueprint-text font-mono text-[11px] tracking-[0.3em] uppercase"
           >
-            ← ScopeAI
+            ← Aureon
           </Link>
           <h1 className="text-blueprint-text font-display mt-2 text-xl font-bold">
             Build your scope
@@ -404,7 +404,7 @@ function EmptyState(): React.ReactElement {
         data-empty-p
         className="text-blueprint-muted relative mt-4 max-w-md text-sm leading-relaxed sm:text-base"
       >
-        Messages, call notes, a rough doc — anything. ScopeAI extracts a structured scope
+        Messages, call notes, a rough doc — anything. Aureon extracts a structured scope
         and asks targeted questions only when the input is missing something important.
       </p>
       <p

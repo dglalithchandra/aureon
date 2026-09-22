@@ -40,7 +40,7 @@ export function BrandedError({
         className="relative z-10 w-full max-w-lg text-center"
       >
         <p className="text-blueprint-muted font-mono text-[10px] tracking-[0.3em] uppercase">
-          ScopeAI · error
+          Aureon · error
         </p>
         <h1 className="text-blueprint-text font-display mt-3 text-3xl font-bold sm:text-4xl">
           {title}
