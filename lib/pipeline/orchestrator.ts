@@ -26,8 +26,10 @@ const USER_CONTENT_BUDGET_BYTES = 50_000;
 /**
  * Create a fresh session. The caller persists it before invoking `runRound`,
  * allowing the client to poll the live pipeline stage from the outset.
+ * `ownerId` is the creating browser's owner id (BUG-03); POST /api/session
+ * always passes it, null is the legacy per-session-cookie mode.
  */
-export function createSession(rawText: string): Session {
+export function createSession(rawText: string, ownerId: string | null = null): Session {
   const id = randomUUID();
   const now = Date.now();
   return {
@@ -40,6 +42,7 @@ export function createSession(rawText: string): Session {
     current_confidence: 0,
     final_output: null,
     draft_output: null,
+    owner_id: ownerId,
     last_error: null,
     created_at: now,
     updated_at: now,

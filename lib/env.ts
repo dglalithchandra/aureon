@@ -29,6 +29,12 @@ const serverSchema = z
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(10).optional(),
     /**
+     * Set to 1 to run production without Upstash (DATA-01). Sessions, shares,
+     * locks and rate limits then live in one process's memory, so this is
+     * only safe for a single long-running instance (e.g. local next start).
+     */
+    ALLOW_MEMORY_STORE: z.enum(["0", "1"]).optional(),
+    /**
      * 32+ char secret used to HMAC-sign session ownership cookies.
      * In production set a real secret; if absent in dev we derive a stable
      * per-process secret (logged once) to keep DX friendly.
@@ -64,6 +70,20 @@ const serverSchema = z
         code: "custom",
         path: ["ANTHROPIC_API_KEY"],
         message: "ANTHROPIC_API_KEY required when LLM_PROVIDER=anthropic (the default)",
+      });
+    }
+    // Serverless instances do not share memory: without Redis, sessions and
+    // share links would randomly "disappear" between requests (DATA-01).
+    if (
+      data.NODE_ENV === "production" &&
+      data.ALLOW_MEMORY_STORE !== "1" &&
+      !(data.UPSTASH_REDIS_REST_URL && data.UPSTASH_REDIS_REST_TOKEN)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["UPSTASH_REDIS_REST_URL"],
+        message:
+          "UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required in production (set ALLOW_MEMORY_STORE=1 to run a single instance on in-memory storage)",
       });
     }
     // A queued job must be verifiable, so QStash needs both signing keys.

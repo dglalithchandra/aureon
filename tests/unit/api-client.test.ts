@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, finalizeSession, runSession, submitAnswers } from "@/lib/api/client";
+import {
+  absoluteUrl,
+  ApiError,
+  createShare,
+  finalizeSession,
+  revokeShare,
+  runSession,
+  submitAnswers,
+} from "@/lib/api/client";
 import { makeClientView, makeEngineerView, makeSession } from "../fixtures/llm";
 
 const SESSION = makeSession({ status: "analyzing", pipeline_stage: "github" });
@@ -91,5 +99,52 @@ describe("finalizeSession (OPS-01)", () => {
     await expect(finalizeSession(SESSION.id)).resolves.toMatchObject({
       inProgress: true,
     });
+  });
+});
+
+describe("share links", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("absoluteUrl uses NEXT_PUBLIC_APP_URL when it is set", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://aureon.example.com");
+    expect(absoluteUrl("/share/abc", "http://localhost:3000")).toBe(
+      "https://aureon.example.com/share/abc",
+    );
+  });
+
+  it("absoluteUrl falls back to the page origin", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", undefined);
+    expect(absoluteUrl("/share/abc", "http://localhost:3217")).toBe(
+      "http://localhost:3217/share/abc",
+    );
+  });
+
+  it("createShare sends the title and returns the snapshot time", async () => {
+    respond(200, { token: "t".repeat(43), url: "/share/x", created_at: 5, reused: true });
+    await expect(createShare(SESSION.id, "My scope")).resolves.toMatchObject({
+      created_at: 5,
+      reused: true,
+    });
+    const init = vi.mocked(fetch).mock.calls[0]?.[1];
+    expect(JSON.parse(String(init?.body))).toEqual({
+      sessionId: SESSION.id,
+      title: "My scope",
+    });
+  });
+
+  it("revokeShare sends DELETE and throws the server's error", async () => {
+    respond(200, { revoked: true });
+    await expect(revokeShare("tok")).resolves.toBeUndefined();
+    expect(vi.mocked(fetch).mock.calls[0]).toMatchObject([
+      "/api/share/tok",
+      { method: "DELETE" },
+    ]);
+
+    respond(401, {
+      error: { code: "UNAUTHORIZED", message: "Session ownership required" },
+    });
+    await expect(revokeShare("tok")).rejects.toMatchObject({ status: 401 });
   });
 });

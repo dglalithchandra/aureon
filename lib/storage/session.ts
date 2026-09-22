@@ -3,6 +3,7 @@ import { getRedis } from "@/lib/storage/redis";
 import { acquireLock, releaseLock } from "@/lib/storage/lock";
 import { SessionSchema, type Session } from "@/lib/schemas/mcq";
 import { logger } from "@/lib/logger";
+import { StorageUnavailableError } from "@/lib/errors";
 
 const SESSION_TTL_SECONDS = 24 * 60 * 60;
 
@@ -88,10 +89,11 @@ export async function putSession(session: Session): Promise<void> {
       await r.set(key(session.id), validated.data, { ex: SESSION_TTL_SECONDS });
       return;
     } catch (err) {
-      logger.warn("session.redis_set_failure", {
+      // Never report a write that did not happen as a success (DATA-01).
+      logger.error("session.redis_set_failure", {
         message: err instanceof Error ? err.message : "unknown",
       });
-      return;
+      throw new StorageUnavailableError();
     }
   }
   memory.set(session.id, {

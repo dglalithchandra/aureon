@@ -328,6 +328,7 @@ export function OutputLayout({
       <ShareDialog
         open={shareOpen}
         sessionId={sessionId}
+        title={title}
         onClose={() => setShareOpen(false)}
       />
     </div>

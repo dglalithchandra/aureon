@@ -232,8 +232,8 @@ async function runFlow(): Promise<void> {
   if (r1.status !== 200)
     abort(`${r1.status} ${r1.data?.error?.code} — ${r1.data?.error?.message}`);
   check(
-    "session cookie set",
-    r1.cookies.some((c) => c.name === "scopeai_session"),
+    "owner cookie set",
+    r1.cookies.some((c) => c.name === "scopeai_owner"),
   );
   check("created session is analyzing", r1.data.session.status === "analyzing");
   const cookies = r1.cookies;

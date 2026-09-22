@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Home, MessageSquarePlus } from "lucide-react";
 import { getSession } from "@/lib/storage/session";
-import { SESSION_COOKIE_NAME, verifySessionCookie } from "@/lib/security/session-cookie";
+import { ownsSession } from "@/lib/security/session-cookie";
+import { deriveTitle } from "@/lib/utils";
 import { FinalizeGate } from "@/components/output/FinalizeGate";
 import { BlueprintGrid } from "@/components/landing/BlueprintGrid";
 
@@ -22,12 +23,6 @@ export default async function OutputPage({
   const { sessionId } = await params;
   if (!UUID_RE.test(sessionId)) notFound();
 
-  const jar = await cookies();
-  const cookie = jar.get(SESSION_COOKIE_NAME)?.value;
-  if (!verifySessionCookie(cookie, sessionId)) {
-    return <UnauthorizedView />;
-  }
-
   const session = await getSession(sessionId);
   if (!session) {
     // Session disappeared (server restart, hot reload in dev, or 24h TTL hit).
@@ -36,16 +31,14 @@ export default async function OutputPage({
     return <SessionExpiredView />;
   }
 
+  // Only the browser that created the session (owner cookie, BUG-03).
+  if (!ownsSession(await cookies(), session)) {
+    return <UnauthorizedView />;
+  }
+
   const initialTitle = deriveTitle(session.raw_input);
 
   return <FinalizeGate session={session} initialTitle={initialTitle} />;
-}
-
-function deriveTitle(rawInput: string): string {
-  const trimmed = rawInput.trim().split(/\n|\.|!|\?/)[0] ?? "";
-  const cleaned = trimmed.replace(/\s+/g, " ").trim();
-  if (!cleaned) return "Untitled scope";
-  return cleaned.length > 80 ? cleaned.slice(0, 77) + "…" : cleaned;
 }
 
 function UnauthorizedView(): React.ReactElement {

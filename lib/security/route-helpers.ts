@@ -4,11 +4,7 @@ import type { NextRequest } from "next/server";
 import type { z } from "zod";
 import { AppError, serializeError, ValidationError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/security/rate-limit";
-import {
-  buildSessionCookie,
-  SESSION_COOKIE_NAME,
-  verifySessionCookie,
-} from "@/lib/security/session-cookie";
+import { buildOwnerCookie, ownsSession } from "@/lib/security/session-cookie";
 import type { Session } from "@/lib/schemas/mcq";
 import { logger } from "@/lib/logger";
 import { getSession } from "@/lib/storage/session";
@@ -92,8 +88,9 @@ export function jsonError(err: unknown, fallbackStatus = 500): NextResponse {
   return NextResponse.json(serializeError(err), { status: fallbackStatus });
 }
 
-export function attachSessionCookie(res: NextResponse, session: Session): NextResponse {
-  const cookie = buildSessionCookie(session.id);
+/** Set the browser's long-lived owner cookie (BUG-03). */
+export function attachOwnerCookie(res: NextResponse, ownerId: string): NextResponse {
+  const cookie = buildOwnerCookie(ownerId);
   res.cookies.set(cookie.name, cookie.value, {
     httpOnly: cookie.httpOnly,
     secure: cookie.secure,
@@ -104,18 +101,38 @@ export function attachSessionCookie(res: NextResponse, session: Session): NextRe
   return res;
 }
 
+/**
+ * 401 unless the request's browser owns `session`: its owner cookie matches
+ * session.owner_id, or (for sessions stored before owner_id existed) it
+ * holds that session's legacy cookie.
+ */
 export function requireSessionOwner(
   req: NextRequest,
-  sessionId: string,
+  session: Pick<Session, "id" | "owner_id">,
 ): NextResponse | null {
-  const cookie = req.cookies.get(SESSION_COOKIE_NAME)?.value;
-  if (!verifySessionCookie(cookie, sessionId)) {
+  if (ownsSession(req.cookies, session)) return null;
+  return NextResponse.json(
+    { error: { code: "UNAUTHORIZED", message: "Session ownership required" } },
+    { status: 401 },
+  );
+}
+
+/**
+ * The stored session if the request owns it; otherwise the 404 or 401
+ * response to return. Callers: `if (loaded instanceof NextResponse) return loaded;`
+ */
+export async function loadOwnedSession(
+  req: NextRequest,
+  sessionId: string,
+): Promise<Session | NextResponse> {
+  const session = await getSession(sessionId);
+  if (!session) {
     return NextResponse.json(
-      { error: { code: "UNAUTHORIZED", message: "Session ownership required" } },
-      { status: 401 },
+      { error: { code: "NOT_FOUND", message: "Session not found or expired" } },
+      { status: 404 },
     );
   }
-  return null;
+  return requireSessionOwner(req, session) ?? session;
 }
 
 /**

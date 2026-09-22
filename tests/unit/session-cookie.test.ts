@@ -1,7 +1,12 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
+  buildOwnerCookie,
   buildSessionCookie,
+  newOwnerId,
+  OWNER_COOKIE_NAME,
+  ownsSession,
+  readOwnerCookie,
   SESSION_COOKIE_NAME,
   verifySessionCookie,
 } from "@/lib/security/session-cookie";
@@ -75,5 +80,56 @@ describe("verifySessionCookie", () => {
     ["trailing dot", `${SESSION_ID}.`],
   ])("rejects a malformed value (%s)", (_label, value) => {
     expect(verifySessionCookie(value, SESSION_ID)).toBe(false);
+  });
+});
+
+describe("owner cookie (BUG-03)", () => {
+  const ownerId = newOwnerId();
+  const cookie = buildOwnerCookie(ownerId);
+
+  it("is long-lived, HttpOnly and SameSite=Lax", () => {
+    expect(cookie).toMatchObject({
+      name: OWNER_COOKIE_NAME,
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 365 * 24 * 60 * 60,
+    });
+  });
+
+  it("round-trips the owner id and rejects tampering", () => {
+    expect(readOwnerCookie(cookie.value)).toBe(ownerId);
+    expect(readOwnerCookie(cookie.value.replace(ownerId, newOwnerId()))).toBeNull();
+    expect(readOwnerCookie(`${ownerId}.${"A".repeat(43)}`)).toBeNull();
+    expect(readOwnerCookie(undefined)).toBeNull();
+    expect(readOwnerCookie("not-a-uuid.sig")).toBeNull();
+  });
+
+  it("does not accept a per-session cookie as an owner cookie", () => {
+    expect(readOwnerCookie(buildSessionCookie(SESSION_ID).value)).toBeNull();
+  });
+});
+
+describe("ownsSession", () => {
+  const ownerId = newOwnerId();
+  const jar = (values: Record<string, string>) => ({
+    get: (name: string) => (name in values ? { value: values[name]! } : undefined),
+  });
+
+  it("matches the owner cookie against session.owner_id", () => {
+    const session = { id: SESSION_ID, owner_id: ownerId };
+    const mine = jar({ [OWNER_COOKIE_NAME]: buildOwnerCookie(ownerId).value });
+    const theirs = jar({ [OWNER_COOKIE_NAME]: buildOwnerCookie(newOwnerId()).value });
+    expect(ownsSession(mine, session)).toBe(true);
+    expect(ownsSession(theirs, session)).toBe(false);
+    expect(ownsSession(jar({}), session)).toBe(false);
+  });
+
+  it("falls back to the per-session cookie only for sessions without owner_id", () => {
+    const legacyCookie = jar({
+      [SESSION_COOKIE_NAME]: buildSessionCookie(SESSION_ID).value,
+    });
+    expect(ownsSession(legacyCookie, { id: SESSION_ID, owner_id: null })).toBe(true);
+    expect(ownsSession(legacyCookie, { id: SESSION_ID, owner_id: ownerId })).toBe(false);
   });
 });

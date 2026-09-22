@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { getSession, putSession } from "@/lib/storage/session";
+import { putSession } from "@/lib/storage/session";
 import { FinalOutputSchema } from "@/lib/schemas/output";
 import { deepSanitize } from "@/lib/security/deep-sanitize";
 import {
   jsonError,
+  loadOwnedSession,
   readJsonBody,
   requireJsonContentType,
-  requireSessionOwner,
   validateUuid,
 } from "@/lib/security/route-helpers";
 import { ValidationError } from "@/lib/errors";
@@ -32,17 +32,9 @@ export async function GET(
     );
   }
 
-  const unauthorized = requireSessionOwner(req, id);
-  if (unauthorized) return unauthorized;
-
   try {
-    const session = await getSession(id);
-    if (!session) {
-      return NextResponse.json(
-        { error: { code: "NOT_FOUND", message: "Session not found or expired" } },
-        { status: 404 },
-      );
-    }
+    const session = await loadOwnedSession(req, id);
+    if (session instanceof NextResponse) return session;
     return NextResponse.json({ session });
   } catch (err) {
     return jsonError(err);
@@ -74,19 +66,11 @@ export async function PATCH(
   const ctMismatch = requireJsonContentType(req);
   if (ctMismatch) return ctMismatch;
 
-  const unauthorized = requireSessionOwner(req, id);
-  if (unauthorized) return unauthorized;
-
   try {
+    const session = await loadOwnedSession(req, id);
+    if (session instanceof NextResponse) return session;
     const { final_output } = await readJsonBody(req, PatchBodySchema);
 
-    const session = await getSession(id);
-    if (!session) {
-      return NextResponse.json(
-        { error: { code: "NOT_FOUND", message: "Session not found or expired" } },
-        { status: 404 },
-      );
-    }
     if (session.status !== "ready" && session.status !== "finalized") {
       throw new ValidationError(
         `Cannot edit output for session in status ${session.status}`,

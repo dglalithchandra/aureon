@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { SessionSchema, type MCQAnswer, type Session } from "@/lib/schemas/mcq";
 import { FinalOutputSchema, type FinalOutput } from "@/lib/schemas/output";
+import { getClientEnv } from "@/lib/env";
 
 /**
  * Browser-side API helpers. Every response is Zod-validated before it leaves
@@ -162,18 +163,40 @@ export async function patchFinalOutput(
 
 const ShareResponseSchema = z.object({
   token: z.string(),
+  /** Relative path; see absoluteUrl. */
   url: z.string(),
+  /** When the snapshot behind the link was taken (ms). */
+  created_at: z.number(),
+  /** True when the session's existing link was returned. */
+  reused: z.boolean(),
 });
+export type ShareLink = z.infer<typeof ShareResponseSchema>;
 
-export async function createShare(
-  sessionId: string,
-): Promise<{ token: string; url: string }> {
+/** Share a finalized session: its active link, or a new snapshot link. */
+export async function createShare(sessionId: string, title?: string): Promise<ShareLink> {
   const res = await fetch(`/api/share`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionId }),
+    body: JSON.stringify({ sessionId, title }),
     credentials: "same-origin",
   });
   if (!res.ok) throw await readError(res);
   return ShareResponseSchema.parse(await res.json());
+}
+
+/** Revoke a share link (owner only); it answers 404 afterwards. */
+export async function revokeShare(token: string): Promise<void> {
+  const res = await fetch(`/api/share/${encodeURIComponent(token)}`, {
+    method: "DELETE",
+    credentials: "same-origin",
+  });
+  if (!res.ok) throw await readError(res);
+}
+
+/**
+ * An absolute URL for `path`: on NEXT_PUBLIC_APP_URL when it is set (so a
+ * shared link points at the public domain), otherwise on `origin`.
+ */
+export function absoluteUrl(path: string, origin: string): string {
+  return new URL(path, getClientEnv().NEXT_PUBLIC_APP_URL ?? origin).toString();
 }

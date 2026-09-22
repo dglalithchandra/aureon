@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { sessionEventStream } from "@/lib/storage/session-events";
-import { requireSessionOwner, validateUuid } from "@/lib/security/route-helpers";
+import { jsonError, loadOwnedSession, validateUuid } from "@/lib/security/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,8 +24,12 @@ export async function GET(req: NextRequest, { params }: RouteParams): Promise<Re
     );
   }
 
-  const unauthorized = requireSessionOwner(req, id);
-  if (unauthorized) return unauthorized;
+  try {
+    const owned = await loadOwnedSession(req, id);
+    if (owned instanceof NextResponse) return owned;
+  } catch (err) {
+    return jsonError(err);
+  }
 
   return new Response(sessionEventStream(id, { signal: req.signal }), {
     headers: {

@@ -10,7 +10,7 @@ import {
   getClientIp,
   inProgressResponse,
   jsonError,
-  requireSessionOwner,
+  loadOwnedSession,
   validateUuid,
   withSessionLock,
 } from "@/lib/security/route-helpers";
@@ -66,10 +66,11 @@ export async function POST(
   const limited = await gateRateLimit(`session-run:${ip}`, limit, windowSeconds);
   if (limited) return limited;
 
-  const unauthorized = requireSessionOwner(req, id);
-  if (unauthorized) return unauthorized;
-
   try {
+    // Ownership is checked before the lock, so a stranger cannot hold it.
+    const owned = await loadOwnedSession(req, id);
+    if (owned instanceof NextResponse) return owned;
+
     // The lock makes a concurrent duplicate /run answer 409 instead of
     // starting a second LLM pipeline for the same session.
     return await withSessionLock(id, async (lock) => {

@@ -113,6 +113,12 @@ export const SessionSchema = z.object({
   current_confidence: z.number().int().min(0).max(100),
   final_output: FinalOutputSchema.nullable().default(null),
   draft_output: DraftOutputSchema.nullable().default(null),
+  /**
+   * The browser that created the session (BUG-03): matches the random id in
+   * its signed "scopeai_owner" cookie. Null for sessions stored before this
+   * field existed; those still accept their per-session cookie.
+   */
+  owner_id: z.string().uuid().nullable().default(null),
   // Defaults to null so sessions stored before this field existed still parse.
   last_error: SessionErrorSchema.nullable().default(null),
   created_at: z.number().int(),

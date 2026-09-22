@@ -13,6 +13,7 @@ export type ErrorCode =
   | "UNAUTHORIZED"
   | "BUDGET_EXCEEDED"
   | "IN_PROGRESS"
+  | "STORAGE_UNAVAILABLE"
   | "INTERNAL_ERROR";
 
 export class AppError extends Error {
@@ -76,6 +77,14 @@ export class BudgetExceededError extends AppError {
   ) {
     super("BUDGET_EXCEEDED", message, 503);
     this.name = "BudgetExceededError";
+  }
+}
+
+/** A write to Redis failed; nothing was saved (DATA-01). */
+export class StorageUnavailableError extends AppError {
+  constructor(message = "Storage is unavailable right now. Please try again.") {
+    super("STORAGE_UNAVAILABLE", message, 503);
+    this.name = "StorageUnavailableError";
   }
 }
 

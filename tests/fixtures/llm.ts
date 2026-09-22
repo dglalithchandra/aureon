@@ -223,6 +223,7 @@ export function makeSession(overrides: Partial<Session> = {}): Session {
     current_confidence: 0,
     final_output: null,
     draft_output: null,
+    owner_id: null,
     last_error: null,
     created_at: 0,
     updated_at: 0,

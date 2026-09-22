@@ -10,9 +10,9 @@ import {
   gateRateLimit,
   getClientIp,
   jsonError,
+  loadOwnedSession,
   readJsonBody,
   requireJsonContentType,
-  requireSessionOwner,
   validateUuid,
   withSessionLock,
 } from "@/lib/security/route-helpers";
@@ -49,10 +49,11 @@ export async function POST(
   const limited = await gateRateLimit(`answer:${ip}`, limit, windowSeconds);
   if (limited) return limited;
 
-  const unauthorized = requireSessionOwner(req, id);
-  if (unauthorized) return unauthorized;
-
   try {
+    // Ownership is checked before the lock, so a stranger cannot hold it.
+    const owned = await loadOwnedSession(req, id);
+    if (owned instanceof NextResponse) return owned;
+
     const { answers } = await readJsonBody(req, SubmitAnswersRequestSchema);
     return await withSessionLock(id, async (lock) => {
       const session = await getSession(id);

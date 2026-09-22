@@ -1,14 +1,34 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Copy, Loader2, X } from "lucide-react";
-import { ApiError, createShare } from "@/lib/api/client";
+import { Check, Copy, Link2Off, Loader2, X } from "lucide-react";
+import { absoluteUrl, ApiError, createShare, revokeShare } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 interface ShareDialogProps {
   open: boolean;
   sessionId: string;
+  /** The title shown on the output page; stored in the snapshot. */
+  title: string;
   onClose(): void;
+}
+
+interface ActiveLink {
+  token: string;
+  url: string;
+  createdAt: number;
+}
+
+const SNAPSHOT_DATE = new Intl.DateTimeFormat("en-US", { dateStyle: "long" });
+
+/** The session's active link, or a new snapshot link. */
+async function shareLink(sessionId: string, title: string): Promise<ActiveLink> {
+  const r = await createShare(sessionId, title);
+  return {
+    token: r.token,
+    url: absoluteUrl(r.url, window.location.origin),
+    createdAt: r.created_at,
+  };
 }
 
 export function ShareDialog(props: ShareDialogProps): React.ReactElement {
@@ -20,40 +40,71 @@ export function ShareDialog(props: ShareDialogProps): React.ReactElement {
   );
 }
 
-function ShareDialogInner({ sessionId, onClose }: ShareDialogProps): React.ReactElement {
-  const [loading, setLoading] = useState(true);
-  const [url, setUrl] = useState<string | null>(null);
+function ShareDialogInner({
+  sessionId,
+  title,
+  onClose,
+}: ShareDialogProps): React.ReactElement {
+  const [busy, setBusy] = useState(true);
+  const [link, setLink] = useState<ActiveLink | null>(null);
+  const [revoked, setRevoked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    createShare(sessionId)
-      .then((r) => {
-        if (cancelled) return;
-        const absolute = `${window.location.origin}${r.url}`;
-        setUrl(absolute);
+    shareLink(sessionId, title)
+      .then((next) => {
+        if (!cancelled) setLink(next);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
         setError(err instanceof ApiError ? err.message : "Could not create share link.");
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setBusy(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, title]);
 
   async function copy(): Promise<void> {
-    if (!url) return;
+    if (!link) return;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(link.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
       /* ignore */
+    }
+  }
+
+  async function revoke(): Promise<void> {
+    if (!link) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await revokeShare(link.token);
+      setLink(null);
+      setRevoked(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not revoke the link.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function shareAgain(): Promise<void> {
+    setBusy(true);
+    setError(null);
+    try {
+      setLink(await shareLink(sessionId, title));
+      setRevoked(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not create share link.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -91,15 +142,15 @@ function ShareDialogInner({ sessionId, onClose }: ShareDialogProps): React.React
           Share read-only link
         </h2>
         <p className="text-blueprint-muted mt-2 text-sm">
-          Anyone with this link can view the scope. Edits require the owner&apos;s session
-          cookie. Link expires in 30 days.
+          Anyone with this link can view a snapshot of the scope for 30 days. Later edits
+          are not included: revoke the link and share again to update it.
         </p>
 
-        <div className="mt-5 flex flex-col gap-2">
-          {loading && (
+        <div className="mt-5 flex flex-col gap-3" aria-live="polite">
+          {busy && (
             <div className="text-blueprint-muted inline-flex items-center gap-2 text-sm">
               <Loader2 className="animate-spin" size={14} />
-              Creating link…
+              {link ? "Revoking link…" : "Creating link…"}
             </div>
           )}
           {error && (
@@ -107,25 +158,55 @@ function ShareDialogInner({ sessionId, onClose }: ShareDialogProps): React.React
               {error}
             </p>
           )}
-          {url && (
-            <div className="flex items-center gap-2">
-              <input
-                readOnly
-                value={url}
-                onFocus={(e) => e.currentTarget.select()}
-                className="border-blueprint-line/20 bg-blueprint-bg/40 text-blueprint-text flex-1 rounded-md border px-3 py-2 font-mono text-xs outline-none"
-                aria-label="Shareable URL"
-              />
+          {link && (
+            <>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={link.url}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="border-blueprint-line/20 bg-blueprint-bg/40 text-blueprint-text flex-1 rounded-md border px-3 py-2 font-mono text-xs outline-none"
+                  aria-label="Shareable URL"
+                />
+                <button
+                  type="button"
+                  onClick={copy}
+                  className={cn(
+                    "inline-flex h-9 items-center gap-1.5 rounded-md border border-[var(--color-blueprint-accent)] px-3 text-xs font-medium text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/15",
+                    copied && "border-emerald-400 text-emerald-300",
+                  )}
+                >
+                  {copied ? <Check size={12} /> : <Copy size={12} />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-blueprint-muted text-xs">
+                  Snapshot taken {SNAPSHOT_DATE.format(link.createdAt)}.
+                </p>
+                <button
+                  type="button"
+                  onClick={revoke}
+                  disabled={busy}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-red-400/40 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-400/10 disabled:opacity-60"
+                >
+                  <Link2Off size={12} />
+                  Revoke link
+                </button>
+              </div>
+            </>
+          )}
+          {revoked && !busy && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-blueprint-text text-sm">
+                Link revoked. Anyone opening it now gets a “not found” page.
+              </p>
               <button
                 type="button"
-                onClick={copy}
-                className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-md border border-[var(--color-blueprint-accent)] px-3 text-xs font-medium text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/15",
-                  copied && "border-emerald-400 text-emerald-300",
-                )}
+                onClick={shareAgain}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-blueprint-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/15"
               >
-                {copied ? <Check size={12} /> : <Copy size={12} />}
-                {copied ? "Copied" : "Copy"}
+                Create a new link
               </button>
             </div>
           )}
