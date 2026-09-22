@@ -6,7 +6,7 @@ Audit date: 2026-09-21 · Commit audited: `f095b6b` (local `main`) plus the READ
 
 ---
 
-## Final Phase status (updated 2026-09-22)
+## Final Phase status (updated 2026-09-22, after BUG-01 and SEC-02)
 
 Work happens on the `final-phase` branch (committed locally, **not pushed yet**). This table is the tracker for the Final Phase: update it whenever an issue is fixed.
 
@@ -16,8 +16,10 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 
 | ID | Severity | Status | Commits | What was done |
 |---|---|:-:|---|---|
+| BUG-01 | Critical | ✅ | `36f79e3` | Separate buckets: polls 120/60 s, other `/api` 30/60 s, LLM routes 6/60 s per route; one limiter per request elsewhere. Polling backs off 1.5 s → 3 s → 5 s, stops on 401/404, shows 429 as "busy, retrying". Verified in the browser: two 20 s mocked rounds plus Generate output, 25 requests, no 429. |
+| SEC-02 | Medium | ✅ | `5fe58ae` `16d10b2` | `/api/extract` and `/api/github` deleted (404). Client IP from the platform on Vercel, never the client's first X-Forwarded-For entry. Global daily LLM budget (`LLM_DAILY_CALL_LIMIT`, default 2000) → 503 `BUDGET_EXCEEDED`. Still manual: an Anthropic console spend limit. |
 | SEC-01 | High | ✅ | `73ed0aa` `b5cb9c2` `e56b913` `5305c8c` | `next` 16.3.5; `npm audit` reports 0 (dev included); Dependabot config and `npm run audit`. |
-| TEST-01 | Medium | ✅ | `ca04202` `5bfff39` `04da784` `e40ac08` | Vitest 5 with a mock Anthropic server and a network guard; 153 tests (unit + create → round → answers → output integration); `scripts/test-flow.ts` calls `/run`; CI workflow. CI has not run on GitHub yet (waits for the push). |
+| TEST-01 | Medium | ✅ | `ca04202` `5bfff39` `04da784` `e40ac08` | Vitest 5 with a mock Anthropic server and a network guard; unit tests plus a create → round → answers → output integration test; `scripts/test-flow.ts` calls `/run`; CI workflow. CI has not run on GitHub yet (waits for the push). |
 | ARCH-02 | Medium | ✅ | `560952a` `e122b03` | `lib/config/scoping.ts` is the single source for weights, multipliers, threshold, rounds and caps; the prompt's scoring rubric is generated from it. One shared `getRedis`, `getClientIp`, `deriveSteps` (mobile panel now shows live stages) and `canonicalModuleKey`. |
 | CODE-01 | Low | ✅ | `9580403` `96d087a` `d1a1f38` `37f90b6` `e122b03` | Prettier clean (LF enforced by `.gitattributes`); unused deps and dead exports removed; the `"done" : "done"` ternary is gone. knip is not yet a CI step. |
 | REPO-01 | Low | ✅ | `412f0b5` `8b468d0` `1dfab49` | `local-test.log` untracked; local `main` fast-forwarded to `origin/main`; one product name, Aureon. |
@@ -35,20 +37,18 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 
 | # | ID | Severity | Notes |
 |:-:|---|---|---|
-| 1 | BUG-01 | Critical | Poll bucket separate from LLM bucket; polling backoff. |
-| 2 | BUG-04 | High | Store a snapshot on share. |
-| 3 | BUG-05 | High | `SCOPING.blockerMaxRounds` and `blockerCap` are ready in config. |
-| 4 | SEC-02 | Medium | Delete `/api/extract` and `/api/github`; spoof-proof IP (now one function in `lib/security/client-ip.ts`); spend caps. |
-| 5 | GOAL-02 | Medium | Build GitHub references on the server. |
-| 6 | GOAL-01 / DOC-01 | High / Medium | Finish the README and landing claims (see above). |
-| 7 | BUG-08 | Medium | Per-session lock; needed before BUG-02's retry. |
-| 8 | BUG-02 + ROB-01 | High / Medium | Error state, Retry button, validate–repair–retry. |
-| 9 | BUG-03 | High | `owner_id` cookie. |
-| 10 | BUG-06 + BUG-07 | Medium | Prompt assembly and text normalisation (touch the same lines). |
-| 11 | OPS-01 + PERF-01 | High / Medium | Parallel Haiku calls, fetch less from GitHub, split finalize, timeouts. |
-| 12 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. |
-| 13 | DATA-01, BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | |
-| 14 | SEC-04, SEC-05, BUG-10, BUG-11, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
+| 1 | BUG-04 | High | Store a snapshot on share. |
+| 2 | BUG-05 | High | `SCOPING.blockerMaxRounds` and `blockerCap` are ready in config. |
+| 3 | GOAL-02 | Medium | Build GitHub references on the server. |
+| 4 | GOAL-01 / DOC-01 | High / Medium | Finish the README and landing claims (see above). |
+| 5 | BUG-08 | Medium | Per-session lock; needed before BUG-02's retry. |
+| 6 | BUG-02 + ROB-01 | High / Medium | Error state, Retry button, validate–repair–retry. |
+| 7 | BUG-03 | High | `owner_id` cookie. |
+| 8 | BUG-06 + BUG-07 | Medium | Prompt assembly and text normalisation (touch the same lines). |
+| 9 | OPS-01 + PERF-01 | High / Medium | Parallel Haiku calls, fetch less from GitHub, split finalize, timeouts. |
+| 10 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. |
+| 11 | DATA-01, BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | |
+| 12 | SEC-04, SEC-05, BUG-10, BUG-11, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
 
 ### On hold (owner's decision)
 
@@ -56,6 +56,8 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 - Merge into `main` so Dependabot starts; enable Dependabot alerts and security updates in the repo settings.
 - Teammates on Windows run `npm run format` once after pulling (converts files to LF, no diff).
 - Check the mobile pipeline panel in a real browser.
+- Set a monthly spend limit in the Anthropic console, and `LLM_DAILY_CALL_LIMIT` in the Vercel environment if 2000 calls/day is not right.
+- Self-hosting (not Vercel) needs a reverse proxy that appends the client IP to `X-Forwarded-For`; otherwise the rate-limit key can be spoofed.
 
 ---
 
