@@ -9,7 +9,7 @@ export interface BrandedErrorProps {
   title?: string;
   /** Optional sub-message. */
   message?: string;
-  /** Reload handler — typically `() => reset()` from a Next error boundary. */
+  /** Reload handler — typically Next's `retry` from an error boundary. */
   onReload?: () => void;
   /** When true the "Back home" link is hidden (used inside global-error). */
   hideHome?: boolean;

@@ -4,7 +4,7 @@ import { BrandedError } from "@/components/BrandedError";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }
 
 /**
@@ -15,7 +15,7 @@ interface GlobalErrorProps {
  */
 export default function GlobalError({
   error,
-  reset,
+  retry,
 }: GlobalErrorProps): React.ReactElement {
   useEffect(() => {
     console.error("[aureon] global error", {
@@ -35,7 +35,7 @@ export default function GlobalError({
           fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
         }}
       >
-        <BrandedError onReload={reset} hideHome />
+        <BrandedError onReload={retry} hideHome />
       </body>
     </html>
   );

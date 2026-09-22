@@ -4,12 +4,12 @@ import { BrandedError } from "@/components/BrandedError";
 
 interface RouteErrorProps {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }
 
 export default function RouteError({
   error,
-  reset,
+  retry,
 }: RouteErrorProps): React.ReactElement {
   useEffect(() => {
     // Surface the error in DevTools without leaking it to the user. The
@@ -22,5 +22,5 @@ export default function RouteError({
     });
   }, [error]);
 
-  return <BrandedError onReload={reset} />;
+  return <BrandedError onReload={retry} />;
 }

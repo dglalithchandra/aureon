@@ -4,10 +4,10 @@ import { BrandedError } from "@/components/BrandedError";
 
 interface Props {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }
 
-export default function ChatError({ error, reset }: Props): React.ReactElement {
+export default function ChatError({ error, retry }: Props): React.ReactElement {
   useEffect(() => {
     console.error("[aureon] /chat error", {
       name: error.name,
@@ -19,7 +19,7 @@ export default function ChatError({ error, reset }: Props): React.ReactElement {
     <BrandedError
       title="The chat ran into a snag."
       message="Your session is preserved server-side. Reload to pick up where you left off."
-      onReload={reset}
+      onReload={retry}
     />
   );
 }
