@@ -1,6 +1,7 @@
 import "@/lib/server-only";
 import { randomUUID } from "node:crypto";
-import { createLlmMessage, PromptModel } from "@/lib/llm/anthropic";
+import { PromptModel } from "@/lib/llm/anthropic";
+import { callToolWithRepair } from "@/lib/llm/structured";
 import { generateQuestionsTool, MCQ_SYSTEM_PROMPT } from "@/lib/llm/prompts/mcq";
 import {
   MCQQuestionSchema,
@@ -46,15 +47,20 @@ export async function generateQuestions(
   userBlocks.push("Call generate_clarification_questions now.");
 
   const t0 = Date.now();
-  let response;
+  let outcome;
   try {
-    response = await createLlmMessage({
-      model: PromptModel.SONNET,
-      max_tokens: 2048,
-      system: MCQ_SYSTEM_PROMPT,
-      tools: [generateQuestionsTool],
-      tool_choice: { type: "tool", name: generateQuestionsTool.name },
-      messages: [{ role: "user", content: userBlocks.join("\n\n") }],
+    outcome = await callToolWithRepair({
+      label: "mcq",
+      toolName: generateQuestionsTool.name,
+      parse: (input) => QuestionGenToolOutputSchema.safeParse(input),
+      params: {
+        model: PromptModel.SONNET,
+        max_tokens: 2048,
+        system: MCQ_SYSTEM_PROMPT,
+        tools: [generateQuestionsTool],
+        tool_choice: { type: "tool", name: generateQuestionsTool.name },
+        messages: [{ role: "user", content: userBlocks.join("\n\n") }],
+      },
     });
   } catch (err) {
     // The budget error must reach the route as a 503, not become an LLMError.
@@ -66,27 +72,14 @@ export async function generateQuestions(
 
   logger.info("mcq.completed", {
     durationMs: Date.now() - t0,
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
+    attempts: outcome.attempts,
+    inputTokens: outcome.response.usage.input_tokens,
+    outputTokens: outcome.response.usage.output_tokens,
   });
 
-  const tu = response.content.find(
-    (b): b is Extract<typeof b, { type: "tool_use" }> =>
-      b.type === "tool_use" && b.name === generateQuestionsTool.name,
-  );
-  if (!tu) {
-    logger.warn("mcq.no_tool_use");
-    return [];
-  }
-
-  const parsed = QuestionGenToolOutputSchema.safeParse(tu.input);
-  if (!parsed.success) {
-    logger.warn("mcq.zod_failure", {
-      issues: parsed.error.issues
-        .slice(0, 3)
-        .map((i) => `${i.path.join(".")}: ${i.message}`)
-        .join("; "),
-    });
+  if (!outcome.ok) {
+    // Still invalid after the repair retry: no usable questions this round.
+    logger.warn("mcq.invalid_output", { issues: outcome.issues });
     return [];
   }
 
@@ -96,7 +89,7 @@ export async function generateQuestions(
   // BLOCKER mode — when the extraction is in BLOCKER state, we only return
   // the first BLOCKER question, ignore the rest.
   const filtered: MCQQuestion[] = [];
-  for (const item of parsed.data.questions) {
+  for (const item of outcome.data.questions) {
     if (askedBefore.includes(item.parameter_id)) continue;
     if (blockerExpected && !isBlockerParam(extraction, item.parameter_id)) continue;
     if (filtered.length >= MAX_QUESTIONS) break;

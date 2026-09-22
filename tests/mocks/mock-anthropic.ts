@@ -17,12 +17,15 @@ import { defaultToolPayload, MOCK_TOOL_NAMES, type MockToolName } from "../fixtu
  *                           failNext(3) makes one logical call fail.
  *   override(tool, payload) replace the fixture for a tool until reset()
  *   enqueue(tool, payload)  one-shot payload; queued payloads win over overrides
+ *   truncateNext(n)         answer the next n requests with stop_reason
+ *                           "max_tokens" and no tool call (truncated output)
  *   reset()                 clear all of the above and the call log
  */
 
 export interface RecordedCall {
   tool: string | null;
   model: string | null;
+  maxTokens: number | null;
   /** Text of every user message, joined — for prompt assertions. */
   userText: string;
 }
@@ -35,6 +38,7 @@ export interface MockAnthropic {
   failNext(count: number): void;
   override(tool: MockToolName, payload: unknown): void;
   enqueue(tool: MockToolName, payload: unknown): void;
+  truncateNext(count: number): void;
   reset(): void;
   close(): Promise<void>;
 }
@@ -93,6 +97,7 @@ export async function startMockAnthropic(): Promise<MockAnthropic> {
   const queues = new Map<MockToolName, unknown[]>();
   let delayMs = 0;
   let failRemaining = 0;
+  let truncateRemaining = 0;
   let seq = 0;
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -120,7 +125,8 @@ export async function startMockAnthropic(): Promise<MockAnthropic> {
     const toolChoice = isObject(body.tool_choice) ? body.tool_choice : {};
     const tool = typeof toolChoice.name === "string" ? toolChoice.name : null;
     const model = typeof body.model === "string" ? body.model : null;
-    calls.push({ tool, model, userText: userTextOf(body) });
+    const maxTokens = typeof body.max_tokens === "number" ? body.max_tokens : null;
+    calls.push({ tool, model, maxTokens, userText: userTextOf(body) });
 
     if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
 
@@ -151,6 +157,20 @@ export async function startMockAnthropic(): Promise<MockAnthropic> {
           : defaultToolPayload(tool);
 
     seq++;
+    if (truncateRemaining > 0) {
+      truncateRemaining--;
+      sendJson(res, 200, {
+        id: `msg_mock_${seq}`,
+        type: "message",
+        role: "assistant",
+        model: model ?? "mock",
+        content: [],
+        stop_reason: "max_tokens",
+        stop_sequence: null,
+        usage: { input_tokens: 100, output_tokens: maxTokens ?? 0 },
+      });
+      return;
+    }
     sendJson(res, 200, {
       id: `msg_mock_${seq}`,
       type: "message",
@@ -191,6 +211,9 @@ export async function startMockAnthropic(): Promise<MockAnthropic> {
     override: (tool, payload) => {
       overrides.set(tool, payload);
     },
+    truncateNext: (count) => {
+      truncateRemaining = count;
+    },
     enqueue: (tool, payload) => {
       const q = queues.get(tool) ?? [];
       q.push(payload);
@@ -202,6 +225,7 @@ export async function startMockAnthropic(): Promise<MockAnthropic> {
       queues.clear();
       delayMs = 0;
       failRemaining = 0;
+      truncateRemaining = 0;
     },
     close: () =>
       new Promise<void>((resolve, reject) => {

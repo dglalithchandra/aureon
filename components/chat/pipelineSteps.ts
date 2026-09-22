@@ -60,10 +60,19 @@ export function deriveSteps(
     return steps;
   }
 
+  if (status === "error" && session.rounds.length === 0) {
+    // Round 0 failed: nothing landed yet.
+    steps.extract = "error";
+    return steps;
+  }
+
   steps.extract = "done";
   steps.github = "done";
   steps.score = "done";
-  if (status === "blocker" || status === "awaiting_answers") {
+  if (status === "error") {
+    // A later round failed after the previous one landed.
+    steps.decide = "error";
+  } else if (status === "blocker" || status === "awaiting_answers") {
     steps.decide = "running";
   } else if (status === "ready") {
     steps.decide = "done";

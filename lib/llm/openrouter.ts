@@ -154,6 +154,9 @@ function recoverToolJson(text: string | null | undefined): unknown {
  *  Resilient fetch — retry transient failures with backoff + jitter
  * ────────────────────────────────────────────────────────────── */
 
+/** Per-attempt request timeout (ROB-01). Timed-out attempts are retried. */
+export const OPENROUTER_TIMEOUT_MS = 45_000;
+
 const RETRYABLE_STATUS = new Set([408, 409, 429, 500, 502, 503, 504, 520, 522, 524]);
 
 function sleep(ms: number): Promise<void> {
@@ -178,7 +181,12 @@ async function fetchWithRetry(
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
     try {
-      const res = await fetch(url, init);
+      // Each attempt gets its own deadline, so one hung upstream cannot eat
+      // the whole function budget.
+      const res = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
+      });
       if (res.ok || !RETRYABLE_STATUS.has(res.status)) return res;
       // Retryable status — consume body so the socket frees, then back off.
       await res.text().catch(() => undefined);
@@ -318,11 +326,21 @@ async function messagesCreate(
     role: "assistant",
     model,
     content,
-    stop_reason: choice?.finish_reason === "tool_calls" ? "tool_use" : "end_turn",
+    stop_reason: toStopReason(choice?.finish_reason),
     stop_sequence: null,
     usage,
     container: null,
   } as unknown as Anthropic.Message;
+}
+
+/**
+ * OpenAI finish_reason → Anthropic stop_reason. "length" must become
+ * "max_tokens" so callers can tell truncated output from invalid output.
+ */
+function toStopReason(finishReason: string | undefined): Anthropic.StopReason {
+  if (finishReason === "tool_calls") return "tool_use";
+  if (finishReason === "length") return "max_tokens";
+  return "end_turn";
 }
 
 function cryptoRandomId(): string {

@@ -52,6 +52,8 @@ export const SessionStatusSchema = z.enum([
   "blocker",
   "ready",
   "finalized",
+  /** A round failed (LLM outage, bad output). Retry with POST /run. */
+  "error",
 ]);
 
 /** The live server-side phase shown by the chat roadmap while a round runs. */
@@ -72,6 +74,15 @@ export const SessionRoundSchema = z.object({
 });
 export type SessionRound = z.infer<typeof SessionRoundSchema>;
 
+/** Why the last round failed. Answers and enriched_input are kept for a retry. */
+export const SessionErrorSchema = z.object({
+  code: z.string().min(1).max(40),
+  message: z.string().max(400),
+  at: z.number().int(),
+  retryable: z.boolean(),
+});
+export type SessionError = z.infer<typeof SessionErrorSchema>;
+
 export const SessionSchema = z.object({
   id: z.string().uuid(),
   raw_input: z.string().min(1).max(50_000),
@@ -81,6 +92,8 @@ export const SessionSchema = z.object({
   pipeline_stage: PipelineStageSchema.nullable().default(null),
   current_confidence: z.number().int().min(0).max(100),
   final_output: FinalOutputSchema.nullable().default(null),
+  // Defaults to null so sessions stored before this field existed still parse.
+  last_error: SessionErrorSchema.nullable().default(null),
   created_at: z.number().int(),
   updated_at: z.number().int(),
 });

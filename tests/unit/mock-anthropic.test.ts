@@ -76,7 +76,7 @@ describe("mock Anthropic server", () => {
     });
     expect(inputOf(res)).toEqual(defaultToolPayload("extract_modules"));
     expect(mock.calls).toEqual([
-      { tool: "extract_modules", model: "claude-test", userText: "hi" },
+      { tool: "extract_modules", model: "claude-test", maxTokens: 10, userText: "hi" },
     ]);
   });
 

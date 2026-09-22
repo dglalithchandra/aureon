@@ -18,6 +18,9 @@ import { openRouterClient } from "@/lib/llm/openrouter";
 
 type AnthropicLike = Pick<Anthropic, "messages">;
 
+/** Per-attempt request timeout for the Anthropic SDK. */
+export const ANTHROPIC_TIMEOUT_MS = 45_000;
+
 let client: AnthropicLike | null = null;
 let cachedProvider: string | null = null;
 
@@ -34,6 +37,8 @@ function getAnthropic(): AnthropicLike {
   client = new Anthropic({
     apiKey: env.ANTHROPIC_API_KEY!,
     maxRetries: 2,
+    // Per-attempt deadline (ROB-01); the SDK retries timeouts like 5xx.
+    timeout: ANTHROPIC_TIMEOUT_MS,
   });
   return client;
 }

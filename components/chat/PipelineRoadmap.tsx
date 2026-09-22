@@ -103,15 +103,17 @@ function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milest
       hint:
         pipelineStage === "clarifying"
           ? "Preparing next step"
-          : status === "blocker"
-            ? "Need core info"
-            : status === "awaiting_answers"
-              ? "Awaiting answers"
-              : status === "ready"
-                ? "Threshold met"
-                : init.decide === "pending"
-                  ? "Pending"
-                  : "Recomputing",
+          : status === "error"
+            ? "Needs a retry"
+            : status === "blocker"
+              ? "Need core info"
+              : status === "awaiting_answers"
+                ? "Awaiting answers"
+                : status === "ready"
+                  ? "Threshold met"
+                  : init.decide === "pending"
+                    ? "Pending"
+                    : "Recomputing",
     },
     {
       id: "output",
@@ -343,7 +345,9 @@ export function PipelineRoadmap({
                   ? "Your turn"
                   : status === "analyzing"
                     ? "In motion"
-                    : "Idle"}
+                    : status === "error"
+                      ? "Needs retry"
+                      : "Idle"}
           </p>
         </div>
         <ConfidenceBadge value={conf} />

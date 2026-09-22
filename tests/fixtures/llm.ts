@@ -222,6 +222,7 @@ export function makeSession(overrides: Partial<Session> = {}): Session {
     pipeline_stage: "extracting",
     current_confidence: 0,
     final_output: null,
+    last_error: null,
     created_at: 0,
     updated_at: 0,
     ...overrides,

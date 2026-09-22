@@ -167,18 +167,25 @@ describe("scoping pipeline: LLM failures", () => {
     expect(mock.calls).toHaveLength(3);
   });
 
-  it("surfaces a ValidationError when the extraction breaks the blocker invariant", async () => {
+  it("repairs an extraction that breaks the blocker invariant (blocker, 55 → 40)", async () => {
     // P-01 MISSING requires blocker=true and confidence <= 40.
     mock.override(
       "submit_extraction",
       makeExtraction({
         parameters: makeParameters({ "P-01": "MISSING" }),
+        blocker: false,
         confidence: 55,
       }),
     );
 
-    await expect(runRound(createSession(RAW_INPUT))).rejects.toBeInstanceOf(
-      ValidationError,
-    );
+    const session = await runRound(createSession(RAW_INPUT));
+
+    expect(session.status).not.toBe("error");
+    expect(session.rounds[0]!.extraction).toMatchObject({
+      blocker: true,
+      confidence: 40,
+    });
+    expect(session.current_confidence).toBe(40);
+    expect(mock.callsFor("submit_extraction")).toHaveLength(1); // repaired, not retried
   });
 });

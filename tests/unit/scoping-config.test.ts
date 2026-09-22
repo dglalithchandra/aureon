@@ -72,11 +72,32 @@ describe("blocker invariant uses SCOPING.blockerCap", () => {
     expect(ExtractionResultStrictSchema.safeParse(blocked(40)).success).toBe(true);
   });
 
-  it("rejects confidence above the cap", () => {
-    const result = ExtractionResultStrictSchema.safeParse(blocked(41));
-    expect(result.success).toBe(false);
-    expect(result.error?.issues[0]?.message).toBe(
-      "confidence must be <= 40 when P-01 or P-03 is MISSING",
+  it("repairs confidence above the cap instead of rejecting it (ROB-01)", () => {
+    const result = ExtractionResultStrictSchema.safeParse(blocked(55));
+    expect(result.success).toBe(true);
+    expect(result.data?.confidence).toBe(40);
+  });
+
+  it("forces blocker=true when P-01 or P-03 is MISSING", () => {
+    const result = ExtractionResultStrictSchema.safeParse({
+      ...blocked(30),
+      blocker: false,
+    });
+    expect(result.data?.blocker).toBe(true);
+    expect(result.data?.confidence).toBe(30);
+  });
+
+  it("leaves a non-blocked extraction untouched", () => {
+    const ok = makeExtraction({ confidence: 88 });
+    expect(ExtractionResultStrictSchema.safeParse(ok).data).toEqual(ok);
+  });
+
+  it("still rejects parameters out of order", () => {
+    const params = makeParameters();
+    const swapped = [params[1]!, params[0]!, ...params.slice(2)];
+    const result = ExtractionResultStrictSchema.safeParse(
+      makeExtraction({ parameters: swapped }),
     );
+    expect(result.success).toBe(false);
   });
 });

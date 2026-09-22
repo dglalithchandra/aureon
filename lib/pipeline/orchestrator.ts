@@ -12,7 +12,7 @@ import {
   type SessionRound,
 } from "@/lib/schemas/mcq";
 import type { ExtractionResult, ParameterId } from "@/lib/schemas/extraction";
-import { BudgetExceededError, ValidationError } from "@/lib/errors";
+import { AppError, BudgetExceededError, LLMError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { SCOPING } from "@/lib/config/scoping";
 
@@ -39,6 +39,7 @@ export function createSession(rawText: string): Session {
     pipeline_stage: "extracting",
     current_confidence: 0,
     final_output: null,
+    last_error: null,
     created_at: now,
     updated_at: now,
   };
@@ -52,6 +53,11 @@ type ProgressReporter = (session: Session) => Promise<void>;
  *
  *   round 0     → extract + github enrich → questions OR ready OR blocker
  *   round N>=1  → re-extract on enriched input → recompute → questions OR ready
+ *
+ * If the round fails, the session is persisted (through `reportProgress`) in
+ * status "error" with `last_error`, keeping enriched_input and the answers,
+ * so POST /run can resume it (BUG-02). The error is rethrown as LLMError
+ * (502); an exhausted AI budget stays BudgetExceededError (503).
  */
 export async function runRound(
   session: Session,
@@ -61,6 +67,52 @@ export async function runRound(
     return session;
   }
 
+  try {
+    return await executeRound(session, reportProgress);
+  } catch (err) {
+    const failed = markRoundFailed(session, err);
+    logger.error("orchestrator.round.failed", {
+      sessionId: session.id,
+      roundNumber: session.rounds.length,
+      code: failed.last_error?.code,
+      message: err instanceof Error ? err.message : "unknown",
+    });
+    try {
+      await reportProgress?.(failed);
+    } catch (persistErr) {
+      logger.error("orchestrator.round.failed_persist", {
+        sessionId: session.id,
+        message: persistErr instanceof Error ? persistErr.message : "unknown",
+      });
+    }
+    if (err instanceof BudgetExceededError || err instanceof LLMError) throw err;
+    throw new LLMError("The AI pipeline failed");
+  }
+}
+
+/** The session as stored after a failed round: resumable from enriched_input. */
+function markRoundFailed(session: Session, err: unknown): Session {
+  const budget = err instanceof BudgetExceededError;
+  const known = err instanceof AppError;
+  return {
+    ...session,
+    status: "error",
+    pipeline_stage: null,
+    last_error: {
+      code: known ? err.code : "LLM_ERROR",
+      message: (known ? err.message : "The AI pipeline failed").slice(0, 400),
+      at: Date.now(),
+      // Retrying cannot help until the daily budget resets.
+      retryable: !budget,
+    },
+    updated_at: Date.now(),
+  };
+}
+
+async function executeRound(
+  session: Session,
+  reportProgress?: ProgressReporter,
+): Promise<Session> {
   let working = await setPipelineStage(session, "extracting", reportProgress);
 
   const roundNumber = working.rounds.length;
@@ -143,6 +195,7 @@ export async function runRound(
     rounds: [...working.rounds, newRound],
     status: nextStatus,
     pipeline_stage: null,
+    last_error: null,
     current_confidence: extraction.confidence,
     updated_at: Date.now(),
   };

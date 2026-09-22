@@ -19,6 +19,7 @@ import { PipelineRoadmap } from "@/components/chat/PipelineRoadmap";
 import { MessageList } from "@/components/chat/MessageList";
 import { InputBar, type InputBarHandle } from "@/components/chat/InputBar";
 import { deriveMessages } from "@/components/chat/messageDerivation";
+import { sessionErrorNotice } from "@/components/chat/sessionError";
 import {
   isBusyStatus,
   isFatalPollStatus,
@@ -125,6 +126,8 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
     },
     onError: (err) => {
       logger.error("chat.create_failed", { code: err.code, status: err.status });
+      // A failed round is stored as status "error"; fetch it so Retry shows.
+      void qc.invalidateQueries({ queryKey: ["session"] });
     },
   });
 
@@ -160,6 +163,36 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
         code: err.code,
         status: err.status,
       });
+      // The server saved the answers with status "error"; show that state.
+      void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEY(vars.sessionId) });
+    },
+  });
+
+  // Retry a failed round: POST /run resumes from the saved enriched_input.
+  const retryMutation = useMutation<SessionActionResult, ApiError, string>({
+    mutationFn: (id) => runSession(id),
+    onMutate: (id) => {
+      setAlreadyWorking(false);
+      // The failed request that led here is superseded by this retry; clear
+      // its error so the banner does not reappear once the session recovers.
+      createMutation.reset();
+      answerMutation.reset();
+      const prev = qc.getQueryData<Session>(SESSION_QUERY_KEY(id));
+      if (prev) {
+        qc.setQueryData<Session>(SESSION_QUERY_KEY(id), {
+          ...prev,
+          status: "analyzing",
+          pipeline_stage: "extracting",
+        });
+      }
+    },
+    onSuccess: ({ session: s, inProgress }) => {
+      qc.setQueryData(SESSION_QUERY_KEY(s.id), s);
+      setAlreadyWorking(inProgress);
+    },
+    onError: (err, id) => {
+      logger.error("chat.retry_failed", { code: err.code, status: err.status });
+      void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEY(id) });
     },
   });
 
@@ -178,7 +211,12 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
   }, [session]);
 
   const isAnalyzing =
-    createMutation.isPending || sessionQuery.isLoading || session?.status === "analyzing";
+    createMutation.isPending ||
+    retryMutation.isPending ||
+    sessionQuery.isLoading ||
+    session?.status === "analyzing";
+
+  const errorNotice = sessionErrorNotice(session);
 
   const inputLocked =
     Boolean(session) || // After first session exists, input is locked (use MCQs).
@@ -328,14 +366,25 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
             />
           )}
 
-        {createMutation.isError && createMutation.error && (
+        {errorNotice && (
+          <SessionErrorPanel
+            message={errorNotice.message}
+            onRetry={
+              errorNotice.canRetry && session
+                ? () => retryMutation.mutate(session.id)
+                : undefined
+            }
+          />
+        )}
+
+        {!errorNotice && createMutation.isError && createMutation.error && (
           <ErrorBanner
             message={createMutation.error.message}
             onRetry={() => createMutation.reset()}
           />
         )}
 
-        {answerMutation.isError && answerMutation.error && (
+        {!errorNotice && answerMutation.isError && answerMutation.error && (
           <ErrorBanner
             message={answerMutation.error.message}
             onRetry={() => answerMutation.reset()}
@@ -506,6 +555,34 @@ function BusyNotice({ message }: { message: string }): React.ReactElement {
       className="border-b border-amber-400/30 bg-amber-400/10 px-6 py-3 text-sm text-amber-200"
     >
       <div className="mx-auto w-full max-w-3xl">{message}</div>
+    </div>
+  );
+}
+
+function SessionErrorPanel({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}): React.ReactElement {
+  return (
+    <div
+      role="alert"
+      className="border-b border-red-500/30 bg-red-500/10 px-6 py-3 text-sm text-red-200"
+    >
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4">
+        <span>{message}</span>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="rounded-md border border-red-400/50 bg-red-500/15 px-3 py-1 text-[11px] font-semibold tracking-wider uppercase hover:bg-red-500/25"
+          >
+            Retry
+          </button>
+        )}
+      </div>
     </div>
   );
 }

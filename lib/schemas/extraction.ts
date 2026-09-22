@@ -68,10 +68,25 @@ export const ExtractionResultSchema = z.object({
 export type ExtractionResult = z.infer<typeof ExtractionResultSchema>;
 
 /**
- * Refined validator — enforces the BLOCKER invariant the LLM is told to obey.
- * If P-01 or P-03 is MISSING then blocker MUST be true and confidence
- * MUST be <= SCOPING.blockerCap. We re-check here so a misbehaving LLM cannot
- * bypass the gate.
+ * Enforce the BLOCKER invariant the LLM is told to obey, by repair rather than
+ * rejection: if P-01 or P-03 is MISSING, blocker is forced to true and
+ * confidence capped at SCOPING.blockerCap. A misbehaving model therefore can
+ * neither bypass the gate nor fail the whole round over a fixable number.
+ */
+export function repairBlockerInvariant(data: ExtractionResult): ExtractionResult {
+  const missing = (id: ParameterId) =>
+    data.parameters.find((p) => p.id === id)?.state === "MISSING";
+  if (!missing("P-01") && !missing("P-03")) return data;
+  return {
+    ...data,
+    blocker: true,
+    confidence: Math.min(data.confidence, SCOPING.blockerCap),
+  };
+}
+
+/**
+ * Validator for the model's extraction: parameters must be ordered P-01..P-09
+ * (rejected otherwise), then the blocker invariant is repaired.
  */
 export const ExtractionResultStrictSchema = ExtractionResultSchema.superRefine(
   (data, ctx) => {
@@ -96,24 +111,5 @@ export const ExtractionResultStrictSchema = ExtractionResultSchema.superRefine(
         });
       }
     });
-
-    const p01 = data.parameters.find((p) => p.id === "P-01");
-    const p03 = data.parameters.find((p) => p.id === "P-03");
-    const shouldBlock = p01?.state === "MISSING" || p03?.state === "MISSING";
-
-    if (shouldBlock && !data.blocker) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["blocker"],
-        message: "blocker must be true when P-01 or P-03 is MISSING",
-      });
-    }
-    if (shouldBlock && data.confidence > SCOPING.blockerCap) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["confidence"],
-        message: `confidence must be <= ${SCOPING.blockerCap} when P-01 or P-03 is MISSING`,
-      });
-    }
   },
-);
+).transform(repairBlockerInvariant);

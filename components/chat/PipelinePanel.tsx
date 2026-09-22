@@ -123,7 +123,9 @@ function buildSteps(
       );
     }
     if (id === "decide") {
-      if (status === "blocker") {
+      if (status === "error") {
+        detail = <p>The AI service had a problem. Your answers are saved — use Retry.</p>;
+      } else if (status === "blocker") {
         detail = <p>Goal or features missing — answer the blocker question.</p>;
       } else if (status === "awaiting_answers") {
         detail = (

@@ -63,7 +63,12 @@ export function deriveMessages(session: Session): ChatMessage[] {
   // If the last round committed answers but no new round arrived yet,
   // surface them so the user sees what they submitted.
   const lastRound = session.rounds[session.rounds.length - 1];
-  if (lastRound && lastRound.answers.length > 0 && session.status === "analyzing") {
+  // Also after a failed round ("error"): the answers are saved for the retry.
+  if (
+    lastRound &&
+    lastRound.answers.length > 0 &&
+    (session.status === "analyzing" || session.status === "error")
+  ) {
     const text = formatAnswersAsUserMessage(lastRound);
     if (text) {
       out.push({

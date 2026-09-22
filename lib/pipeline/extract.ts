@@ -1,9 +1,6 @@
 import "@/lib/server-only";
-import {
-  ephemeralCacheControl,
-  createLlmMessage,
-  PromptModel,
-} from "@/lib/llm/anthropic";
+import { ephemeralCacheControl, PromptModel } from "@/lib/llm/anthropic";
+import { callToolWithRepair } from "@/lib/llm/structured";
 import {
   EXTRACTION_SYSTEM_PROMPT,
   submitExtractionTool,
@@ -12,7 +9,7 @@ import {
   ExtractionResultStrictSchema,
   type ExtractionResult,
 } from "@/lib/schemas/extraction";
-import { BudgetExceededError, LLMError, ValidationError } from "@/lib/errors";
+import { BudgetExceededError, LLMError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { stripHtml, truncateText } from "@/lib/security/sanitize";
 
@@ -25,9 +22,9 @@ interface RunExtractionOptions {
 }
 
 /**
- * Run the extraction pipeline. One LLM call, forced tool use, strict Zod
- * validation. Throws `LLMError` on transport / model errors and
- * `ValidationError` on malformed tool output.
+ * Run the extraction pipeline: forced tool use, strict Zod validation with
+ * one repair retry (see callToolWithRepair). Throws `LLMError` (502) on
+ * transport errors and on model output that is still invalid after the retry.
  */
 export async function runExtraction(
   opts: RunExtractionOptions,
@@ -48,21 +45,26 @@ export async function runExtraction(
 
   const startedAt = Date.now();
 
-  let response;
+  let outcome;
   try {
-    response = await createLlmMessage({
-      model: PromptModel.SONNET,
-      max_tokens: 4096,
-      system: [
-        {
-          type: "text",
-          text: EXTRACTION_SYSTEM_PROMPT,
-          cache_control: ephemeralCacheControl,
-        },
-      ],
-      tools: [submitExtractionTool],
-      tool_choice: { type: "tool", name: submitExtractionTool.name },
-      messages: [{ role: "user", content: userBlocks.join("\n\n") }],
+    outcome = await callToolWithRepair({
+      label: "extract",
+      toolName: submitExtractionTool.name,
+      parse: (input) => ExtractionResultStrictSchema.safeParse(input),
+      params: {
+        model: PromptModel.SONNET,
+        max_tokens: 4096,
+        system: [
+          {
+            type: "text",
+            text: EXTRACTION_SYSTEM_PROMPT,
+            cache_control: ephemeralCacheControl,
+          },
+        ],
+        tools: [submitExtractionTool],
+        tool_choice: { type: "tool", name: submitExtractionTool.name },
+        messages: [{ role: "user", content: userBlocks.join("\n\n") }],
+      },
     });
   } catch (err) {
     // The budget error must reach the route as a 503, not become an LLMError.
@@ -72,8 +74,10 @@ export async function runExtraction(
     throw new LLMError("Extraction model call failed");
   }
 
+  const { response } = outcome;
   logger.info("extract.completed", {
     durationMs: Date.now() - startedAt,
+    attempts: outcome.attempts,
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
     cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
@@ -81,25 +85,11 @@ export async function runExtraction(
     stopReason: response.stop_reason,
   });
 
-  const toolUseBlock = response.content.find(
-    (block): block is Extract<typeof block, { type: "tool_use" }> =>
-      block.type === "tool_use" && block.name === submitExtractionTool.name,
-  );
-
-  if (!toolUseBlock) {
-    logger.error("extract.no_tool_use", { stopReason: response.stop_reason });
-    throw new LLMError("Model did not call submit_extraction");
+  if (!outcome.ok) {
+    // Bad model output is an upstream failure (502), not a client error.
+    logger.error("extract.invalid_output", { issues: outcome.issues });
+    throw new LLMError(`Extraction output failed validation: ${outcome.issues}`);
   }
 
-  const parsed = ExtractionResultStrictSchema.safeParse(toolUseBlock.input);
-  if (!parsed.success) {
-    const issues = parsed.error.issues
-      .slice(0, 6)
-      .map((i) => `${i.path.join(".")}: ${i.message}`)
-      .join("; ");
-    logger.error("extract.zod_failure", { issues });
-    throw new ValidationError(`Extraction output failed validation: ${issues}`);
-  }
-
-  return parsed.data;
+  return outcome.data;
 }

@@ -1,6 +1,7 @@
 import "@/lib/server-only";
 import type Anthropic from "@anthropic-ai/sdk";
-import { createLlmMessage, PromptModel } from "@/lib/llm/anthropic";
+import { PromptModel } from "@/lib/llm/anthropic";
+import { callToolWithRepair } from "@/lib/llm/structured";
 import {
   ExtractModulesToolOutputSchema,
   type ExtractModulesToolOutput,
@@ -63,20 +64,25 @@ export async function extractModulesFromReadme(
   const cleanReadme = truncateText(stripHtml(readme), README_MAX);
 
   const t0 = Date.now();
-  let response;
+  let outcome;
   try {
-    response = await createLlmMessage({
-      model: PromptModel.HAIKU,
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      tools: [extractModulesTool],
-      tool_choice: { type: "tool", name: extractModulesTool.name },
-      messages: [
-        {
-          role: "user",
-          content: `<target_project>\n${cleanProject}\n</target_project>\n\n<repo_readme>\n${cleanReadme}\n</repo_readme>\n\nCall extract_modules now.`,
-        },
-      ],
+    outcome = await callToolWithRepair({
+      label: "github.extract_modules",
+      toolName: extractModulesTool.name,
+      parse: (input) => ExtractModulesToolOutputSchema.safeParse(input),
+      params: {
+        model: PromptModel.HAIKU,
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        tools: [extractModulesTool],
+        tool_choice: { type: "tool", name: extractModulesTool.name },
+        messages: [
+          {
+            role: "user",
+            content: `<target_project>\n${cleanProject}\n</target_project>\n\n<repo_readme>\n${cleanReadme}\n</repo_readme>\n\nCall extract_modules now.`,
+          },
+        ],
+      },
     });
   } catch (err) {
     // The budget error must reach the route as a 503, not become an LLMError.
@@ -88,31 +94,21 @@ export async function extractModulesFromReadme(
 
   logger.info("github.extract_modules.completed", {
     durationMs: Date.now() - t0,
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
+    attempts: outcome.attempts,
+    inputTokens: outcome.response.usage.input_tokens,
+    outputTokens: outcome.response.usage.output_tokens,
   });
 
-  const tu = response.content.find(
-    (b): b is Extract<typeof b, { type: "tool_use" }> =>
-      b.type === "tool_use" && b.name === extractModulesTool.name,
-  );
-  if (!tu) return null;
-
-  const parsed = ExtractModulesToolOutputSchema.safeParse(tu.input);
-  if (!parsed.success) {
-    logger.warn("github.extract_modules.zod_failure", {
-      issues: parsed.error.issues
-        .slice(0, 3)
-        .map((i) => `${i.path.join(".")}: ${i.message}`)
-        .join("; "),
-    });
+  if (!outcome.ok) {
+    // Still invalid after the repair retry: skip this README.
+    logger.warn("github.extract_modules.invalid_output", { issues: outcome.issues });
     return null;
   }
 
   // Normalize module names: collapse whitespace, title-case-ish dedupe.
   const seen = new Set<string>();
   const modules: string[] = [];
-  for (const m of parsed.data.modules) {
+  for (const m of outcome.data.modules) {
     const norm = m.replace(/\s+/g, " ").trim();
     if (!norm) continue;
     const key = norm.toLowerCase();
@@ -123,7 +119,7 @@ export async function extractModulesFromReadme(
 
   return {
     modules,
-    similarity_to_project: parsed.data.similarity_to_project,
-    why_relevant: parsed.data.why_relevant.trim(),
+    similarity_to_project: outcome.data.similarity_to_project,
+    why_relevant: outcome.data.why_relevant.trim(),
   };
 }

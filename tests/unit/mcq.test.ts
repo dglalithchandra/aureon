@@ -135,7 +135,7 @@ describe("generateQuestions: blocker mode", () => {
 });
 
 describe("generateQuestions: model failures", () => {
-  it("returns [] when the tool output fails validation", async () => {
+  it("retries once on invalid output, then returns [] if it is still invalid", async () => {
     mock.override("generate_clarification_questions", { questions: [] });
 
     const questions = await generateQuestions({
@@ -145,6 +145,20 @@ describe("generateQuestions: model failures", () => {
     });
 
     expect(questions).toEqual([]);
+    expect(mock.callsFor("generate_clarification_questions")).toHaveLength(2);
+  });
+
+  it("uses the repaired answer when the retry is valid", async () => {
+    mock.enqueue("generate_clarification_questions", { questions: [] });
+
+    const questions = await generateQuestions({
+      extraction: makeExtraction(),
+      askedBefore: [],
+      roundNumber: 0,
+    });
+
+    expect(questions.map((q) => q.parameter_id)).toEqual(["P-02", "P-07", "P-08"]);
+    expect(mock.calls[1]?.userText).toContain("was rejected by validation");
   });
 
   it("throws LLMError when the API stays overloaded", async () => {

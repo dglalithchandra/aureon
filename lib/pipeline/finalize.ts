@@ -1,9 +1,6 @@
 import "@/lib/server-only";
-import {
-  ephemeralCacheControl,
-  createLlmMessage,
-  PromptModel,
-} from "@/lib/llm/anthropic";
+import { ephemeralCacheControl, PromptModel } from "@/lib/llm/anthropic";
+import { callToolWithRepair } from "@/lib/llm/structured";
 import {
   CLIENT_VIEW_SYSTEM_PROMPT,
   ENGINEER_VIEW_SYSTEM_PROMPT,
@@ -138,21 +135,26 @@ function clampInt(n: number): number {
  * ────────────────────────────────────────────────────────────── */
 
 async function runClientView(context: string): Promise<ClientView> {
-  let response;
+  let outcome;
   try {
-    response = await createLlmMessage({
-      model: PromptModel.SONNET,
-      max_tokens: 4096,
-      system: [
-        {
-          type: "text",
-          text: CLIENT_VIEW_SYSTEM_PROMPT,
-          cache_control: ephemeralCacheControl,
-        },
-      ],
-      tools: [submitClientViewTool],
-      tool_choice: { type: "tool", name: submitClientViewTool.name },
-      messages: [{ role: "user", content: context }],
+    outcome = await callToolWithRepair({
+      label: "finalize.client",
+      toolName: submitClientViewTool.name,
+      parse: (input) => ClientViewSchema.safeParse(coerceClientView(input)),
+      params: {
+        model: PromptModel.SONNET,
+        max_tokens: 4096,
+        system: [
+          {
+            type: "text",
+            text: CLIENT_VIEW_SYSTEM_PROMPT,
+            cache_control: ephemeralCacheControl,
+          },
+        ],
+        tools: [submitClientViewTool],
+        tool_choice: { type: "tool", name: submitClientViewTool.name },
+        messages: [{ role: "user", content: context }],
+      },
     });
   } catch (err) {
     // The budget error must reach the route as a 503, not become an LLMError.
@@ -164,45 +166,40 @@ async function runClientView(context: string): Promise<ClientView> {
   }
 
   logger.info("finalize.client.tokens", {
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
-    cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
+    attempts: outcome.attempts,
+    inputTokens: outcome.response.usage.input_tokens,
+    outputTokens: outcome.response.usage.output_tokens,
+    cacheReadTokens: outcome.response.usage.cache_read_input_tokens ?? 0,
   });
 
-  const tu = response.content.find(
-    (b): b is Extract<typeof b, { type: "tool_use" }> =>
-      b.type === "tool_use" && b.name === submitClientViewTool.name,
-  );
-  if (!tu) throw new LLMError("Client view: model did not call tool");
-
-  const parsed = ClientViewSchema.safeParse(coerceClientView(tu.input));
-  if (!parsed.success) {
-    const issues = parsed.error.issues
-      .slice(0, 5)
-      .map((i) => `${i.path.join(".")}: ${i.message}`)
-      .join("; ");
-    logger.error("finalize.client.zod_failure", { issues });
-    throw new ValidationError(`Client view failed validation: ${issues}`);
+  if (!outcome.ok) {
+    logger.error("finalize.client.invalid_output", { issues: outcome.issues });
+    throw new LLMError(`Client view failed validation: ${outcome.issues}`);
   }
-  return parsed.data;
+  return outcome.data;
 }
 
 async function runEngineerView(context: string): Promise<EngineerView> {
-  let response;
+  let outcome;
   try {
-    response = await createLlmMessage({
-      model: PromptModel.SONNET,
-      max_tokens: 8192,
-      system: [
-        {
-          type: "text",
-          text: ENGINEER_VIEW_SYSTEM_PROMPT,
-          cache_control: ephemeralCacheControl,
-        },
-      ],
-      tools: [submitEngineerViewTool],
-      tool_choice: { type: "tool", name: submitEngineerViewTool.name },
-      messages: [{ role: "user", content: context }],
+    outcome = await callToolWithRepair({
+      label: "finalize.engineer",
+      toolName: submitEngineerViewTool.name,
+      parse: (input) => EngineerViewSchema.safeParse(coerceEngineerView(input)),
+      params: {
+        model: PromptModel.SONNET,
+        max_tokens: 8192,
+        system: [
+          {
+            type: "text",
+            text: ENGINEER_VIEW_SYSTEM_PROMPT,
+            cache_control: ephemeralCacheControl,
+          },
+        ],
+        tools: [submitEngineerViewTool],
+        tool_choice: { type: "tool", name: submitEngineerViewTool.name },
+        messages: [{ role: "user", content: context }],
+      },
     });
   } catch (err) {
     // The budget error must reach the route as a 503, not become an LLMError.
@@ -214,27 +211,17 @@ async function runEngineerView(context: string): Promise<EngineerView> {
   }
 
   logger.info("finalize.engineer.tokens", {
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
-    cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
+    attempts: outcome.attempts,
+    inputTokens: outcome.response.usage.input_tokens,
+    outputTokens: outcome.response.usage.output_tokens,
+    cacheReadTokens: outcome.response.usage.cache_read_input_tokens ?? 0,
   });
 
-  const tu = response.content.find(
-    (b): b is Extract<typeof b, { type: "tool_use" }> =>
-      b.type === "tool_use" && b.name === submitEngineerViewTool.name,
-  );
-  if (!tu) throw new LLMError("Engineer view: model did not call tool");
-
-  const parsed = EngineerViewSchema.safeParse(coerceEngineerView(tu.input));
-  if (!parsed.success) {
-    const issues = parsed.error.issues
-      .slice(0, 5)
-      .map((i) => `${i.path.join(".")}: ${i.message}`)
-      .join("; ");
-    logger.error("finalize.engineer.zod_failure", { issues });
-    throw new ValidationError(`Engineer view failed validation: ${issues}`);
+  if (!outcome.ok) {
+    logger.error("finalize.engineer.invalid_output", { issues: outcome.issues });
+    throw new LLMError(`Engineer view failed validation: ${outcome.issues}`);
   }
-  return parsed.data;
+  return outcome.data;
 }
 
 /* ──────────────────────────────────────────────────────────────
