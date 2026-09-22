@@ -6,7 +6,7 @@ Audit date: 2026-09-21 · Commit audited: `f095b6b` (local `main`) plus the READ
 
 ---
 
-## Final Phase status (updated 2026-09-22, after BUG-01, SEC-02, BUG-08, BUG-02, ROB-01, OPS-01, PERF-01, BUG-03, BUG-04, DATA-01 and BUG-05)
+## Final Phase status (updated 2026-09-22, after BUG-01, SEC-02, BUG-08, BUG-02, ROB-01, OPS-01, PERF-01, BUG-03, BUG-04, DATA-01, BUG-05, BUG-06, BUG-07, BUG-10, BUG-11 and SEC-04)
 
 Work happens on the `final-phase` branch (committed locally, **not pushed yet**). This table is the tracker for the Final Phase: update it whenever an issue is fixed.
 
@@ -16,6 +16,11 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 
 | ID | Severity | Status | Commits | What was done |
 |---|---|:-:|---|---|
+| BUG-06 | Medium | ✅ | `f25aa70` | The extraction prompt is assembled from the brief and the answers as separate blocks: answers first, the brief gets the rest of the 50,000-character budget. T8 (49,961 characters plus an answer) now keeps the answer. The finalize context carries 12,000 characters of the brief and every answer and description in full, ahead of the GitHub section. |
+| BUG-07 | Medium | ✅ | `f25aa70` | `stripHtml` is gone; `lib/text/prompt-safe.ts` normalises newlines, drops control characters and defuses only our own delimiters with a zero-width space. "List<Order>" and "<5 users & R&D" reach the prompts and survive PATCH byte for byte. PATCH no longer sanitises (React escapes, react-markdown keeps its allow-lists, Zod bounds stay); `isomorphic-dompurify` removed. |
+| BUG-10 | Low | ✅ | `f25aa70` | One 50,000 UTF-8 byte budget (`lib/text/budget.ts`) at creation, on answers and on descriptions, with one message stating size and limit; the chat's counter uses the same constant. 17,000 Kannada characters are refused at creation. |
+| BUG-11 | Low | ✅ | `f25aa70` | The answers block uses `<round n="1"> … </round>` with the number computed once. |
+| SEC-04 | Low | ✅ | `f25aa70` | README text is untrusted: each repo contributes at most 0.8 of a module's weight, a new module needs weight 1.0 from ≥ 2 repos (enrichment records repo counts), and README module names must match `[A-Za-z0-9 &/-]` within 40 characters. User text can no longer close our prompt delimiters. Not covered: whether a model *obeys* injected README instructions (the audit's open question). |
 | BUG-05 | High | ✅ | `09bacc3` | A MISSING blocker parameter is exempt from `askedBefore` and re-asked, with a `<reframe>` block naming the wording that failed; if the model returns nothing usable, a static question from config is asked. A blocker round never ends `ready`: after 3 consecutive blocker rounds the session goes to the new `needs_input` status, the chat asks for the goal and main features and unlocks its input, and `POST /api/session/[id]/describe` starts the next round from the old and new text (the count restarts). `POST /api/finalize` answers 400 `BLOCKED` while blocked unless `override=true`. Rounds never exceed the 10 the schema stores. The audit's probe now gives round 1 `blocker` with a new question. |
 | BUG-03 | High | ✅ | `bfb5ab4` | Signed 1-year `scopeai_owner` cookie with a random `owner_id`, stored on each session; ownership = equality, checked before the session lock. The cookie is set only when missing, so a new session never locks the browser out of older ones. Sessions without `owner_id` keep the legacy per-session cookie. Verified in the browser: two finalized sessions, both `/output/:id` pages open. |
 | BUG-04 | High | ✅ | `bfb5ab4` | Share = snapshot `{sessionId, owner_id, title, final_output, created_at}` with its own 30-day TTL; the session's active link is reused; the share page renders only from the snapshot ("Snapshot taken <date>. Re-share to include later edits."). `DELETE /api/share/[token]` (owner only) and "Revoke link" / "Create a new link" in the dialog. Absolute URLs from `NEXT_PUBLIC_APP_URL` when set. Links created before this change stop resolving (they stored no snapshot). |
@@ -48,10 +53,9 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 |:-:|---|---|---|
 | 1 | GOAL-02 | Medium | Build GitHub references on the server. |
 | 2 | GOAL-01 / DOC-01 | High / Medium | Finish the README and landing claims (see above). |
-| 3 | BUG-06 + BUG-07 | Medium | Prompt assembly and text normalisation (touch the same lines). |
-| 4 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. BUG-05 already landed the blocker half of the gate. |
-| 5 | BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | UX-01's locked, timestamped snapshot now exists (BUG-04). |
-| 6 | SEC-04, SEC-05, BUG-10, BUG-11, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
+| 3 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. BUG-05 already landed the blocker half of the gate. |
+| 4 | BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | UX-01's locked, timestamped snapshot now exists (BUG-04). |
+| 5 | SEC-05, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
 
 ### On hold (owner's decision)
 
