@@ -117,8 +117,3 @@ export const ExtractionResultStrictSchema = ExtractionResultSchema.superRefine(
     }
   },
 );
-
-export const ExtractRequestSchema = z.object({
-  rawText: z.string().min(1).max(50_000),
-  priorContext: z.string().max(50_000).optional(),
-});
