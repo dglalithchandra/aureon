@@ -1,15 +1,29 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { checkRateLimit } from "@/lib/security/rate-limit";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 import { getClientIp } from "@/lib/security/client-ip";
 
 export const config = {
   matcher: ["/api/:path*"],
 };
 
+const POLL_PATH =
+  /^\/api\/(?:session\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|health)$/i;
+
+/**
+ * Status polls are cheap (one storage read), so they get their own large
+ * bucket; everything else shares a smaller one. The LLM routes add a strict
+ * per-route limit on top (see RATE_LIMITS.llmRoute).
+ */
+function isPollRequest(req: NextRequest): boolean {
+  return req.method === "GET" && POLL_PATH.test(req.nextUrl.pathname);
+}
+
 export async function proxy(req: NextRequest): Promise<NextResponse> {
   const ip = getClientIp(req);
-  const result = await checkRateLimit(`ip:${ip}`);
+  const bucket = isPollRequest(req) ? "poll" : "api";
+  const { limit, windowSeconds } = RATE_LIMITS[bucket];
+  const result = await checkRateLimit(`${bucket}:${ip}`, limit, windowSeconds);
 
   const headers = new Headers({
     "X-RateLimit-Limit": String(result.limit),

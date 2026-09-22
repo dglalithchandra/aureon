@@ -5,8 +5,6 @@ import { getSession, putSession } from "@/lib/storage/session";
 import { FinalOutputSchema } from "@/lib/schemas/output";
 import { deepSanitize } from "@/lib/security/deep-sanitize";
 import {
-  gateRateLimit,
-  getClientIp,
   jsonError,
   readJsonBody,
   requireJsonContentType,
@@ -33,10 +31,6 @@ export async function GET(
       { status: 400 },
     );
   }
-
-  const ip = getClientIp(req);
-  const limited = await gateRateLimit(`session-get:${ip}`);
-  if (limited) return limited;
 
   const unauthorized = requireSessionOwner(req, id);
   if (unauthorized) return unauthorized;
@@ -79,10 +73,6 @@ export async function PATCH(
 
   const ctMismatch = requireJsonContentType(req);
   if (ctMismatch) return ctMismatch;
-
-  const ip = getClientIp(req);
-  const limited = await gateRateLimit(`session-patch:${ip}`);
-  if (limited) return limited;
 
   const unauthorized = requireSessionOwner(req, id);
   if (unauthorized) return unauthorized;

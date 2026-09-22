@@ -14,8 +14,12 @@ import { logger } from "@/lib/logger";
 
 export { getClientIp } from "@/lib/security/client-ip";
 
-export async function gateRateLimit(bucketKey: string): Promise<NextResponse | null> {
-  const rate = await checkRateLimit(bucketKey);
+export async function gateRateLimit(
+  bucketKey: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<NextResponse | null> {
+  const rate = await checkRateLimit(bucketKey, limit, windowSeconds);
   if (rate.success) return null;
   return NextResponse.json(
     { error: { code: "RATE_LIMITED", message: "Too many requests" } },

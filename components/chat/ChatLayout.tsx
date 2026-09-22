@@ -18,6 +18,11 @@ import { PipelineRoadmap } from "@/components/chat/PipelineRoadmap";
 import { MessageList } from "@/components/chat/MessageList";
 import { InputBar, type InputBarHandle } from "@/components/chat/InputBar";
 import { deriveMessages } from "@/components/chat/messageDerivation";
+import {
+  isBusyStatus,
+  isFatalPollStatus,
+  nextPollInterval,
+} from "@/components/chat/polling";
 import { logger } from "@/lib/logger";
 
 const SESSION_QUERY_KEY = (id: string): readonly unknown[] => ["session", id] as const;
@@ -52,6 +57,9 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
   const querySessionId = params.get("s");
   const effectiveId = isUuid(querySessionId) ? querySessionId : sessionId;
 
+  // When the current analyzing phase started, for the polling back-off.
+  const analyzingSinceRef = useRef<number | null>(null);
+
   const sessionQuery = useQuery<Session, ApiError>({
     queryKey: effectiveId ? SESSION_QUERY_KEY(effectiveId) : ["session", "none"],
     queryFn: () => {
@@ -61,13 +69,26 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
     enabled: Boolean(effectiveId),
     refetchInterval: (q) => {
       const data = q.state.data as Session | undefined;
-      if (!data) return false;
-      return data.status === "analyzing" ? 1500 : false;
+      if (data?.status === "analyzing") {
+        analyzingSinceRef.current ??= Date.now();
+      } else {
+        analyzingSinceRef.current = null;
+      }
+      const since = analyzingSinceRef.current;
+      return nextPollInterval({
+        sessionStatus: data?.status,
+        errorStatus: q.state.error instanceof ApiError ? q.state.error.status : undefined,
+        analyzingForMs: since === null ? 0 : Date.now() - since,
+      });
     },
     refetchIntervalInBackground: false,
     staleTime: 0,
     retry: (failureCount, err) => {
-      if (err instanceof ApiError && (err.status === 401 || err.status === 404)) {
+      // 401/404 are final; on 429 the next scheduled poll is the retry.
+      if (
+        err instanceof ApiError &&
+        (isFatalPollStatus(err.status) || isBusyStatus(err.status))
+      ) {
         return false;
       }
       return failureCount < 2;
@@ -277,8 +298,12 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
 
         {sessionQuery.isError &&
           sessionQuery.error instanceof ApiError &&
-          sessionQuery.error.status !== 401 &&
-          sessionQuery.error.status !== 404 && (
+          isBusyStatus(sessionQuery.error.status) && <BusyNotice />}
+
+        {sessionQuery.isError &&
+          sessionQuery.error instanceof ApiError &&
+          !isFatalPollStatus(sessionQuery.error.status) &&
+          !isBusyStatus(sessionQuery.error.status) && (
             <ErrorBanner
               message={sessionQuery.error.message}
               onRetry={() => sessionQuery.refetch()}
@@ -451,6 +476,19 @@ function StaleNotice({
         >
           Dismiss
         </button>
+      </div>
+    </div>
+  );
+}
+
+function BusyNotice(): React.ReactElement {
+  return (
+    <div
+      role="status"
+      className="border-b border-amber-400/30 bg-amber-400/10 px-6 py-3 text-sm text-amber-200"
+    >
+      <div className="mx-auto w-full max-w-3xl">
+        The server is busy right now — retrying automatically…
       </div>
     </div>
   );

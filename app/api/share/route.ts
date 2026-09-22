@@ -4,8 +4,6 @@ import { z } from "zod";
 import { getSession } from "@/lib/storage/session";
 import { createShareLink } from "@/lib/storage/share";
 import {
-  gateRateLimit,
-  getClientIp,
   jsonError,
   readJsonBody,
   requireJsonContentType,
@@ -23,10 +21,6 @@ const RequestSchema = z.object({
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const ctMismatch = requireJsonContentType(req);
   if (ctMismatch) return ctMismatch;
-
-  const ip = getClientIp(req);
-  const limited = await gateRateLimit(`share:${ip}`);
-  if (limited) return limited;
 
   try {
     const { sessionId } = await readJsonBody(req, RequestSchema);

@@ -11,6 +11,7 @@ import {
   requireJsonContentType,
   requireSessionOwner,
 } from "@/lib/security/route-helpers";
+import { RATE_LIMITS } from "@/lib/security/rate-limit";
 import { ValidationError } from "@/lib/errors";
 
 export const runtime = "nodejs";
@@ -21,7 +22,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (ctMismatch) return ctMismatch;
 
   const ip = getClientIp(req);
-  const limited = await gateRateLimit(`finalize:${ip}`);
+  const { limit, windowSeconds } = RATE_LIMITS.llmRoute;
+  const limited = await gateRateLimit(`finalize:${ip}`, limit, windowSeconds);
   if (limited) return limited;
 
   try {

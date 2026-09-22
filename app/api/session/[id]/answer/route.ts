@@ -12,6 +12,7 @@ import {
   requireSessionOwner,
   validateUuid,
 } from "@/lib/security/route-helpers";
+import { RATE_LIMITS } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +37,8 @@ export async function POST(
   }
 
   const ip = getClientIp(req);
-  const limited = await gateRateLimit(`answer:${ip}`);
+  const { limit, windowSeconds } = RATE_LIMITS.llmRoute;
+  const limited = await gateRateLimit(`answer:${ip}`, limit, windowSeconds);
   if (limited) return limited;
 
   const unauthorized = requireSessionOwner(req, id);

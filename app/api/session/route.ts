@@ -5,8 +5,6 @@ import { createSession } from "@/lib/pipeline/orchestrator";
 import { putSession } from "@/lib/storage/session";
 import {
   attachSessionCookie,
-  gateRateLimit,
-  getClientIp,
   jsonError,
   readJsonBody,
   requireJsonContentType,
@@ -18,10 +16,6 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const ctMismatch = requireJsonContentType(req);
   if (ctMismatch) return ctMismatch;
-
-  const ip = getClientIp(req);
-  const limited = await gateRateLimit(`session:${ip}`);
-  if (limited) return limited;
 
   try {
     const { rawText } = await readJsonBody(req, CreateSessionRequestSchema);
