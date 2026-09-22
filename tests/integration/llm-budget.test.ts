@@ -1,12 +1,15 @@
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { consumeLlmBudget, llmBudgetKey } from "@/lib/llm/budget";
+import { consumeLlmBudget, isLlmBudgetExhausted, llmBudgetKey } from "@/lib/llm/budget";
 import { BudgetExceededError } from "@/lib/errors";
 import { POST as runRoute } from "@/app/api/session/[id]/run/route";
 import { createSession } from "@/lib/pipeline/orchestrator";
-import { putSession } from "@/lib/storage/session";
+import { getSession, putSession } from "@/lib/storage/session";
 import { buildSessionCookie, SESSION_COOKIE_NAME } from "@/lib/security/session-cookie";
 import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { drainJobs, queuedJobs, resetJobQueue } from "../mocks/job-queue";
+
+vi.mock("@/lib/jobs/transport", () => import("../mocks/job-queue"));
 
 // Budget for this file. getServerEnv() reads it lazily on the first call.
 process.env.LLM_DAILY_CALL_LIMIT = "3";
@@ -14,8 +17,9 @@ process.env.LLM_DAILY_CALL_LIMIT = "3";
 // A switchable fake Upstash client: null means "not configured" (memory path).
 const fake = vi.hoisted(() => ({
   redis: null as null | {
-    incr: (key: string) => Promise<number>;
-    expire: (key: string, seconds: number) => Promise<number>;
+    incr?: (key: string) => Promise<number>;
+    expire?: (key: string, seconds: number) => Promise<number>;
+    get?: (key: string) => Promise<unknown>;
   },
 }));
 vi.mock("@/lib/storage/redis", () => ({ getRedis: () => fake.redis }));
@@ -41,6 +45,7 @@ beforeEach(() => {
   fake.redis = null;
   resetMemoryBudget();
   mock.reset();
+  resetJobQueue();
 });
 
 describe("consumeLlmBudget", () => {
@@ -66,6 +71,23 @@ describe("consumeLlmBudget", () => {
     expect(await consumeLlmBudget(day2)).toBe(1);
   });
 
+  it("isLlmBudgetExhausted checks the count without spending a call", async () => {
+    await consumeLlmBudget();
+    await consumeLlmBudget();
+    expect(await isLlmBudgetExhausted()).toBe(false);
+    await consumeLlmBudget();
+    expect(await isLlmBudgetExhausted()).toBe(true);
+    expect(await isLlmBudgetExhausted()).toBe(true); // still 3, not 4
+
+    // Upstash returns the INCR counter as a number or a string.
+    fake.redis = { get: async () => "3" };
+    expect(await isLlmBudgetExhausted()).toBe(true);
+    fake.redis = { get: async () => 2 };
+    expect(await isLlmBudgetExhausted()).toBe(false);
+    fake.redis = { get: async () => null };
+    expect(await isLlmBudgetExhausted()).toBe(false);
+  });
+
   it("uses Redis INCR with a 48 h expiry when Upstash is configured", async () => {
     const counts = new Map<string, number>();
     const expire = vi.fn(async () => 1);
@@ -89,7 +111,7 @@ describe("consumeLlmBudget", () => {
 });
 
 describe("POST /api/session/:id/run with the budget used up", () => {
-  it("returns 503 BUDGET_EXCEEDED instead of calling the model", async () => {
+  it("returns 503 BUDGET_EXCEEDED instead of queueing a round", async () => {
     const session = createSession("We need an internal tool for account managers.");
     await putSession(session);
     // Use up the whole budget before the request.
@@ -106,7 +128,13 @@ describe("POST /api/session/:id/run with the budget used up", () => {
 
     expect(res.status).toBe(503);
     expect(await res.json()).toMatchObject({ error: { code: "BUDGET_EXCEEDED" } });
+    expect(queuedJobs).toHaveLength(0);
     expect(mock.calls).toHaveLength(0);
+    // Stored like a round that hit the budget, so the chat can say why.
+    expect(await getSession(session.id)).toMatchObject({
+      status: "error",
+      last_error: { code: "BUDGET_EXCEEDED", retryable: false },
+    });
   });
 
   it("stops mid-round when the budget runs out between LLM calls", async () => {
@@ -124,7 +152,12 @@ describe("POST /api/session/:id/run with the budget used up", () => {
     });
     const res = await runRoute(req, { params: Promise.resolve({ id: session.id }) });
 
-    expect(res.status).toBe(503);
+    expect(res.status).toBe(202);
+    expect(await drainJobs()).toEqual(["failed"]);
     expect(mock.calls.map((c) => c.tool)).toEqual(["submit_extraction"]);
+    expect(await getSession(session.id)).toMatchObject({
+      status: "error",
+      last_error: { code: "BUDGET_EXCEEDED", retryable: false },
+    });
   });
 });

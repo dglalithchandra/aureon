@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SubmitAnswersRequestSchema } from "@/lib/schemas/mcq";
-import { submitAnswers } from "@/lib/pipeline/orchestrator";
+import { applyAnswers, markRoundFailed } from "@/lib/pipeline/orchestrator";
 import { getSession, putSession } from "@/lib/storage/session";
+import { startJobs } from "@/lib/jobs/start";
+import { isLlmBudgetExhausted } from "@/lib/llm/budget";
+import { BudgetExceededError } from "@/lib/errors";
 import {
   gateRateLimit,
   getClientIp,
@@ -22,6 +25,10 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * Record the answers and queue the next round as a background job (OPS-01):
+ * answers 202 with the "analyzing" session at once.
+ */
 export async function POST(
   req: NextRequest,
   { params }: RouteParams,
@@ -47,7 +54,7 @@ export async function POST(
 
   try {
     const { answers } = await readJsonBody(req, SubmitAnswersRequestSchema);
-    return await withSessionLock(id, async () => {
+    return await withSessionLock(id, async (lock) => {
       const session = await getSession(id);
       if (!session) {
         return NextResponse.json(
@@ -55,9 +62,25 @@ export async function POST(
           { status: 404 },
         );
       }
-      const updated = await submitAnswers(session, answers, putSession);
-      await putSession(updated);
-      return NextResponse.json({ session: updated });
+      const next = applyAnswers(session, answers);
+      // Ready or finalized: nothing left to run.
+      if (next === session) return NextResponse.json({ session });
+
+      if (await isLlmBudgetExhausted()) {
+        // Keep the answers, stored like a round that hit the budget.
+        const err = new BudgetExceededError();
+        await putSession(markRoundFailed(next, err));
+        throw err;
+      }
+
+      await startJobs({
+        lock,
+        previous: session,
+        next,
+        types: ["round"],
+        origin: req.nextUrl.origin,
+      });
+      return NextResponse.json({ session: next }, { status: 202 });
     });
   } catch (err) {
     return jsonError(err);

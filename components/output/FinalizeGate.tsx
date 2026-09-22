@@ -1,13 +1,19 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
-import { ApiError, finalizeSession } from "@/lib/api/client";
+import { ArrowLeft, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { ApiError, fetchSession, finalizeSession } from "@/lib/api/client";
+import { useNow, useSessionEvents } from "@/lib/api/useSessionEvents";
 import type { Session } from "@/lib/schemas/mcq";
 import { SCOPING } from "@/lib/config/scoping";
+import { isJobStalled } from "@/components/chat/polling";
 import { OutputLayout } from "@/components/output/OutputLayout";
+import { ClientView } from "@/components/output/ClientView";
+import { EngineerView } from "@/components/output/EngineerView";
+
+/** Poll interval while the event stream is not connected. */
+const FALLBACK_POLL_MS = 2_000;
 
 interface FinalizeGateProps {
   session: Session;
@@ -16,17 +22,36 @@ interface FinalizeGateProps {
 
 /**
  * If `session.final_output` exists we render the editor directly. Otherwise
- * we show a "Generate output" button that calls /api/finalize. The session
+ * we show a "Generate output" button that calls /api/finalize, which queues
+ * the client and engineer views as two jobs (OPS-01). Each view is shown as
+ * soon as it lands (Server-Sent Events, polling as a fallback). The session
  * MUST be in `ready` status — otherwise the chat sends the user back to
  * answer more questions.
  */
 export function FinalizeGate({
-  session,
+  session: initialSession,
   initialTitle,
 }: FinalizeGateProps): React.ReactElement {
-  const router = useRouter();
+  const [session, setSession] = useState(initialSession);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const generating = session.pipeline_stage === "finalizing";
+  const streaming = useSessionEvents(session.id, generating, setSession);
+
+  useEffect(() => {
+    if (!generating || streaming) return;
+    const timer = setInterval(() => {
+      fetchSession(session.id)
+        .then(setSession)
+        .catch(() => undefined);
+    }, FALLBACK_POLL_MS);
+    return () => clearInterval(timer);
+  }, [generating, streaming, session.id]);
+
+  // A finalize job that died leaves "finalizing" behind; offer a retry.
+  const now = useNow(generating);
+  const stalled = generating && isJobStalled(session.updated_at, now);
 
   if (session.final_output) {
     return (
@@ -38,7 +63,7 @@ export function FinalizeGate({
     );
   }
 
-  if (session.status !== "ready") {
+  if (session.status !== "ready" && !generating) {
     const lowConfidenceExhausted =
       session.rounds.length >= SCOPING.maxRounds &&
       session.current_confidence < SCOPING.confidenceThreshold;
@@ -74,14 +99,75 @@ export function FinalizeGate({
     setBusy(true);
     setError(null);
     try {
-      await finalizeSession(session.id);
-      // Force the server component to re-render with the freshly persisted output.
-      router.refresh();
+      const result = await finalizeSession(session.id);
+      setSession(
+        result.output
+          ? { ...session, status: "finalized", final_output: result.output }
+          : result.session,
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not generate output.");
     } finally {
       setBusy(false);
     }
+  }
+
+  const draft = session.draft_output;
+  if (generating || draft) {
+    const failure = generating ? null : session.last_error;
+    const notice =
+      error ??
+      (stalled
+        ? "This is taking much longer than expected."
+        : failure
+          ? failure.retryable
+            ? "The AI service had a problem. Anything already written is saved."
+            : failure.message
+          : null);
+    const canRetry = !busy && (stalled || Boolean(failure?.retryable) || Boolean(error));
+    return (
+      <main className="bg-blueprint-bg min-h-[100dvh] px-4 py-10 sm:px-6">
+        <div className="mx-auto flex max-w-5xl flex-col gap-8">
+          <header>
+            <p className="text-blueprint-muted font-mono text-[10px] tracking-[0.3em] uppercase">
+              {generating ? "Generating" : "Paused"}
+            </p>
+            <h1 className="text-blueprint-text font-display mt-2 text-2xl font-bold sm:text-3xl">
+              {initialTitle}
+            </h1>
+            <p className="text-blueprint-muted mt-2 text-sm" aria-live="polite">
+              {generating
+                ? "Writing the client and engineer documents — each one appears here as soon as it is ready."
+                : "One document is still missing."}
+            </p>
+            {notice && (
+              <div
+                role="alert"
+                className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+              >
+                <span>{notice}</span>
+                {canRetry && (
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-red-300/40 px-3 py-1 text-xs font-medium hover:bg-red-400/10"
+                  >
+                    <RefreshCw size={12} />
+                    Try again
+                  </button>
+                )}
+              </div>
+            )}
+          </header>
+          <DraftSection title="Client view" writing={generating && !draft?.client}>
+            {draft?.client && <ClientView view={draft.client} readOnly />}
+          </DraftSection>
+          <DraftSection title="Engineer view" writing={generating && !draft?.engineer}>
+            {draft?.engineer && <EngineerView view={draft.engineer} readOnly />}
+          </DraftSection>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -119,5 +205,32 @@ export function FinalizeGate({
         )}
       </motion.div>
     </main>
+  );
+}
+
+function DraftSection({
+  title,
+  writing,
+  children,
+}: {
+  title: string;
+  writing: boolean;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <section className="border-blueprint-line/20 rounded-2xl border bg-white/[0.02] p-5 sm:p-8">
+      <h2 className="text-blueprint-muted mb-4 font-mono text-[11px] tracking-[0.2em] uppercase">
+        {title}
+      </h2>
+      {children ??
+        (writing ? (
+          <p className="text-blueprint-muted inline-flex items-center gap-2 text-sm">
+            <Loader2 className="animate-spin" size={14} />
+            Writing…
+          </p>
+        ) : (
+          <p className="text-blueprint-muted text-sm">Not written yet.</p>
+        ))}
+    </section>
   );
 }

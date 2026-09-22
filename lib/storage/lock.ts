@@ -10,14 +10,19 @@ import { getRedis } from "@/lib/storage/redis";
  * per-process Map with expiry is used.
  */
 
-/** `maxDuration` of the LLM routes in vercel.json (run, answer, finalize). */
-export const LLM_ROUTE_MAX_DURATION_SECONDS = 60;
+/**
+ * `maxDuration` (vercel.json) of the functions that run pipeline work: the job
+ * endpoint, plus run/answer/finalize for the in-process after() fallback.
+ * 300 s is the Hobby maximum with Fluid compute.
+ */
+export const JOB_MAX_DURATION_SECONDS = 300;
 
 /**
- * Lock TTL: the route's maxDuration plus 30 s, so a request the platform
- * killed mid-flight cannot leave the session locked for long.
+ * Lock TTL: the job's maxDuration plus 30 s. The route takes the lock and
+ * hands it to the job, so a job the platform killed mid-flight cannot leave
+ * the session locked for long.
  */
-export const SESSION_LOCK_TTL_SECONDS = LLM_ROUTE_MAX_DURATION_SECONDS + 30;
+export const SESSION_LOCK_TTL_SECONDS = JOB_MAX_DURATION_SECONDS + 30;
 
 export function sessionLockKey(sessionId: string): string {
   return `lock:session:${sessionId}`;
@@ -71,4 +76,12 @@ export async function releaseLock(key: string, token: string): Promise<boolean> 
   if (!held || held.token !== token) return false;
   memory.delete(key);
   return true;
+}
+
+/** True while `token` still holds the lock at `key`. */
+export async function ownsLock(key: string, token: string): Promise<boolean> {
+  const redis = getRedis();
+  if (redis) return (await redis.get<string>(key)) === token;
+  const held = memory.get(key);
+  return Boolean(held && held.expiresAt > Date.now() && held.token === token);
 }

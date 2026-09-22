@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as runRoute } from "@/app/api/session/[id]/run/route";
 import { POST as answerRoute } from "@/app/api/session/[id]/answer/route";
 import { createSession } from "@/lib/pipeline/orchestrator";
@@ -9,8 +9,11 @@ import { buildSessionCookie, SESSION_COOKIE_NAME } from "@/lib/security/session-
 import { SessionSchema, type MCQAnswer, type Session } from "@/lib/schemas/mcq";
 import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
 import { makeExtraction, makeRound, makeSession } from "../fixtures/llm";
+import { drainJobs, resetJobQueue } from "../mocks/job-queue";
 
 /** BUG-02 (stuck sessions) and ROB-01 (repair / retry of model output). */
+
+vi.mock("@/lib/jobs/transport", () => import("../mocks/job-queue"));
 
 let mock: MockAnthropic;
 let ip = 0;
@@ -26,6 +29,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   mock.reset();
+  resetJobQueue();
 });
 
 function post(path: string, sessionId: string, body?: unknown): NextRequest {
@@ -41,11 +45,14 @@ function post(path: string, sessionId: string, body?: unknown): NextRequest {
   });
 }
 
+/** POST /run, then run the round job it queued (if any), as QStash would. */
 async function run(id: string) {
   const res = await runRoute(post(`/api/session/${id}/run`, id), {
     params: Promise.resolve({ id }),
   });
-  return { status: res.status, body: (await res.json()) as Record<string, unknown> };
+  const body = (await res.json()) as Record<string, unknown>;
+  const outcomes = res.status === 202 ? await drainJobs() : [];
+  return { status: res.status, body, outcomes };
 }
 
 async function stored(id: string): Promise<Session> {
@@ -61,8 +68,8 @@ describe("BUG-02: a failed round is saved as 'error' and /run resumes it", () =>
 
     mock.failNext(3); // the first attempt plus both SDK retries
     const failed = await run(session.id);
-    expect(failed.status).toBe(502);
-    expect(failed.body).toMatchObject({ error: { code: "LLM_ERROR" } });
+    expect(failed.status).toBe(202);
+    expect(failed.outcomes).toEqual(["failed"]);
 
     const afterFailure = await stored(session.id);
     expect(afterFailure.status).toBe("error");
@@ -70,7 +77,7 @@ describe("BUG-02: a failed round is saved as 'error' and /run resumes it", () =>
     expect(afterFailure.last_error).toMatchObject({ code: "LLM_ERROR", retryable: true });
 
     const retried = await run(session.id);
-    expect(retried.status).toBe(200);
+    expect(retried).toMatchObject({ status: 202, outcomes: ["completed"] });
     const recovered = await stored(session.id);
     expect(recovered.status).toBe("awaiting_answers");
     expect(recovered.last_error).toBeNull();
@@ -80,7 +87,7 @@ describe("BUG-02: a failed round is saved as 'error' and /run resumes it", () =>
   it("keeps the submitted answers when the round after them fails", async () => {
     const session = createSession("We need an internal tool for account managers.");
     await putSession(session);
-    expect((await run(session.id)).status).toBe(200);
+    expect((await run(session.id)).status).toBe(202);
     const round0 = (await stored(session.id)).rounds[0]!;
     const answers: MCQAnswer[] = round0.questions.map((q, i) => ({
       question_id: q.id,
@@ -95,7 +102,8 @@ describe("BUG-02: a failed round is saved as 'error' and /run resumes it", () =>
         params: Promise.resolve({ id: session.id }),
       },
     );
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(202);
+    expect(await drainJobs()).toEqual(["failed"]);
 
     const failed = await stored(session.id);
     expect(failed.status).toBe("error");
@@ -103,7 +111,7 @@ describe("BUG-02: a failed round is saved as 'error' and /run resumes it", () =>
     expect(failed.enriched_input).toContain("Custom: Regional sales managers");
 
     mock.reset();
-    expect((await run(session.id)).status).toBe(200);
+    expect((await run(session.id)).status).toBe(202);
     const resumed = await stored(session.id);
     expect(resumed.rounds).toHaveLength(2);
     expect(mock.callsFor("submit_extraction")[0]?.userText).toContain(
@@ -122,7 +130,7 @@ describe("BUG-02: a failed round is saved as 'error' and /run resumes it", () =>
     });
     await putSession(stuck);
 
-    expect((await run(stuck.id)).status).toBe(200);
+    expect((await run(stuck.id)).status).toBe(202);
     expect((await stored(stuck.id)).status).toBe("awaiting_answers");
   });
 
@@ -162,7 +170,7 @@ describe("ROB-01: model output is repaired or retried", () => {
     await putSession(session);
     mock.enqueue("submit_extraction", { domain: "Zz", confidence: "high" });
 
-    expect((await run(session.id)).status).toBe(200);
+    expect((await run(session.id)).outcomes).toEqual(["completed"]);
 
     const calls = mock.callsFor("submit_extraction");
     expect(calls).toHaveLength(2);
@@ -173,16 +181,17 @@ describe("ROB-01: model output is repaired or retried", () => {
     expect((await stored(session.id)).status).toBe("awaiting_answers");
   });
 
-  it("invalid output twice → 502 LLM_ERROR (not a 400), session saved as 'error'", async () => {
+  it("invalid output twice → LLM_ERROR (not a 400), session saved as 'error'", async () => {
     const session = createSession("We need an internal tool for account managers.");
     await putSession(session);
     mock.override("submit_extraction", { domain: "Zz" });
 
     const res = await run(session.id);
-    expect(res.status).toBe(502);
-    expect(res.body).toMatchObject({ error: { code: "LLM_ERROR" } });
+    expect(res.outcomes).toEqual(["failed"]);
     expect(mock.callsFor("submit_extraction")).toHaveLength(2);
-    expect((await stored(session.id)).status).toBe("error");
+    const failed = await stored(session.id);
+    expect(failed.status).toBe("error");
+    expect(failed.last_error).toMatchObject({ code: "LLM_ERROR", retryable: true });
   });
 
   it("blocker with confidence 55 → accepted with confidence 40", async () => {
@@ -199,7 +208,7 @@ describe("ROB-01: model output is repaired or retried", () => {
       }),
     );
 
-    expect((await run(session.id)).status).toBe(200);
+    expect((await run(session.id)).outcomes).toEqual(["completed"]);
     const result = await stored(session.id);
     expect(result.rounds[0]!.extraction).toMatchObject({ blocker: true, confidence: 40 });
     expect(mock.callsFor("submit_extraction")).toHaveLength(1);
@@ -210,7 +219,7 @@ describe("ROB-01: model output is repaired or retried", () => {
     await putSession(session);
     mock.truncateNext(1);
 
-    expect((await run(session.id)).status).toBe(200);
+    expect((await run(session.id)).outcomes).toEqual(["completed"]);
     const calls = mock.callsFor("submit_extraction");
     expect(calls.map((c) => c.maxTokens)).toEqual([4096, 6144]);
   });

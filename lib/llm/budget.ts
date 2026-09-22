@@ -55,6 +55,27 @@ async function increment(key: string): Promise<number | null> {
 }
 
 /**
+ * True when today's budget is already used up, without counting a call.
+ * Routes check it before queueing work, so an exhausted budget still answers
+ * 503 straight away instead of failing later inside a job.
+ */
+export async function isLlmBudgetExhausted(now: Date = new Date()): Promise<boolean> {
+  const key = llmBudgetKey(now);
+  const limit = getServerEnv().LLM_DAILY_CALL_LIMIT;
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const count = await redis.get<number | string>(key);
+      return Number(count ?? 0) >= limit;
+    } catch {
+      return false; // fail open, like consumeLlmBudget
+    }
+  }
+  const entry = memory.get(key);
+  return Boolean(entry && entry.expiresAt >= Date.now() && entry.count >= limit);
+}
+
+/**
  * Count one LLM call against today's budget. Throws BudgetExceededError when
  * the new count is above LLM_DAILY_CALL_LIMIT; returns the count otherwise.
  */

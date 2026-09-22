@@ -90,6 +90,30 @@ describe("LLM routes keep a strict per-route limit", () => {
   });
 });
 
+describe("OPS-01: event stream and job deliveries", () => {
+  it("the session event stream shares the large poll bucket", async () => {
+    const statuses: number[] = [];
+    for (let i = 0; i < 40; i++) {
+      const req = request("GET", `/api/session/${SESSION_ID}/events`, {
+        "x-forwarded-for": "198.51.100.43",
+      });
+      statuses.push((await proxy(req)).status);
+    }
+    expect(statuses.every((s) => s !== 429)).toBe(true);
+  });
+
+  it("QStash job deliveries skip the IP buckets (the signature gates them)", async () => {
+    const statuses: number[] = [];
+    for (let i = 0; i < 40; i++) {
+      const req = request("POST", "/api/jobs/round", {
+        "x-forwarded-for": "198.51.100.44",
+      });
+      statuses.push((await proxy(req)).status);
+    }
+    expect(statuses.every((s) => s !== 429)).toBe(true);
+  });
+});
+
 describe("SEC-02: spoofed X-Forwarded-For does not create new buckets", () => {
   async function hitApi(n: number, headersFor: (i: number) => Record<string, string>) {
     const statuses: number[] = [];

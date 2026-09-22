@@ -39,6 +39,7 @@ export function createSession(rawText: string): Session {
     pipeline_stage: "extracting",
     current_confidence: 0,
     final_output: null,
+    draft_output: null,
     last_error: null,
     created_at: now,
     updated_at: now,
@@ -91,7 +92,7 @@ export async function runRound(
 }
 
 /** The session as stored after a failed round: resumable from enriched_input. */
-function markRoundFailed(session: Session, err: unknown): Session {
+export function markRoundFailed(session: Session, err: unknown): Session {
   const budget = err instanceof BudgetExceededError;
   const known = err instanceof AppError;
   return {
@@ -113,7 +114,26 @@ async function executeRound(
   session: Session,
   reportProgress?: ProgressReporter,
 ): Promise<Session> {
+  const roundStart = Date.now();
   let working = await setPipelineStage(session, "extracting", reportProgress);
+
+  // Log how long each stage took (OPS-01): the previous stage ends when the
+  // next one starts.
+  let stage: PipelineStage = "extracting";
+  let stageStart = roundStart;
+  const endStage = (): void => {
+    logger.info("orchestrator.stage.completed", {
+      sessionId: session.id,
+      stage,
+      durationMs: Date.now() - stageStart,
+    });
+  };
+  const enterStage = async (next: PipelineStage): Promise<void> => {
+    endStage();
+    stage = next;
+    stageStart = Date.now();
+    working = await setPipelineStage(working, next, reportProgress);
+  };
 
   const roundNumber = working.rounds.length;
   logger.info("orchestrator.round.start", {
@@ -141,7 +161,7 @@ async function executeRound(
     roundNumber === 0 || (previousDomain && previousDomain !== extractionRaw.domain);
 
   if (shouldRunEnrichment) {
-    working = await setPipelineStage(working, "github", reportProgress);
+    await enterStage("github");
     try {
       enrichment = await enrichWithGitHub(extractionRaw, working.enriched_input);
     } catch (err) {
@@ -157,7 +177,7 @@ async function executeRound(
   }
 
   // 3) Merge GitHub signals into the extraction.
-  working = await setPipelineStage(working, "scoring", reportProgress);
+  await enterStage("scoring");
   const extraction = enrichment
     ? mergeGitHubSignals(extractionRaw, enrichment)
     : extractionRaw;
@@ -165,7 +185,7 @@ async function executeRound(
   // 4) Decide next status. BLOCKER short-circuits everything else.
   let questions: MCQQuestion[] = [];
   let nextStatus: Session["status"];
-  working = await setPipelineStage(working, "clarifying", reportProgress);
+  await enterStage("clarifying");
 
   if (extraction.blocker) {
     questions = await generateBlockerQuestion(working, extraction);
@@ -181,6 +201,14 @@ async function executeRound(
     });
     nextStatus = questions.length > 0 ? "awaiting_answers" : "ready";
   }
+
+  endStage();
+  logger.info("orchestrator.round.completed", {
+    sessionId: session.id,
+    roundNumber,
+    status: nextStatus,
+    durationMs: Date.now() - roundStart,
+  });
 
   const newRound: SessionRound = {
     round_number: roundNumber,
@@ -204,16 +232,25 @@ async function executeRound(
 /**
  * Apply MCQ answers to the latest round, append a structured context block
  * to enriched_input, and immediately run the next round.
- *
- *   - Validates answer.question_id matches a question issued in the current round.
- *   - Enforces the 50KB user-content cap.
- *   - Increments rounds via runRound.
  */
 export async function submitAnswers(
   session: Session,
   answers: MCQAnswer[],
   reportProgress?: ProgressReporter,
 ): Promise<Session> {
+  return runRound(applyAnswers(session, answers), reportProgress);
+}
+
+/**
+ * Record MCQ answers on the latest round and append a structured context
+ * block to enriched_input, leaving the session "analyzing" for the next
+ * round. POST /answer stores this and queues the round as a job.
+ *
+ *   - Validates answer.question_id matches a question issued in the current round.
+ *   - Enforces the 50KB user-content cap.
+ *   - A ready or finalized session is returned unchanged.
+ */
+export function applyAnswers(session: Session, answers: MCQAnswer[]): Session {
   if (session.status === "ready" || session.status === "finalized") {
     return session;
   }
@@ -260,7 +297,7 @@ export async function submitAnswers(
     answers: validatedAnswers,
   };
 
-  const intermediate: Session = {
+  return {
     ...session,
     rounds: updatedRounds,
     enriched_input: enrichedInputCandidate,
@@ -268,8 +305,6 @@ export async function submitAnswers(
     pipeline_stage: "extracting",
     updated_at: Date.now(),
   };
-
-  return runRound(intermediate, reportProgress);
 }
 
 async function setPipelineStage(

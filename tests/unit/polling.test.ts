@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   isBusyStatus,
   isFatalPollStatus,
+  isJobStalled,
+  JOB_STALLED_MS,
   nextPollInterval,
   pollDelayMs,
   showAlreadyWorking,
 } from "@/components/chat/polling";
+import { SESSION_LOCK_TTL_SECONDS } from "@/lib/storage/lock";
 
 describe("pollDelayMs", () => {
   it.each([
@@ -90,5 +93,17 @@ describe("showAlreadyWorking", () => {
     expect(showAlreadyWorking(true, "analyzing")).toBe(true);
     expect(showAlreadyWorking(true, "awaiting_answers")).toBe(false);
     expect(showAlreadyWorking(false, "analyzing")).toBe(false);
+  });
+});
+
+describe("isJobStalled (OPS-01)", () => {
+  it("only fires once the session lock has expired, so Retry cannot hit a 409", () => {
+    expect(JOB_STALLED_MS).toBeGreaterThan(SESSION_LOCK_TTL_SECONDS * 1000);
+    expect(isJobStalled(0, JOB_STALLED_MS)).toBe(false);
+    expect(isJobStalled(0, JOB_STALLED_MS + 1)).toBe(true);
+  });
+
+  it("is false before the clock has ticked (now = 0)", () => {
+    expect(isJobStalled(1_700_000_000_000, 0)).toBe(false);
   });
 });

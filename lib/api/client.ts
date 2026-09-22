@@ -117,21 +117,32 @@ export function isUuid(s: string | null | undefined): s is string {
   return typeof s === "string" && UUID_RE.test(s);
 }
 
-const FinalizeResponseSchema = z.object({
+const FinalizedResponseSchema = z.object({
   output: FinalOutputSchema,
   cached: z.boolean().optional(),
 });
 
-export async function finalizeSession(sessionId: string): Promise<FinalOutput> {
+/**
+ * Outcome of POST /api/finalize: the output when the session was already
+ * finalized, otherwise the session whose two view jobs were just queued (or,
+ * with `inProgress`, are already running) — follow it until final_output lands.
+ */
+export type FinalizeResult =
+  | { output: FinalOutput }
+  | { output: null; session: Session; inProgress: boolean };
+
+export async function finalizeSession(sessionId: string): Promise<FinalizeResult> {
   const res = await fetch(`/api/finalize`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sessionId }),
     credentials: "same-origin",
   });
-  if (!res.ok) throw await readError(res);
-  const parsed = FinalizeResponseSchema.parse(await res.json());
-  return parsed.output;
+  if (res.status === 200) {
+    return { output: FinalizedResponseSchema.parse(await res.json()).output };
+  }
+  const { session, inProgress } = await readSessionAction(res);
+  return { output: null, session, inProgress };
 }
 
 export async function patchFinalOutput(

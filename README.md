@@ -62,6 +62,29 @@ Build-Ready Scope
 Client View + Engineer View
 ```
 
+### Background jobs
+
+No HTTP request waits for an LLM. `POST /api/session/[id]/run`, `/answer` and
+`POST /api/finalize` validate the request, take the session's lock and answer
+**202** with the session. The work runs as a job:
+
+- **Production:** [Upstash QStash](https://upstash.com/docs/qstash) delivers
+  each job to `POST /api/jobs/[type]`, which only runs requests carrying a valid
+  QStash signature. Finalize queues the client and engineer views as two jobs,
+  and the output page shows each one as soon as it lands.
+- **Local dev (no `QSTASH_TOKEN`):** jobs run in the same process after the
+  response (`after()` from `next/server`). This is fine locally but not durable.
+
+The browser follows progress over Server-Sent Events
+(`GET /api/session/[id]/events`) and falls back to polling if the stream drops.
+
+To set up QStash, create a QStash project at
+[console.upstash.com/qstash](https://console.upstash.com/qstash) and copy
+`QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY` and `QSTASH_NEXT_SIGNING_KEY` into
+the Vercel project's environment variables. For preview deployments behind
+Vercel Deployment Protection, enable **Protection Bypass for Automation**. The
+app forwards the resulting secret to QStash so its calls get through.
+
 ---
 
 ## 🧪 Testing
@@ -86,6 +109,13 @@ CI (`.github/workflows/ci.yml`) runs typecheck, lint, format check, tests with
 coverage, build and `npm run audit` on every push and pull request.
 
 The scripts in `scripts/` are manual smoke tests against **real** services:
-`test-flow.ts` drives a running dev server end to end (create → run → answer →
+`test-flow.ts` drives a running server end to end (create → run → answer →
 finalize), while `test-extract.ts` and `test-github.ts` call Anthropic and
 GitHub directly. They are not part of `npm test`.
+
+`test-flow.ts` also times every API response (each must take under 2 s) and
+every round (p95 must be under 45 s). To measure a Vercel preview over 10 runs:
+
+```bash
+SCOPEAI_BASE_URL=https://<preview-url> npx tsx scripts/test-flow.ts --runs=10
+```

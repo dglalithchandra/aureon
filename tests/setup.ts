@@ -24,6 +24,13 @@ const UNSET = [
   "GITHUB_TOKEN",
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
+  "QSTASH_TOKEN",
+  "QSTASH_URL",
+  "QSTASH_CURRENT_SIGNING_KEY",
+  "QSTASH_NEXT_SIGNING_KEY",
+  "QSTASH_DEV",
+  "JOBS_BASE_URL",
+  "VERCEL_AUTOMATION_BYPASS_SECRET",
 ];
 
 for (const [key, value] of Object.entries(TEST_ENV)) process.env[key] = value;

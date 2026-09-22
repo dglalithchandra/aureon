@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { runRound } from "@/lib/pipeline/orchestrator";
+import { markRoundFailed } from "@/lib/pipeline/orchestrator";
 import { getSession, putSession } from "@/lib/storage/session";
+import { startJobs } from "@/lib/jobs/start";
+import { isLlmBudgetExhausted } from "@/lib/llm/budget";
+import { BudgetExceededError } from "@/lib/errors";
 import {
   gateRateLimit,
   getClientIp,
@@ -41,9 +44,10 @@ function runDecision(session: Session, now: number): "run" | "busy" | "unchanged
 }
 
 /**
- * Execute the initial round after its session has been created and persisted.
- * The browser can therefore poll the owned session while each real pipeline
- * stage is written by `runRound`.
+ * Start the initial round (or resume a failed one) after its session has been
+ * created and persisted. The round runs as a background job (OPS-01): this
+ * answers 202 with the session at once, and the browser follows each pipeline
+ * stage the job writes through /events (or by polling).
  */
 export async function POST(
   req: NextRequest,
@@ -68,7 +72,7 @@ export async function POST(
   try {
     // The lock makes a concurrent duplicate /run answer 409 instead of
     // starting a second LLM pipeline for the same session.
-    return await withSessionLock(id, async () => {
+    return await withSessionLock(id, async (lock) => {
       const session = await getSession(id);
       if (!session) {
         return NextResponse.json(
@@ -83,9 +87,28 @@ export async function POST(
       if (decision === "unchanged") return NextResponse.json({ session });
       if (decision === "busy") return inProgressResponse(session);
 
-      const updated = await runRound(session, putSession);
-      await putSession(updated);
-      return NextResponse.json({ session: updated });
+      if (await isLlmBudgetExhausted()) {
+        // Stored like a round that hit the budget, so the chat shows why.
+        const err = new BudgetExceededError();
+        await putSession(markRoundFailed(session, err));
+        throw err;
+      }
+
+      const next: Session = {
+        ...session,
+        status: "analyzing",
+        pipeline_stage: "extracting",
+        last_error: null,
+        updated_at: Date.now(),
+      };
+      await startJobs({
+        lock,
+        previous: session,
+        next,
+        types: ["round"],
+        origin: req.nextUrl.origin,
+      });
+      return NextResponse.json({ session: next }, { status: 202 });
     });
   } catch (err) {
     return jsonError(err);

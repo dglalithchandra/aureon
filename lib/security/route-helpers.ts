@@ -132,28 +132,44 @@ export function inProgressResponse(session: Session | null): NextResponse {
   );
 }
 
+/** The session lock as seen by the route that holds it. */
+export interface SessionLock {
+  token: string;
+  /** Leave the lock held: the queued job now owns it and will release it. */
+  handOff(): void;
+}
+
 /**
  * Run `work` while holding the session's single-flight lock (BUG-08). The
- * lock is taken before `work` reads the session and always released after.
- * If another request holds it, answers 409 IN_PROGRESS without running `work`.
+ * lock is taken before `work` reads the session and released after, unless
+ * `work` handed it to a queued job (OPS-01). If another request or job holds
+ * it, answers 409 IN_PROGRESS without running `work`.
  */
 export async function withSessionLock(
   sessionId: string,
-  work: () => Promise<NextResponse>,
+  work: (lock: SessionLock) => Promise<NextResponse>,
 ): Promise<NextResponse> {
   const key = sessionLockKey(sessionId);
   const token = await acquireLock(key, SESSION_LOCK_TTL_SECONDS);
   if (!token) return inProgressResponse(await getSession(sessionId));
+  let handedOff = false;
   try {
-    return await work();
+    return await work({
+      token,
+      handOff: () => {
+        handedOff = true;
+      },
+    });
   } finally {
     // A failed release is not fatal: the lock expires after its TTL.
-    await releaseLock(key, token).catch((err: unknown) => {
-      logger.warn("session_lock.release_failure", {
-        sessionId,
-        message: err instanceof Error ? err.message : "unknown",
+    if (!handedOff) {
+      await releaseLock(key, token).catch((err: unknown) => {
+        logger.warn("session_lock.release_failure", {
+          sessionId,
+          message: err instanceof Error ? err.message : "unknown",
+        });
       });
-    });
+    }
   }
 }
 

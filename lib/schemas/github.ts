@@ -16,6 +16,10 @@ export const RepoSearchResultSchema = z.object({
   url: z.string().url(),
   description: z.string().max(800),
   stars: z.number().int().min(0),
+  /** Owner-curated topics from the search result, used for BM25 ranking. */
+  topics: z.array(z.string().max(50)).max(40).default([]),
+  /** From the search result, so no extra repos.get call is needed. */
+  default_branch: z.string().min(1).max(255).default("main"),
 });
 export type RepoSearchResult = z.infer<typeof RepoSearchResultSchema>;
 

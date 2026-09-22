@@ -33,39 +33,60 @@ const MAX_CONTEXT_CHARS = 40_000;
  * shared content but cannot be cached because it varies per session.
  */
 export async function generateOutput(session: Session): Promise<FinalOutput> {
-  const lastRound = session.rounds[session.rounds.length - 1];
-  if (!lastRound) {
-    throw new ValidationError("Session has no rounds to finalize");
-  }
-  const context = buildSharedContext(session);
-
   const t0 = Date.now();
   const [client, engineer] = await Promise.all([
-    runClientView(context),
-    runEngineerView(context),
+    generateClientView(session),
+    generateEngineerView(session),
   ]);
   logger.info("finalize.completed", {
     sessionId: session.id,
     durationMs: Date.now() - t0,
   });
+  return { client, engineer };
+}
 
-  // The confidence badge is NOT trusted from the LLM — free models routinely
-  // emit garbage here (e.g. "1/100" when the real score is 97). We overwrite
-  // it with the deterministic value the pipeline already computed.
-  const badge = computeConfidenceBadge(session);
+/**
+ * The client document alone (one finalize job). The confidence badge is NOT
+ * trusted from the LLM — free models routinely emit garbage here (e.g.
+ * "1/100" when the real score is 97) — so it is replaced with the
+ * deterministic value the pipeline already computed.
+ */
+export async function generateClientView(session: Session): Promise<ClientView> {
+  const context = buildSharedContext(requireRounds(session));
+  const t0 = Date.now();
+  const client = await runClientView(context);
+  logger.info("finalize.client.completed", {
+    sessionId: session.id,
+    durationMs: Date.now() - t0,
+  });
+  return { ...client, confidence_badge: computeConfidenceBadge(session) };
+}
 
-  // The effort-estimate confidence band is also a derived value, not an
-  // LLM judgement — tie it to the real score so the doc never contradicts
-  // the badge.
+/**
+ * The engineer document alone (one finalize job). The effort-estimate
+ * confidence band is derived from the real score, not the LLM, so the doc
+ * never contradicts the badge.
+ */
+export async function generateEngineerView(session: Session): Promise<EngineerView> {
+  const context = buildSharedContext(requireRounds(session));
+  const t0 = Date.now();
+  const engineer = await runEngineerView(context);
+  logger.info("finalize.engineer.completed", {
+    sessionId: session.id,
+    durationMs: Date.now() - t0,
+  });
   const band = confidenceBand(session.current_confidence);
-
   return {
-    client: { ...client, confidence_badge: badge },
-    engineer: {
-      ...engineer,
-      effort_summary: { ...engineer.effort_summary, confidence_band: band },
-    },
+    ...engineer,
+    effort_summary: { ...engineer.effort_summary, confidence_band: band },
   };
+}
+
+function requireRounds(session: Session): Session {
+  if (session.rounds.length === 0) {
+    throw new ValidationError("Session has no rounds to finalize");
+  }
+  return session;
 }
 
 function confidenceBand(score: number): string {

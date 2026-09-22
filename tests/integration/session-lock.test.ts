@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { NextRequest } from "next/server";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as runRoute } from "@/app/api/session/[id]/run/route";
 import { POST as answerRoute } from "@/app/api/session/[id]/answer/route";
 import { POST as finalizeRoute } from "@/app/api/finalize/route";
@@ -8,7 +8,7 @@ import { createSession } from "@/lib/pipeline/orchestrator";
 import { getSession, putSession } from "@/lib/storage/session";
 import {
   acquireLock,
-  LLM_ROUTE_MAX_DURATION_SECONDS,
+  JOB_MAX_DURATION_SECONDS,
   releaseLock,
   SESSION_LOCK_TTL_SECONDS,
   sessionLockKey,
@@ -16,7 +16,10 @@ import {
 import { buildSessionCookie, SESSION_COOKIE_NAME } from "@/lib/security/session-cookie";
 import type { Session } from "@/lib/schemas/mcq";
 import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { drainJobs, failNextSend, queuedJobs, resetJobQueue } from "../mocks/job-queue";
 import { makeRound } from "../fixtures/llm";
+
+vi.mock("@/lib/jobs/transport", () => import("../mocks/job-queue"));
 
 let mock: MockAnthropic;
 let ipCounter = 0;
@@ -32,6 +35,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   mock.reset();
+  resetJobQueue();
 });
 
 /** A fresh stored session in `analyzing`, as the chat creates it. */
@@ -58,33 +62,41 @@ function post(path: string, sessionId: string, body?: unknown): NextRequest {
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
 
 describe("BUG-08: one pipeline per session", () => {
-  it("two concurrent /run calls make exactly 1 extraction call; the second gets 409", async () => {
+  it("two concurrent /run calls queue exactly 1 round; the second gets 409", async () => {
     const session = await newSession();
-    mock.setDelay(150); // keep the first request busy while the second arrives
 
     const [a, b] = await Promise.all([
       runRoute(post(`/api/session/${session.id}/run`, session.id), params(session.id)),
       runRoute(post(`/api/session/${session.id}/run`, session.id), params(session.id)),
     ]);
 
-    expect([a.status, b.status].sort()).toEqual([200, 409]);
+    expect([a.status, b.status].sort()).toEqual([202, 409]);
     const conflict = a.status === 409 ? a : b;
     const body = (await conflict.json()) as { error: { code: string }; session: Session };
     expect(body.error.code).toBe("IN_PROGRESS");
     expect(body.session.id).toBe(session.id);
+    expect(queuedJobs).toHaveLength(1);
 
+    expect(await drainJobs()).toEqual(["completed"]);
     expect(mock.callsFor("submit_extraction")).toHaveLength(1);
     expect(mock.callsFor("generate_clarification_questions")).toHaveLength(1);
   });
 
-  it("releases the lock afterwards, so a later /run is answered normally", async () => {
+  it("hands the lock to the job: /run answers 409 until the job has finished", async () => {
     const session = await newSession();
     const first = await runRoute(
       post(`/api/session/${session.id}/run`, session.id),
       params(session.id),
     );
-    expect(first.status).toBe(200);
+    expect(first.status).toBe(202);
 
+    const whileQueued = await runRoute(
+      post(`/api/session/${session.id}/run`, session.id),
+      params(session.id),
+    );
+    expect(whileQueued.status).toBe(409);
+
+    await drainJobs();
     const again = await runRoute(
       post(`/api/session/${session.id}/run`, session.id),
       params(session.id),
@@ -95,13 +107,31 @@ describe("BUG-08: one pipeline per session", () => {
 
   it("releases the lock when the pipeline fails", async () => {
     const session = await newSession();
-    mock.failNext(3); // extraction exhausts the SDK's retries → 502
+    mock.failNext(3); // extraction exhausts the SDK's retries
 
     const res = await runRoute(
       post(`/api/session/${session.id}/run`, session.id),
       params(session.id),
     );
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(202);
+    expect(await drainJobs()).toEqual(["failed"]);
+    expect((await getSession(session.id))?.status).toBe("error");
+
+    const token = await acquireLock(sessionLockKey(session.id), 5);
+    expect(token).not.toBeNull();
+    await releaseLock(sessionLockKey(session.id), token!);
+  });
+
+  it("restores the session and releases the lock when the queue refuses the job", async () => {
+    const session = await newSession();
+    failNextSend();
+
+    const res = await runRoute(
+      post(`/api/session/${session.id}/run`, session.id),
+      params(session.id),
+    );
+    expect(res.status).toBe(503);
+    expect(await getSession(session.id)).toEqual(session);
 
     const token = await acquireLock(sessionLockKey(session.id), 5);
     expect(token).not.toBeNull();
@@ -144,17 +174,19 @@ describe("BUG-08: one pipeline per session", () => {
 });
 
 describe("lock TTL", () => {
-  it("is the LLM routes' vercel.json maxDuration plus 30 s", () => {
+  it("is the job functions' vercel.json maxDuration plus 30 s", () => {
     const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as {
       functions: Record<string, { maxDuration: number }>;
     };
+    // The job endpoint, plus the routes that run jobs in-process via after().
     for (const route of [
+      "app/api/jobs/[type]/route.ts",
       "app/api/session/[id]/run/route.ts",
       "app/api/session/[id]/answer/route.ts",
       "app/api/finalize/route.ts",
     ]) {
-      expect(vercel.functions[route]?.maxDuration).toBe(LLM_ROUTE_MAX_DURATION_SECONDS);
+      expect(vercel.functions[route]?.maxDuration).toBe(JOB_MAX_DURATION_SECONDS);
     }
-    expect(SESSION_LOCK_TTL_SECONDS).toBe(LLM_ROUTE_MAX_DURATION_SECONDS + 30);
+    expect(SESSION_LOCK_TTL_SECONDS).toBe(JOB_MAX_DURATION_SECONDS + 30);
   });
 });

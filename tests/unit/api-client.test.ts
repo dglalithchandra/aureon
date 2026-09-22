@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, runSession, submitAnswers } from "@/lib/api/client";
-import { makeSession } from "../fixtures/llm";
+import { ApiError, finalizeSession, runSession, submitAnswers } from "@/lib/api/client";
+import { makeClientView, makeEngineerView, makeSession } from "../fixtures/llm";
 
 const SESSION = makeSession({ status: "analyzing", pipeline_stage: "github" });
 
@@ -58,5 +58,38 @@ describe("runSession / submitAnswers", () => {
     const err = await runSession(SESSION.id).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApiError);
     expect(err).toMatchObject({ code: "LLM_ERROR", status: 502 });
+  });
+});
+
+describe("finalizeSession (OPS-01)", () => {
+  const output = { client: makeClientView(), engineer: makeEngineerView() };
+  const finalizing = makeSession({
+    status: "ready",
+    pipeline_stage: "finalizing",
+    draft_output: { client: null, engineer: null, pending: ["client", "engineer"] },
+  });
+
+  it("returns the output when the session was already finalized (200)", async () => {
+    respond(200, { output, cached: true });
+    await expect(finalizeSession(SESSION.id)).resolves.toEqual({ output });
+  });
+
+  it("returns the session when the view jobs were queued (202)", async () => {
+    respond(202, { session: finalizing });
+    await expect(finalizeSession(SESSION.id)).resolves.toEqual({
+      output: null,
+      session: finalizing,
+      inProgress: false,
+    });
+  });
+
+  it("treats 409 with a session as already generating", async () => {
+    respond(409, {
+      error: { code: "IN_PROGRESS", message: "busy" },
+      session: finalizing,
+    });
+    await expect(finalizeSession(SESSION.id)).resolves.toMatchObject({
+      inProgress: true,
+    });
   });
 });

@@ -1,5 +1,9 @@
 import "@/lib/server-only";
-import { getOctokit, isRetryableOrRateLimited } from "@/lib/github/client";
+import {
+  getOctokit,
+  isRetryableOrRateLimited,
+  reserveGitHubRequest,
+} from "@/lib/github/client";
 import { RepoSlugSchema, type RepoSearchResult } from "@/lib/schemas/github";
 import { stripHtml, truncateText } from "@/lib/security/sanitize";
 import { GitHubError } from "@/lib/errors";
@@ -238,6 +242,7 @@ export function buildSearchQuery(input: BuildQueryInput): string {
  * ────────────────────────────────────────────────────────────── */
 
 async function runSearch(query: string): Promise<RepoSearchResult[]> {
+  if (!reserveGitHubRequest()) return [];
   const octokit = getOctokit();
   const t0 = Date.now();
   const res = await octokit.search.repos({
@@ -265,6 +270,8 @@ async function runSearch(query: string): Promise<RepoSearchResult[]> {
       url: item.html_url,
       description: truncateText(stripHtml(item.description ?? ""), 800),
       stars: item.stargazers_count,
+      topics: (item.topics ?? []).slice(0, 40).map((t) => t.slice(0, 50)),
+      default_branch: item.default_branch || "main",
     });
   }
   return results;
@@ -385,6 +392,7 @@ export async function fetchReadme(repo: string): Promise<string | null> {
   const slugCheck = RepoSlugSchema.safeParse(repo);
   if (!slugCheck.success) return null;
   const [owner, name] = slugCheck.data.split("/") as [string, string];
+  if (!reserveGitHubRequest()) return null;
 
   const octokit = getOctokit();
   try {
@@ -410,62 +418,90 @@ export async function fetchReadme(repo: string): Promise<string | null> {
   }
 }
 
+/** Root folders whose children are fetched with one extra tree call. */
+const SOURCE_ROOTS = ["src", "app"];
+
+/** One repo's root folders, and where its src/ or app/ tree lives. */
+export interface RootTree {
+  folders: string[];
+  /** Tree sha of src/ (or else app/), if the repo has one. */
+  sourceTreeSha: string | null;
+}
+
 /**
- * Folder-tree mining. Hits the git/trees endpoint with `recursive=1` (single
- * call per repo, costs 1 of the 5000/hr quota when authed). Returns the
- * top-level folder names that look like module/feature directories.
- *
- * Filters out conventional non-module folders: `src`, `node_modules`,
- * `dist`, `build`, `public`, `tests`, `docs`, `.github`, etc.
+ * The repo's root tree — one non-recursive git/trees call on the default
+ * branch the search result already told us (PERF-01: no repos.get, no
+ * recursive tree). Returns the root folder names and the sha of src/ or
+ * app/, whose sub-folders fetchSourceFolders can add with one more call.
  */
-export async function fetchTopFolders(repo: string): Promise<string[]> {
+export async function fetchRootTree(
+  repo: string,
+  defaultBranch: string,
+): Promise<RootTree | null> {
+  const slugCheck = RepoSlugSchema.safeParse(repo);
+  if (!slugCheck.success) return null;
+  const [owner, name] = slugCheck.data.split("/") as [string, string];
+  if (!reserveGitHubRequest()) return null;
+
+  try {
+    const tree = await getOctokit().git.getTree({
+      owner,
+      repo: name,
+      tree_sha: defaultBranch,
+    });
+    const dirs = tree.data.tree.filter((e) => e.type === "tree" && e.path && e.sha);
+    const source = SOURCE_ROOTS.map((root) => dirs.find((e) => e.path === root)).find(
+      Boolean,
+    );
+    return {
+      folders: dirs.map((e) => e.path!),
+      sourceTreeSha: source?.sha ?? null,
+    };
+  } catch (err) {
+    logTreeFailure(repo, err);
+    return null;
+  }
+}
+
+/** Sub-folders of src/ or app/, by that tree's sha (one call). */
+export async function fetchSourceFolders(
+  repo: string,
+  treeSha: string,
+): Promise<string[]> {
   const slugCheck = RepoSlugSchema.safeParse(repo);
   if (!slugCheck.success) return [];
   const [owner, name] = slugCheck.data.split("/") as [string, string];
+  if (!reserveGitHubRequest()) return [];
 
-  const octokit = getOctokit();
   try {
-    // Resolve default branch first.
-    const repoMeta = await octokit.repos.get({ owner, repo: name });
-    const branch = repoMeta.data.default_branch ?? "main";
-    const tree = await octokit.git.getTree({
-      owner,
-      repo: name,
-      tree_sha: branch,
-      recursive: "1",
-    });
-    if (!tree.data.tree) return [];
-
-    // Collect first-level folders (path with no slash) AND second-level
-    // folders inside `src/`, `app/`, `apps/`, `packages/` (monorepo style).
-    const candidates = new Set<string>();
-    for (const entry of tree.data.tree) {
-      if (entry.type !== "tree" || !entry.path) continue;
-      const parts = entry.path.split("/");
-      if (parts.length === 1) candidates.add(parts[0]!);
-      else if (
-        parts.length === 2 &&
-        ["src", "app", "apps", "packages", "modules", "lib", "components"].includes(
-          parts[0]!,
-        )
-      ) {
-        candidates.add(parts[1]!);
-      }
-    }
-    return Array.from(candidates)
-      .filter(isLikelyModuleFolder)
-      .map(toCanonicalModuleName)
-      .filter((s, i, arr) => arr.indexOf(s) === i)
-      .slice(0, FOLDER_FETCH_MAX_FOLDERS);
+    const tree = await getOctokit().git.getTree({ owner, repo: name, tree_sha: treeSha });
+    return tree.data.tree.filter((e) => e.type === "tree" && e.path).map((e) => e.path!);
   } catch (err) {
-    if (isRetryableOrRateLimited(err)) {
-      logger.warn("github.tree.rate_limited", { repo });
-      return [];
-    }
-    const message = err instanceof Error ? err.message : "unknown";
-    logger.warn("github.tree.failure", { repo, message });
+    logTreeFailure(repo, err);
     return [];
   }
+}
+
+/**
+ * Folder names that look like module/feature directories, canonicalised.
+ * Filters out conventional non-module folders: `src`, `node_modules`,
+ * `dist`, `build`, `public`, `tests`, `docs`, `.github`, etc.
+ */
+export function toModuleFolders(names: string[]): string[] {
+  return uniqueTerms(names)
+    .filter(isLikelyModuleFolder)
+    .map(toCanonicalModuleName)
+    .filter((s, i, arr) => arr.indexOf(s) === i)
+    .slice(0, FOLDER_FETCH_MAX_FOLDERS);
+}
+
+function logTreeFailure(repo: string, err: unknown): void {
+  if (isRetryableOrRateLimited(err)) {
+    logger.warn("github.tree.rate_limited", { repo });
+    return;
+  }
+  const message = err instanceof Error ? err.message : "unknown";
+  logger.warn("github.tree.failure", { repo, message });
 }
 
 const NON_MODULE_FOLDER_RE = new RegExp(

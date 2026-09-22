@@ -13,6 +13,7 @@ import {
   submitAnswers,
   type SessionActionResult,
 } from "@/lib/api/client";
+import { useNow, useSessionEvents } from "@/lib/api/useSessionEvents";
 import type { MCQAnswer, Session } from "@/lib/schemas/mcq";
 import { PipelinePanel } from "@/components/chat/PipelinePanel";
 import { PipelineRoadmap } from "@/components/chat/PipelineRoadmap";
@@ -23,6 +24,7 @@ import { sessionErrorNotice } from "@/components/chat/sessionError";
 import {
   isBusyStatus,
   isFatalPollStatus,
+  isJobStalled,
   nextPollInterval,
   showAlreadyWorking,
 } from "@/components/chat/polling";
@@ -63,6 +65,18 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
   // When the current analyzing phase started, for the polling back-off.
   const analyzingSinceRef = useRef<number | null>(null);
 
+  // While a round runs, follow the session over Server-Sent Events (OPS-01);
+  // the query below polls only while the stream is not connected. The cache
+  // is read here, before useQuery, so the stream's state can steer polling.
+  const cachedSession = effectiveId
+    ? qc.getQueryData<Session>(SESSION_QUERY_KEY(effectiveId))
+    : undefined;
+  const streaming = useSessionEvents(
+    effectiveId,
+    cachedSession?.status === "analyzing",
+    (next) => qc.setQueryData(SESSION_QUERY_KEY(next.id), next),
+  );
+
   const sessionQuery = useQuery<Session, ApiError>({
     queryKey: effectiveId ? SESSION_QUERY_KEY(effectiveId) : ["session", "none"],
     queryFn: () => {
@@ -78,6 +92,7 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
         analyzingSinceRef.current = null;
       }
       const since = analyzingSinceRef.current;
+      if (streaming) return false;
       return nextPollInterval({
         sessionStatus: data?.status,
         errorStatus: q.state.error instanceof ApiError ? q.state.error.status : undefined,
@@ -216,7 +231,16 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
     sessionQuery.isLoading ||
     session?.status === "analyzing";
 
-  const errorNotice = sessionErrorNotice(session);
+  // A round job that died leaves "analyzing" behind; once its lock has
+  // expired, offer the same Retry as for a failed round.
+  const now = useNow(session?.status === "analyzing");
+  const stalled =
+    session?.status === "analyzing" && isJobStalled(session.updated_at, now);
+  const errorNotice =
+    sessionErrorNotice(session) ??
+    (stalled
+      ? { message: "This is taking much longer than expected.", canRetry: true }
+      : null);
 
   const inputLocked =
     Boolean(session) || // After first session exists, input is locked (use MCQs).

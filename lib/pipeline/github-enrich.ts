@@ -1,27 +1,44 @@
 import "@/lib/server-only";
 import {
+  buildQueryVariants,
   fetchReadme,
-  fetchTopFolders,
+  fetchRootTree,
+  fetchSourceFolders,
   searchRepos,
+  toModuleFolders,
   type BuildQueryInput,
 } from "@/lib/github/search";
 import { extractModulesFromReadme } from "@/lib/github/extract-modules";
 import { bm25Rank } from "@/lib/github/bm25";
+import { gitHubRequestsSent, withGitHubBudget } from "@/lib/github/client";
+import { cacheGet, cacheSet, hashKey } from "@/lib/storage/cache";
 import { canonicalModuleKey } from "@/lib/pipeline/merge";
 import {
   GitHubEnrichmentSchema,
+  type ExtractModulesToolOutput,
   type GitHubEnrichment,
   type GitHubMatch,
 } from "@/lib/schemas/github";
 import type { ExtractionResult } from "@/lib/schemas/extraction";
+import { BudgetExceededError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 const MAX_PARALLEL_FETCHES = 6;
 /** How many of the BM25-ranked candidates get an LLM similarity score. */
 const LLM_SCORED_MATCHES = 6;
-/** Total matches kept (LLM-scored + folder-only references). */
+/**
+ * Total matches kept (LLM-scored + folder-only references). Only this many
+ * top BM25 candidates get their README and tree fetched (PERF-01).
+ */
 const TOTAL_MATCHES = 8;
 const TOP_N_KEYWORDS = 5;
+/**
+ * GitHub requests one enrichment may send: up to 5 searches (4 variants + 1
+ * fallback), README + root tree for 8 repos (16), and 5 src/ or app/ trees.
+ */
+export const GITHUB_REQUEST_BUDGET = 26;
+/** Enrichments are cached per query-variant set for a day. */
+const ENRICHMENT_CACHE_TTL_SECONDS = 24 * 60 * 60;
 
 const EMPTY_ENRICHMENT: GitHubEnrichment = {
   matches: [],
@@ -57,6 +74,12 @@ function stackHintFromExtraction(extraction: ExtractionResult): string | null {
   return p04?.evidence ?? null;
 }
 
+function fulfilledValues<R>(settled: Array<PromiseSettledResult<R>>): R[] {
+  return settled
+    .filter((r): r is PromiseFulfilledResult<R> => r.status === "fulfilled")
+    .map((r) => r.value);
+}
+
 /**
  * Bounded-concurrency mapper. Same as Promise.allSettled but caps the number
  * of in-flight tasks so we don't blast the GitHub API.
@@ -88,6 +111,12 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
+/**
+ * GitHub enrichment for one extraction. The whole result is cached in Redis
+ * for 24 h, keyed by a hash of the query variants, so a repeat of the same
+ * searches costs no GitHub requests and no README LLM calls. Each run is held
+ * to GITHUB_REQUEST_BUDGET requests, counted by an Octokit hook.
+ */
 export async function enrichWithGitHub(
   extraction: ExtractionResult,
   rawText: string,
@@ -97,7 +126,33 @@ export async function enrichWithGitHub(
     keywords: topKeywordsFromExtraction(extraction),
     stackHint: stackHintFromExtraction(extraction),
   };
+  const variants = buildQueryVariants(queryInput);
+  const cacheKey = `scopeai:gh:${hashKey(JSON.stringify(variants))}`;
 
+  if (variants.length > 0) {
+    const t0 = Date.now();
+    const cached = GitHubEnrichmentSchema.safeParse(await cacheGet<unknown>(cacheKey));
+    if (cached.success) {
+      logger.info("github.enrich.cache_hit", { durationMs: Date.now() - t0 });
+      return cached.data;
+    }
+  }
+
+  const { result } = await withGitHubBudget(GITHUB_REQUEST_BUDGET, () =>
+    enrichUncached(extraction, rawText, queryInput),
+  );
+  // Empty results are not cached: they are usually a GitHub hiccup.
+  if (result.matches.length > 0) {
+    await cacheSet(cacheKey, result, ENRICHMENT_CACHE_TTL_SECONDS);
+  }
+  return result;
+}
+
+async function enrichUncached(
+  extraction: ExtractionResult,
+  rawText: string,
+  queryInput: BuildQueryInput,
+): Promise<GitHubEnrichment> {
   const t0 = Date.now();
   const search = await searchRepos(queryInput);
 
@@ -105,6 +160,7 @@ export async function enrichWithGitHub(
     logger.info("github.enrich.no_results", {
       query: search.query,
       variantsRun: search.variantsRun.length,
+      githubRequests: gitHubRequestsSent(),
     });
     return {
       ...EMPTY_ENRICHMENT,
@@ -113,61 +169,76 @@ export async function enrichWithGitHub(
     };
   }
 
-  // Fetch README + folder tree in parallel for each candidate. Folder tree
-  // is a single GET tree?recursive=1 call per repo — costs 1 from the 5000/hr
-  // quota. Both calls are independent so we use Promise.all per repo.
-  const fetched = await mapWithConcurrency(
-    search.results,
-    MAX_PARALLEL_FETCHES,
-    async (r) => {
-      const [readme, folders] = await Promise.all([
-        fetchReadme(r.repo),
-        fetchTopFolders(r.repo),
-      ]);
-      return { repo: r, readme, folders };
-    },
-  );
-
-  // BM25 pre-ranking: score every fetched candidate against the project text
-  // using local lexical overlap, then send the *top 5* to Haiku — not just
-  // the first 5 from RRF order. This typically surfaces 1-2 better matches
-  // (e.g. a niche-domain repo that ranked low on stars but has high feature
-  // overlap with the project description).
+  // BM25 pre-ranking on what the search already returned (name +
+  // description + topics), BEFORE fetching anything else: only the top
+  // TOTAL_MATCHES candidates cost README and tree requests (PERF-01).
   const projectQuery = `${rawText} ${extraction.domain} ${extraction.modules
     .map((m) => m.name)
     .join(" ")}`;
-  const fetchedSuccessful = fetched
-    .filter(
-      (r): r is Extract<typeof r, { status: "fulfilled" }> => r.status === "fulfilled",
-    )
-    .map((r) => r.value);
-
-  const bm25Ordered = bm25Rank(
+  const candidates = bm25Rank(
     projectQuery,
-    fetchedSuccessful,
-    (item) =>
-      `${item.repo.repo} ${item.repo.description} ${item.readme ?? ""} ${item.folders.join(" ")}`,
-  ).map((b) => b.item);
+    search.results,
+    (r) => `${r.repo.split("/")[1] ?? r.repo} ${r.description} ${r.topics.join(" ")}`,
+  )
+    .map((b) => b.item)
+    .slice(0, TOTAL_MATCHES);
 
-  // Per-README module extraction (Haiku). The top LLM_SCORED_MATCHES
-  // BM25-ranked candidates get a full LLM similarity + module extract.
-  // The next few are kept as folder-only references: no LLM call, but their
-  // mined folders still feed module_frequency at a small weight and they
-  // appear in the engineer-doc GitHub references for breadth.
+  // README + non-recursive root tree per candidate (2 requests each).
+  const rootFetches = fulfilledValues(
+    await mapWithConcurrency(candidates, MAX_PARALLEL_FETCHES, async (repo) => {
+      const [readme, root] = await Promise.all([
+        fetchReadme(repo.repo),
+        fetchRootTree(repo.repo, repo.default_branch),
+      ]);
+      return { repo, readme, root };
+    }),
+  );
+  // Then one call for src/ or app/ where present, in rank order, while the
+  // request budget lasts.
+  const fetched = fulfilledValues(
+    await mapWithConcurrency(
+      rootFetches,
+      MAX_PARALLEL_FETCHES,
+      async ({ repo, readme, root }) => {
+        const source = root?.sourceTreeSha
+          ? await fetchSourceFolders(repo.repo, root.sourceTreeSha)
+          : [];
+        const folders = toModuleFolders([...(root?.folders ?? []), ...source]);
+        return { repo, readme, folders };
+      },
+    ),
+  );
+
+  // Per-README module extraction (Haiku), in parallel. The first
+  // LLM_SCORED_MATCHES candidates with a README get a full LLM similarity +
+  // module extract. The rest are kept as folder-only references: no LLM
+  // call, but their mined folders still feed module_frequency at a small
+  // weight and they appear in the engineer-doc GitHub references for breadth.
   const projectDescription = `${rawText}\n\nDomain: ${extraction.domain}`;
+  const toScore = fetched.filter((v) => v.readme).slice(0, LLM_SCORED_MATCHES);
+  const scored = await mapWithConcurrency(toScore, LLM_SCORED_MATCHES, (v) =>
+    extractModulesFromReadme(projectDescription, v.readme ?? ""),
+  );
+  const scores = new Map<string, ExtractModulesToolOutput | null>();
+  scored.forEach((settled, i) => {
+    const repo = toScore[i]!.repo.repo;
+    if (settled.status === "fulfilled") {
+      scores.set(repo, settled.value);
+      return;
+    }
+    // An exhausted AI budget is fatal for the round, not a GitHub hiccup.
+    if (settled.reason instanceof BudgetExceededError) throw settled.reason;
+    scores.set(repo, null);
+  });
+
   const enriched: GitHubMatch[] = [];
-  let llmCalls = 0;
-
-  for (const value of bm25Ordered) {
-    const { repo, readme, folders } = value;
-
+  for (const { repo, folders } of fetched) {
     let modules_found: string[] = [];
     let similarity = 0;
     let why_relevant = "";
 
-    if (readme && llmCalls < LLM_SCORED_MATCHES) {
-      const out = await extractModulesFromReadme(projectDescription, readme);
-      llmCalls++;
+    if (scores.has(repo.repo)) {
+      const out = scores.get(repo.repo);
       if (out) {
         modules_found = out.modules;
         similarity = out.similarity_to_project;
@@ -238,14 +309,12 @@ export async function enrichWithGitHub(
 
   logger.info("github.enrich.completed", {
     durationMs: Date.now() - t0,
+    githubRequests: gitHubRequestsSent(),
     reposSearched: search.results.length,
     variantsRun: search.variantsRun.length,
-    readmesFetched: fetched.filter((r) => r.status === "fulfilled" && r.value.readme)
-      .length,
-    foldersFetched: fetched.filter(
-      (r) => r.status === "fulfilled" && r.value.folders.length > 0,
-    ).length,
-    llmCallsUsed: llmCalls,
+    readmesFetched: fetched.filter((r) => r.readme).length,
+    foldersFetched: fetched.filter((r) => r.folders.length > 0).length,
+    llmCallsUsed: toScore.length,
     topMatchesCount: topMatches.length,
     distinctModules: Object.keys(frequency).length,
     avgSimilarity:

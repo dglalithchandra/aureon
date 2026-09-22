@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { FinalizeRequestSchema } from "@/lib/schemas/output";
-import { generateOutput } from "@/lib/pipeline/finalize";
+import type { OutputPart, Session } from "@/lib/schemas/mcq";
 import { getSession, putSession } from "@/lib/storage/session";
+import { startJobs } from "@/lib/jobs/start";
+import { isLlmBudgetExhausted } from "@/lib/llm/budget";
 import {
   gateRateLimit,
   getClientIp,
@@ -13,11 +15,19 @@ import {
   withSessionLock,
 } from "@/lib/security/route-helpers";
 import { RATE_LIMITS } from "@/lib/security/rate-limit";
-import { ValidationError } from "@/lib/errors";
+import { BudgetExceededError, ValidationError } from "@/lib/errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const OUTPUT_PARTS: readonly OutputPart[] = ["client", "engineer"];
+
+/**
+ * Queue the client and engineer views as two background jobs (OPS-01) and
+ * answer 202 with the session. Each view is saved to draft_output as soon as
+ * it lands; the job that finishes last stores final_output. After a failure,
+ * calling this again only regenerates the view that is still missing.
+ */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const ctMismatch = requireJsonContentType(req);
   if (ctMismatch) return ctMismatch;
@@ -33,7 +43,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const unauthorized = requireSessionOwner(req, sessionId);
     if (unauthorized) return unauthorized;
 
-    return await withSessionLock(sessionId, async () => {
+    return await withSessionLock(sessionId, async (lock) => {
       const session = await getSession(sessionId);
       if (!session) {
         return NextResponse.json(
@@ -52,19 +62,57 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           `Session status is ${session.status}; finalize requires status=ready or override=true`,
         );
       }
+      if (session.rounds.length === 0) {
+        throw new ValidationError("Session has no rounds to finalize");
+      }
 
-      const output = await generateOutput(session);
-      const updated = {
+      const draft = session.draft_output;
+      if (draft?.client && draft.engineer) {
+        // Both views already landed; only the final write was missing.
+        const output = { client: draft.client, engineer: draft.engineer };
+        await putSession(finalized(session, output));
+        return NextResponse.json({ output, cached: true });
+      }
+
+      if (await isLlmBudgetExhausted()) throw new BudgetExceededError();
+
+      const missing = OUTPUT_PARTS.filter((part) => !draft?.[part]);
+      const next: Session = {
         ...session,
-        final_output: output,
-        status: "finalized" as const,
+        pipeline_stage: "finalizing",
+        last_error: null,
+        draft_output: {
+          client: draft?.client ?? null,
+          engineer: draft?.engineer ?? null,
+          pending: missing,
+        },
         updated_at: Date.now(),
       };
-      await putSession(updated);
-
-      return NextResponse.json({ output, cached: false });
+      await startJobs({
+        lock,
+        previous: session,
+        next,
+        types: missing.map((part) => `finalize-${part}` as const),
+        origin: req.nextUrl.origin,
+      });
+      return NextResponse.json({ session: next }, { status: 202 });
     });
   } catch (err) {
     return jsonError(err);
   }
+}
+
+function finalized(
+  session: Session,
+  output: NonNullable<Session["final_output"]>,
+): Session {
+  return {
+    ...session,
+    status: "finalized",
+    final_output: output,
+    draft_output: null,
+    pipeline_stage: null,
+    last_error: null,
+    updated_at: Date.now(),
+  };
 }

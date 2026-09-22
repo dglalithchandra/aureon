@@ -1,5 +1,6 @@
 import "@/lib/server-only";
 import { getRedis } from "@/lib/storage/redis";
+import { acquireLock, releaseLock } from "@/lib/storage/lock";
 import { SessionSchema, type Session } from "@/lib/schemas/mcq";
 import { logger } from "@/lib/logger";
 
@@ -128,4 +129,38 @@ export function userContentBytes(session: Session): number {
     }
   }
   return total;
+}
+
+const WRITE_LOCK_TTL_SECONDS = 10;
+const WRITE_LOCK_WAIT_MS = 5_000;
+
+/**
+ * Read-modify-write a session under a short per-session write lock, so two
+ * jobs updating the same session at once (the client and engineer finalize
+ * jobs) cannot overwrite each other. Returns the stored result, or null if
+ * the session no longer exists.
+ */
+export async function mutateSession(
+  id: string,
+  mutate: (current: Session) => Session,
+): Promise<Session | null> {
+  const key = `lock:session-write:${id}`;
+  const deadline = Date.now() + WRITE_LOCK_WAIT_MS;
+  let token = await acquireLock(key, WRITE_LOCK_TTL_SECONDS);
+  while (!token) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out waiting for the write lock on session ${id}`);
+    }
+    await new Promise((r) => setTimeout(r, 25));
+    token = await acquireLock(key, WRITE_LOCK_TTL_SECONDS);
+  }
+  try {
+    const current = await getSession(id);
+    if (!current) return null;
+    const next = mutate(current);
+    await putSession(next);
+    return next;
+  } finally {
+    await releaseLock(key, token).catch(() => undefined);
+  }
 }

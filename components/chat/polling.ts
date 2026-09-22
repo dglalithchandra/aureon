@@ -46,3 +46,14 @@ export function nextPollInterval(state: PollState): number | false {
   if (state.sessionStatus !== "analyzing") return false;
   return pollDelayMs(state.analyzingForMs);
 }
+
+/**
+ * A job still "analyzing" (or "finalizing") with no update for this long has
+ * died: its function was killed and the session lock (330 s TTL) has expired,
+ * so the user can safely retry. Kept above the lock TTL on purpose.
+ */
+export const JOB_STALLED_MS = 340_000;
+
+export function isJobStalled(updatedAt: number, now: number): boolean {
+  return now - updatedAt > JOB_STALLED_MS;
+}

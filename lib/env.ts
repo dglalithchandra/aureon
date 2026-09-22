@@ -34,6 +34,23 @@ const serverSchema = z
      * per-process secret (logged once) to keep DX friendly.
      */
     SESSION_SECRET: z.string().min(32).optional(),
+    /**
+     * Upstash QStash (OPS-01): when QSTASH_TOKEN is set, pipeline work is
+     * queued through QStash and delivered to POST /api/jobs/[type], which
+     * checks the signature with the two signing keys. Without it, jobs run
+     * in-process via after() — fine for local dev, not durable.
+     */
+    QSTASH_TOKEN: z.string().min(10).optional(),
+    QSTASH_URL: z.string().url().optional(),
+    QSTASH_CURRENT_SIGNING_KEY: z.string().min(10).optional(),
+    QSTASH_NEXT_SIGNING_KEY: z.string().min(10).optional(),
+    /**
+     * Public base URL QStash calls back (e.g. https://aureon.vercel.app).
+     * Defaults to the origin of the request that queued the job.
+     */
+    JOBS_BASE_URL: z.string().url().optional(),
+    /** Set by Vercel when "Protection Bypass for Automation" is enabled. */
+    VERCEL_AUTOMATION_BYPASS_SECRET: z.string().min(1).optional(),
     /** Global cap on LLM calls per UTC day, across all users (cost guard). */
     LLM_DAILY_CALL_LIMIT: z.coerce.number().int().min(1).default(2000),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -47,6 +64,18 @@ const serverSchema = z
         code: "custom",
         path: ["ANTHROPIC_API_KEY"],
         message: "ANTHROPIC_API_KEY required when LLM_PROVIDER=anthropic (the default)",
+      });
+    }
+    // A queued job must be verifiable, so QStash needs both signing keys.
+    if (
+      data.QSTASH_TOKEN &&
+      (!data.QSTASH_CURRENT_SIGNING_KEY || !data.QSTASH_NEXT_SIGNING_KEY)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["QSTASH_CURRENT_SIGNING_KEY"],
+        message:
+          "QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY are required when QSTASH_TOKEN is set",
       });
     }
     if (data.LLM_PROVIDER === "openrouter" && !data.OPENROUTER_API_KEY) {
