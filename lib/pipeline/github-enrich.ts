@@ -7,6 +7,7 @@ import {
 } from "@/lib/github/search";
 import { extractModulesFromReadme } from "@/lib/github/extract-modules";
 import { bm25Rank } from "@/lib/github/bm25";
+import { canonicalModuleKey } from "@/lib/pipeline/merge";
 import {
   GitHubEnrichmentSchema,
   type GitHubEnrichment,
@@ -85,15 +86,6 @@ async function mapWithConcurrency<T, R>(
   }
   await Promise.all(workers);
   return results;
-}
-
-/**
- * Canonical-ish module key for similarity-weighted aggregation. Lowercases,
- * strips non-alphanum, collapses common plural "s" suffix.
- */
-function moduleKey(name: string): string {
-  const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "");
-  return base.endsWith("s") && base.length > 3 ? base.slice(0, -1) : base;
 }
 
 export async function enrichWithGitHub(
@@ -222,7 +214,7 @@ export async function enrichWithGitHub(
     const seenInRepo = new Set<string>();
     const allModules = [...m.modules_found, ...m.folders_found];
     for (const mod of allModules) {
-      const k = moduleKey(mod);
+      const k = canonicalModuleKey(mod);
       if (!k || seenInRepo.has(k)) continue;
       seenInRepo.add(k);
       // Keep the first (canonical) name we encounter, but accumulate weight.

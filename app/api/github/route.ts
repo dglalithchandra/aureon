@@ -6,7 +6,7 @@ import { GitHubEnrichmentSchema } from "@/lib/schemas/github";
 import { enrichWithGitHub } from "@/lib/pipeline/github-enrich";
 import { AppError, ValidationError, serializeError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/security/rate-limit";
-import { requireJsonContentType } from "@/lib/security/route-helpers";
+import { getClientIp, requireJsonContentType } from "@/lib/security/route-helpers";
 import { cacheGet, cacheSet, hashKey } from "@/lib/storage/cache";
 import { logger } from "@/lib/logger";
 
@@ -19,12 +19,6 @@ const RequestSchema = z.object({
   rawText: z.string().min(1).max(50_000),
   extraction: ExtractionResultSchema,
 });
-
-function getClientIp(req: NextRequest): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]!.trim();
-  return req.headers.get("x-real-ip")?.trim() ?? "anonymous";
-}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const ctMismatch = requireJsonContentType(req);

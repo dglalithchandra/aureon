@@ -1,6 +1,5 @@
 import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
-import { getServerEnv, hasUpstash } from "@/lib/env";
+import { getRedis } from "@/lib/storage/redis";
 
 /**
  * Distributed rate limiter backed by Upstash Redis.
@@ -10,19 +9,7 @@ import { getServerEnv, hasUpstash } from "@/lib/env";
  * it does NOT protect a multi-instance production deployment.
  */
 
-let redisClient: Redis | null = null;
 let apiLimiter: Ratelimit | null = null;
-
-function getRedis(): Redis | null {
-  if (!hasUpstash()) return null;
-  if (redisClient) return redisClient;
-  const env = getServerEnv();
-  redisClient = new Redis({
-    url: env.UPSTASH_REDIS_REST_URL!,
-    token: env.UPSTASH_REDIS_REST_TOKEN!,
-  });
-  return redisClient;
-}
 
 export function getApiRateLimiter(): Ratelimit | null {
   if (apiLimiter) return apiLimiter;

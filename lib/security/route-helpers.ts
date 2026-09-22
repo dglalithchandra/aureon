@@ -12,11 +12,7 @@ import {
 import type { Session } from "@/lib/schemas/mcq";
 import { logger } from "@/lib/logger";
 
-export function getClientIp(req: NextRequest): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]!.trim();
-  return req.headers.get("x-real-ip")?.trim() ?? "anonymous";
-}
+export { getClientIp } from "@/lib/security/client-ip";
 
 export async function gateRateLimit(bucketKey: string): Promise<NextResponse | null> {
   const rate = await checkRateLimit(bucketKey);

@@ -1,22 +1,9 @@
 import "@/lib/server-only";
-import { Redis } from "@upstash/redis";
-import { getServerEnv, hasUpstash } from "@/lib/env";
+import { getRedis } from "@/lib/storage/redis";
 import { SessionSchema, type Session } from "@/lib/schemas/mcq";
 import { logger } from "@/lib/logger";
 
 const SESSION_TTL_SECONDS = 24 * 60 * 60;
-
-let redis: Redis | null = null;
-function getRedis(): Redis | null {
-  if (!hasUpstash()) return null;
-  if (redis) return redis;
-  const env = getServerEnv();
-  redis = new Redis({
-    url: env.UPSTASH_REDIS_REST_URL!,
-    token: env.UPSTASH_REDIS_REST_TOKEN!,
-  });
-  return redis;
-}
 
 interface MemoryEntry {
   session: Session;

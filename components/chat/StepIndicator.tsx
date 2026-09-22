@@ -4,8 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, AlertTriangle } from "lucide-react";
 import { gsap } from "@/lib/gsap-init";
 import { cn } from "@/lib/utils";
-
-export type StepState = "pending" | "running" | "done" | "error";
+import type { StepState } from "@/components/chat/pipelineSteps";
 
 export interface PipelineStepData {
   id: string;

@@ -1,8 +1,7 @@
 import "@/lib/server-only";
 import { randomBytes } from "node:crypto";
-import { Redis } from "@upstash/redis";
 import { z } from "zod";
-import { getServerEnv, hasUpstash } from "@/lib/env";
+import { getRedis } from "@/lib/storage/redis";
 import { logger } from "@/lib/logger";
 
 const SHARE_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
@@ -12,18 +11,6 @@ const ShareRecordSchema = z.object({
   createdAt: z.number().int(),
 });
 type ShareRecord = z.infer<typeof ShareRecordSchema>;
-
-let redis: Redis | null = null;
-function getRedis(): Redis | null {
-  if (!hasUpstash()) return null;
-  if (redis) return redis;
-  const env = getServerEnv();
-  redis = new Redis({
-    url: env.UPSTASH_REDIS_REST_URL!,
-    token: env.UPSTASH_REDIS_REST_TOKEN!,
-  });
-  return redis;
-}
 
 interface ShareEntry {
   record: ShareRecord;

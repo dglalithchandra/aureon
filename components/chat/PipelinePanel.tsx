@@ -5,7 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { gsap, useGSAP } from "@/lib/gsap-init";
 import type { Session } from "@/lib/schemas/mcq";
 import { ConfidenceMeter } from "@/components/chat/ConfidenceMeter";
-import { StepIndicator, type StepState } from "@/components/chat/StepIndicator";
+import { StepIndicator } from "@/components/chat/StepIndicator";
+import {
+  deriveSteps,
+  PIPELINE_STEP_IDS,
+  type PipelineStepId,
+  type StepState,
+} from "@/components/chat/pipelineSteps";
 import { cn } from "@/lib/utils";
 
 interface PipelinePanelProps {
@@ -14,8 +20,7 @@ interface PipelinePanelProps {
   className?: string;
 }
 
-const STEP_IDS = ["extract", "github", "score", "decide", "output"] as const;
-type StepId = (typeof STEP_IDS)[number];
+type StepId = PipelineStepId;
 
 const STEP_LABELS: Record<StepId, string> = {
   extract: "Extract",
@@ -26,55 +31,24 @@ const STEP_LABELS: Record<StepId, string> = {
 };
 
 /**
- * Derive the 5-step state machine from the latest round of a session.
- *
- *   - Before round 0 lands: every step is "pending" except "extract" which
- *     turns "running" the moment we know the session is analyzing.
- *   - After round 0 lands: extract+github+score are "done"; "decide" is
- *     "running" if status==="awaiting_answers"|"blocker", "done" otherwise.
- *   - When status==="ready" or "finalized": all five are done.
+ * Step states come from the shared deriveSteps (live `pipeline_stage` while
+ * analyzing); this adds the panel's expandable details from the last round.
  */
-function deriveSteps(
+function buildSteps(
   session: Session | null,
   isAnalyzing: boolean,
 ): Array<{ id: StepId; state: StepState; detail?: React.ReactNode }> {
   const lastRound = session?.rounds[session.rounds.length - 1];
   const status = session?.status ?? "analyzing";
-
-  const init: Record<StepId, StepState> = {
-    extract: "pending",
-    github: "pending",
-    score: "pending",
-    decide: "pending",
-    output: "pending",
-  };
+  const init = deriveSteps(session, isAnalyzing);
 
   if (!session || !lastRound) {
-    if (isAnalyzing) init.extract = "running";
-    return STEP_IDS.map((id) => ({ id, state: init[id] }));
-  }
-
-  // Round 0 (or any landed round) → extract/github/score have run.
-  init.extract = "done";
-  init.github = lastRound.github_enrichment ? "done" : "done";
-  init.score = "done";
-
-  if (status === "blocker" || status === "awaiting_answers") {
-    init.decide = "running";
-  } else if (status === "ready") {
-    init.decide = "done";
-    init.output = "running";
-  } else if (status === "finalized") {
-    init.decide = "done";
-    init.output = "done";
-  } else if (status === "analyzing") {
-    // A subsequent round is being computed.
-    init.decide = "running";
+    return PIPELINE_STEP_IDS.map((id) => ({ id, state: init[id] }));
   }
 
   const steps: Array<{ id: StepId; state: StepState; detail?: React.ReactNode }> = [];
 
-  for (const id of STEP_IDS) {
+  for (const id of PIPELINE_STEP_IDS) {
     let detail: React.ReactNode | undefined;
     if (id === "extract" && init.extract === "done") {
       const e = lastRound.extraction;
@@ -179,7 +153,7 @@ export function PipelinePanel({
   className,
 }: PipelinePanelProps): React.ReactElement {
   const root = useRef<HTMLElement | null>(null);
-  const steps = useMemo(() => deriveSteps(session, isAnalyzing), [session, isAnalyzing]);
+  const steps = useMemo(() => buildSteps(session, isAnalyzing), [session, isAnalyzing]);
   const [expandedId, setExpandedId] = useState<StepId | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 

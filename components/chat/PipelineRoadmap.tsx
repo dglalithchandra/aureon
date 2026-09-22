@@ -11,12 +11,11 @@ import {
 } from "lucide-react";
 import { gsap, useGSAP, DrawSVGPlugin, MotionPathPlugin } from "@/lib/gsap-init";
 import type { Session } from "@/lib/schemas/mcq";
+import { deriveSteps, type StepState } from "@/components/chat/pipelineSteps";
 import { cn } from "@/lib/utils";
 
 void DrawSVGPlugin;
 void MotionPathPlugin;
-
-export type StepState = "pending" | "running" | "done" | "error";
 
 interface Milestone {
   id: string;
@@ -32,55 +31,13 @@ interface PipelineRoadmapProps {
 }
 
 /* ──────────────────────────────────────────────────────────────
- *  Step derivation — same shape as the old PipelinePanel.
+ *  Milestones — states from the shared deriveSteps, plus roadmap hints.
  * ────────────────────────────────────────────────────────────── */
 function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milestone[] {
   const lastRound = session?.rounds[session.rounds.length - 1];
   const status = session?.status ?? "analyzing";
   const pipelineStage = session?.pipeline_stage;
-
-  const init: Record<string, StepState> = {
-    extract: "pending",
-    github: "pending",
-    score: "pending",
-    decide: "pending",
-    output: "pending",
-  };
-
-  // The server persists this stage before each expensive operation. Unlike a
-  // client-side timer, these states reflect the work actually in progress.
-  if (!session || status === "analyzing") {
-    if (pipelineStage === "github") {
-      init.extract = "done";
-      init.github = "running";
-    } else if (pipelineStage === "scoring") {
-      init.extract = "done";
-      init.github = "done";
-      init.score = "running";
-    } else if (pipelineStage === "clarifying") {
-      init.extract = "done";
-      init.github = "done";
-      init.score = "done";
-      init.decide = "running";
-    } else if (isAnalyzing) {
-      init.extract = "running";
-    }
-  } else {
-    init.extract = "done";
-    init.github = "done";
-    init.score = "done";
-    if (status === "blocker" || status === "awaiting_answers") {
-      init.decide = "running";
-    } else if (status === "ready") {
-      init.decide = "done";
-      init.output = "running";
-    } else if (status === "finalized") {
-      init.decide = "done";
-      init.output = "done";
-    } else if (status === "analyzing") {
-      init.decide = "running";
-    }
-  }
+  const init = deriveSteps(session, isAnalyzing);
 
   const conf = session?.current_confidence;
   const roundN = session?.rounds.length ?? 0;
@@ -100,7 +57,7 @@ function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milest
     {
       id: "extract",
       label: "Extract",
-      state: init.extract!,
+      state: init.extract,
       Icon: ClipboardPaste,
       hint:
         pipelineStage === "extracting"
@@ -112,7 +69,7 @@ function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milest
     {
       id: "github",
       label: "GitHub",
-      state: init.github!,
+      state: init.github,
       Icon: GitBranch,
       hint:
         pipelineStage === "github"
@@ -128,7 +85,7 @@ function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milest
     {
       id: "score",
       label: "Score",
-      state: init.score!,
+      state: init.score,
       Icon: Sparkles,
       hint:
         pipelineStage === "scoring"
@@ -141,7 +98,7 @@ function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milest
       id: "decide",
       label:
         status === "blocker" ? "Blocker" : roundN > 1 ? `Round ${roundN}` : "Clarify",
-      state: init.decide!,
+      state: init.decide,
       Icon: MessagesSquare,
       hint:
         pipelineStage === "clarifying"
@@ -159,7 +116,7 @@ function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milest
     {
       id: "output",
       label: "Output",
-      state: init.output!,
+      state: init.output,
       Icon: FileCheck2,
       hint:
         status === "finalized"

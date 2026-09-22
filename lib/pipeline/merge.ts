@@ -88,8 +88,9 @@ function defaultSizeForName(name: string): ModuleSize {
 /**
  * Canonical key for module-name comparison. Lowercase, strip non-alphanum,
  * strip common plural "s" suffix so "Notification" and "Notifications" merge.
+ * Also used by github-enrich to aggregate module frequency.
  */
-function canonicalModuleKey(name: string): string {
+export function canonicalModuleKey(name: string): string {
   const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "");
   return base.endsWith("s") && base.length > 3 ? base.slice(0, -1) : base;
 }

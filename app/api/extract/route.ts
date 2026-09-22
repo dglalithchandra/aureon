@@ -4,17 +4,11 @@ import { ExtractRequestSchema } from "@/lib/schemas/extraction";
 import { runExtraction } from "@/lib/pipeline/extract";
 import { AppError, ValidationError, serializeError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/security/rate-limit";
-import { requireJsonContentType } from "@/lib/security/route-helpers";
+import { getClientIp, requireJsonContentType } from "@/lib/security/route-helpers";
 import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function getClientIp(req: NextRequest): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]!.trim();
-  return req.headers.get("x-real-ip")?.trim() ?? "anonymous";
-}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const ctMismatch = requireJsonContentType(req);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeGitHubSignals } from "@/lib/pipeline/merge";
+import { canonicalModuleKey, mergeGitHubSignals } from "@/lib/pipeline/merge";
 import type { ModuleCandidate } from "@/lib/schemas/extraction";
 import type { GitHubEnrichment } from "@/lib/schemas/github";
 import { makeExtraction } from "../fixtures/llm";
@@ -78,5 +78,19 @@ describe("mergeGitHubSignals", () => {
     const before = structuredClone(extraction);
     mergeGitHubSignals(extraction, enrichment({ Notifications: 1.5, Billing: 2 }));
     expect(extraction).toEqual(before);
+  });
+});
+
+describe("canonicalModuleKey", () => {
+  it.each([
+    ["Notifications", "notification"],
+    ["notification", "notification"],
+    ["API-Keys", "apikey"],
+    ["api keys", "apikey"],
+    ["Admin Panel", "adminpanel"],
+    ["SMS", "sms"], // too short to strip a plural "s"
+    ["Bus", "bus"],
+  ])("maps %j to %j", (name, key) => {
+    expect(canonicalModuleKey(name)).toBe(key);
   });
 });

@@ -1,7 +1,6 @@
 import "@/lib/server-only";
 import { createHash } from "node:crypto";
-import { Redis } from "@upstash/redis";
-import { getServerEnv, hasUpstash } from "@/lib/env";
+import { getRedis } from "@/lib/storage/redis";
 import { logger } from "@/lib/logger";
 
 /**
@@ -9,18 +8,6 @@ import { logger } from "@/lib/logger";
  * falls back to a per-process in-memory map otherwise (suitable for dev,
  * NOT for multi-instance production).
  */
-
-let redis: Redis | null = null;
-function getRedis(): Redis | null {
-  if (!hasUpstash()) return null;
-  if (redis) return redis;
-  const env = getServerEnv();
-  redis = new Redis({
-    url: env.UPSTASH_REDIS_REST_URL!,
-    token: env.UPSTASH_REDIS_REST_TOKEN!,
-  });
-  return redis;
-}
 
 interface MemoryEntry<T> {
   value: T;

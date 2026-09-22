@@ -1,18 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { getClientIp } from "@/lib/security/client-ip";
 
 export const config = {
   matcher: ["/api/:path*"],
 };
-
-function getClientIp(req: NextRequest): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]!.trim();
-  const realIp = req.headers.get("x-real-ip");
-  if (realIp) return realIp.trim();
-  return "anonymous";
-}
 
 export async function proxy(req: NextRequest): Promise<NextResponse> {
   const ip = getClientIp(req);
