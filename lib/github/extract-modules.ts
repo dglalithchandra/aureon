@@ -1,12 +1,13 @@
 import "@/lib/server-only";
 import type Anthropic from "@anthropic-ai/sdk";
-import { getAnthropic, PromptModel } from "@/lib/llm/anthropic";
+import { createLlmMessage, PromptModel } from "@/lib/llm/anthropic";
 import {
   ExtractModulesToolOutputSchema,
   type ExtractModulesToolOutput,
 } from "@/lib/schemas/github";
 import { stripHtml, truncateText } from "@/lib/security/sanitize";
 import { logger } from "@/lib/logger";
+import { BudgetExceededError } from "@/lib/errors";
 
 const PROJECT_DESC_MAX = 4_000;
 const README_MAX = 6_000;
@@ -61,11 +62,10 @@ export async function extractModulesFromReadme(
   const cleanProject = truncateText(stripHtml(projectDescription), PROJECT_DESC_MAX);
   const cleanReadme = truncateText(stripHtml(readme), README_MAX);
 
-  const anthropic = getAnthropic();
   const t0 = Date.now();
   let response;
   try {
-    response = await anthropic.messages.create({
+    response = await createLlmMessage({
       model: PromptModel.HAIKU,
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
@@ -79,6 +79,8 @@ export async function extractModulesFromReadme(
       ],
     });
   } catch (err) {
+    // The budget error must reach the route as a 503, not become an LLMError.
+    if (err instanceof BudgetExceededError) throw err;
     const message = err instanceof Error ? err.message : "unknown";
     logger.warn("github.extract_modules.failure", { message });
     return null;

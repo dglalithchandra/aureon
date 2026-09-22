@@ -1,5 +1,9 @@
 import "@/lib/server-only";
-import { ephemeralCacheControl, getAnthropic, PromptModel } from "@/lib/llm/anthropic";
+import {
+  ephemeralCacheControl,
+  createLlmMessage,
+  PromptModel,
+} from "@/lib/llm/anthropic";
 import {
   EXTRACTION_SYSTEM_PROMPT,
   submitExtractionTool,
@@ -8,7 +12,7 @@ import {
   ExtractionResultStrictSchema,
   type ExtractionResult,
 } from "@/lib/schemas/extraction";
-import { LLMError, ValidationError } from "@/lib/errors";
+import { BudgetExceededError, LLMError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { stripHtml, truncateText } from "@/lib/security/sanitize";
 
@@ -42,12 +46,11 @@ export async function runExtraction(
     "Call submit_extraction now with your complete analysis. Do not respond with any other text.",
   );
 
-  const anthropic = getAnthropic();
   const startedAt = Date.now();
 
   let response;
   try {
-    response = await anthropic.messages.create({
+    response = await createLlmMessage({
       model: PromptModel.SONNET,
       max_tokens: 4096,
       system: [
@@ -62,6 +65,8 @@ export async function runExtraction(
       messages: [{ role: "user", content: userBlocks.join("\n\n") }],
     });
   } catch (err) {
+    // The budget error must reach the route as a 503, not become an LLMError.
+    if (err instanceof BudgetExceededError) throw err;
     const message = err instanceof Error ? err.message : "unknown error";
     logger.error("extract.anthropic_failure", { message });
     throw new LLMError("Extraction model call failed");

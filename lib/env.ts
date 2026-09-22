@@ -34,6 +34,8 @@ const serverSchema = z
      * per-process secret (logged once) to keep DX friendly.
      */
     SESSION_SECRET: z.string().min(32).optional(),
+    /** Global cap on LLM calls per UTC day, across all users (cost guard). */
+    LLM_DAILY_CALL_LIMIT: z.coerce.number().int().min(1).default(2000),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   })
   .superRefine((data, ctx) => {

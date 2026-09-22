@@ -1,6 +1,7 @@
 import "@/lib/server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { getServerEnv } from "@/lib/env";
+import { consumeLlmBudget } from "@/lib/llm/budget";
 import { openRouterClient } from "@/lib/llm/openrouter";
 
 /**
@@ -20,7 +21,7 @@ type AnthropicLike = Pick<Anthropic, "messages">;
 let client: AnthropicLike | null = null;
 let cachedProvider: string | null = null;
 
-export function getAnthropic(): AnthropicLike {
+function getAnthropic(): AnthropicLike {
   const env = getServerEnv();
   if (client && cachedProvider === env.LLM_PROVIDER) return client;
   cachedProvider = env.LLM_PROVIDER;
@@ -35,6 +36,18 @@ export function getAnthropic(): AnthropicLike {
     maxRetries: 2,
   });
   return client;
+}
+
+/**
+ * The only way to call the model. Counts the call against the global daily
+ * budget first (throws BudgetExceededError past LLM_DAILY_CALL_LIMIT), then
+ * sends it to the configured provider.
+ */
+export async function createLlmMessage(
+  params: Anthropic.MessageCreateParamsNonStreaming,
+): Promise<Anthropic.Message> {
+  await consumeLlmBudget();
+  return getAnthropic().messages.create(params);
 }
 
 /**

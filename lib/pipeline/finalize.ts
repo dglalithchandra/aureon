@@ -1,5 +1,9 @@
 import "@/lib/server-only";
-import { ephemeralCacheControl, getAnthropic, PromptModel } from "@/lib/llm/anthropic";
+import {
+  ephemeralCacheControl,
+  createLlmMessage,
+  PromptModel,
+} from "@/lib/llm/anthropic";
 import {
   CLIENT_VIEW_SYSTEM_PROMPT,
   ENGINEER_VIEW_SYSTEM_PROMPT,
@@ -14,7 +18,7 @@ import {
   type FinalOutput,
 } from "@/lib/schemas/output";
 import type { Session } from "@/lib/schemas/mcq";
-import { LLMError, ValidationError } from "@/lib/errors";
+import { BudgetExceededError, LLMError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { stripHtml, truncateText } from "@/lib/security/sanitize";
 import { coerceClientView, coerceEngineerView } from "@/lib/pipeline/coerce";
@@ -134,10 +138,9 @@ function clampInt(n: number): number {
  * ────────────────────────────────────────────────────────────── */
 
 async function runClientView(context: string): Promise<ClientView> {
-  const anthropic = getAnthropic();
   let response;
   try {
-    response = await anthropic.messages.create({
+    response = await createLlmMessage({
       model: PromptModel.SONNET,
       max_tokens: 4096,
       system: [
@@ -152,6 +155,8 @@ async function runClientView(context: string): Promise<ClientView> {
       messages: [{ role: "user", content: context }],
     });
   } catch (err) {
+    // The budget error must reach the route as a 503, not become an LLMError.
+    if (err instanceof BudgetExceededError) throw err;
     logger.error("finalize.client.failure", {
       message: err instanceof Error ? err.message : "unknown",
     });
@@ -183,10 +188,9 @@ async function runClientView(context: string): Promise<ClientView> {
 }
 
 async function runEngineerView(context: string): Promise<EngineerView> {
-  const anthropic = getAnthropic();
   let response;
   try {
-    response = await anthropic.messages.create({
+    response = await createLlmMessage({
       model: PromptModel.SONNET,
       max_tokens: 8192,
       system: [
@@ -201,6 +205,8 @@ async function runEngineerView(context: string): Promise<EngineerView> {
       messages: [{ role: "user", content: context }],
     });
   } catch (err) {
+    // The budget error must reach the route as a 503, not become an LLMError.
+    if (err instanceof BudgetExceededError) throw err;
     logger.error("finalize.engineer.failure", {
       message: err instanceof Error ? err.message : "unknown",
     });

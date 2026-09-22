@@ -1,6 +1,6 @@
 import "@/lib/server-only";
 import { randomUUID } from "node:crypto";
-import { getAnthropic, PromptModel } from "@/lib/llm/anthropic";
+import { createLlmMessage, PromptModel } from "@/lib/llm/anthropic";
 import { generateQuestionsTool, MCQ_SYSTEM_PROMPT } from "@/lib/llm/prompts/mcq";
 import {
   MCQQuestionSchema,
@@ -8,7 +8,7 @@ import {
   type MCQQuestion,
 } from "@/lib/schemas/mcq";
 import { type ExtractionResult, type ParameterId } from "@/lib/schemas/extraction";
-import { LLMError } from "@/lib/errors";
+import { BudgetExceededError, LLMError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 const MAX_QUESTIONS = 3;
@@ -45,11 +45,10 @@ export async function generateQuestions(
   );
   userBlocks.push("Call generate_clarification_questions now.");
 
-  const anthropic = getAnthropic();
   const t0 = Date.now();
   let response;
   try {
-    response = await anthropic.messages.create({
+    response = await createLlmMessage({
       model: PromptModel.SONNET,
       max_tokens: 2048,
       system: MCQ_SYSTEM_PROMPT,
@@ -58,6 +57,8 @@ export async function generateQuestions(
       messages: [{ role: "user", content: userBlocks.join("\n\n") }],
     });
   } catch (err) {
+    // The budget error must reach the route as a 503, not become an LLMError.
+    if (err instanceof BudgetExceededError) throw err;
     const message = err instanceof Error ? err.message : "unknown";
     logger.error("mcq.anthropic_failure", { message });
     throw new LLMError("MCQ generation failed");

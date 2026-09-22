@@ -12,7 +12,7 @@ import {
   type SessionRound,
 } from "@/lib/schemas/mcq";
 import type { ExtractionResult, ParameterId } from "@/lib/schemas/extraction";
-import { ValidationError } from "@/lib/errors";
+import { BudgetExceededError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { SCOPING } from "@/lib/config/scoping";
 
@@ -93,6 +93,8 @@ export async function runRound(
     try {
       enrichment = await enrichWithGitHub(extractionRaw, working.enriched_input);
     } catch (err) {
+      // An exhausted AI budget is fatal for the round, not a GitHub hiccup.
+      if (err instanceof BudgetExceededError) throw err;
       // GitHub failures are non-fatal — proceed with no enrichment.
       logger.warn("orchestrator.github_enrich_failed", {
         sessionId: working.id,

@@ -11,6 +11,7 @@ export type ErrorCode =
   | "GITHUB_ERROR"
   | "NOT_FOUND"
   | "UNAUTHORIZED"
+  | "BUDGET_EXCEEDED"
   | "INTERNAL_ERROR";
 
 export class AppError extends Error {
@@ -64,6 +65,16 @@ export class UnauthorizedError extends AppError {
   constructor(message = "Unauthorized") {
     super("UNAUTHORIZED", message, 401);
     this.name = "UnauthorizedError";
+  }
+}
+
+/** The global daily LLM call budget (LLM_DAILY_CALL_LIMIT) is used up. */
+export class BudgetExceededError extends AppError {
+  constructor(
+    message = "Aureon has reached today's AI usage limit. Please try again tomorrow.",
+  ) {
+    super("BUDGET_EXCEEDED", message, 503);
+    this.name = "BudgetExceededError";
   }
 }
 
