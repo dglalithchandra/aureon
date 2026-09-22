@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ApiError,
   createSession,
+  describeSession,
   fetchSession,
   isUuid,
   runSession,
@@ -19,7 +20,10 @@ import { PipelinePanel } from "@/components/chat/PipelinePanel";
 import { PipelineRoadmap } from "@/components/chat/PipelineRoadmap";
 import { MessageList } from "@/components/chat/MessageList";
 import { InputBar, type InputBarHandle } from "@/components/chat/InputBar";
-import { deriveMessages } from "@/components/chat/messageDerivation";
+import {
+  deriveMessages,
+  isAwaitingDescription,
+} from "@/components/chat/messageDerivation";
 import { sessionErrorNotice } from "@/components/chat/sessionError";
 import {
   isBusyStatus,
@@ -183,6 +187,38 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
     },
   });
 
+  // The fuller description asked for by "needs_input" (BUG-05).
+  const describeMutation = useMutation<
+    SessionActionResult,
+    ApiError,
+    { sessionId: string; text: string }
+  >({
+    mutationFn: ({ sessionId: id, text }) => describeSession(id, text),
+    onMutate: ({ sessionId: id }) => {
+      setAlreadyWorking(false);
+      const prev = qc.getQueryData<Session>(SESSION_QUERY_KEY(id));
+      if (prev) {
+        qc.setQueryData<Session>(SESSION_QUERY_KEY(id), {
+          ...prev,
+          status: "analyzing",
+          pipeline_stage: "extracting",
+        });
+      }
+      return { prev };
+    },
+    onSuccess: ({ session: s, inProgress }) => {
+      qc.setQueryData(SESSION_QUERY_KEY(s.id), s);
+      setAlreadyWorking(inProgress);
+      inputRef.current?.setValue("");
+    },
+    onError: (err, vars, ctx) => {
+      const prev = (ctx as { prev?: Session } | undefined)?.prev;
+      if (prev) qc.setQueryData(SESSION_QUERY_KEY(vars.sessionId), prev);
+      logger.error("chat.describe_failed", { code: err.code, status: err.status });
+      void qc.invalidateQueries({ queryKey: SESSION_QUERY_KEY(vars.sessionId) });
+    },
+  });
+
   // Retry a failed round: POST /run resumes from the saved enriched_input.
   const retryMutation = useMutation<SessionActionResult, ApiError, string>({
     mutationFn: (id) => runSession(id),
@@ -228,6 +264,7 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
   const isAnalyzing =
     createMutation.isPending ||
     retryMutation.isPending ||
+    describeMutation.isPending ||
     sessionQuery.isLoading ||
     session?.status === "analyzing";
 
@@ -242,8 +279,10 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
       ? { message: "This is taking much longer than expected.", canRetry: true }
       : null);
 
+  const awaitingDescription = isAwaitingDescription(session);
+
   const inputLocked =
-    Boolean(session) || // After first session exists, input is locked (use MCQs).
+    (Boolean(session) && !awaitingDescription) || // otherwise answer the MCQs
     createMutation.isPending ||
     isAnalyzing;
 
@@ -415,6 +454,13 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
           />
         )}
 
+        {!errorNotice && describeMutation.isError && describeMutation.error && (
+          <ErrorBanner
+            message={describeMutation.error.message}
+            onRetry={() => describeMutation.reset()}
+          />
+        )}
+
         {!session && !createMutation.isPending && !sessionQuery.isLoading && (
           <EmptyState />
         )}
@@ -449,9 +495,20 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
         <InputBar
           ref={inputRef}
           locked={inputLocked}
-          pending={createMutation.isPending}
+          pending={createMutation.isPending || describeMutation.isPending}
           samples={showSamples ? SAMPLE_PROMPTS : undefined}
-          onSubmit={(text) => createMutation.mutate(text)}
+          placeholder={
+            awaitingDescription
+              ? "Describe the goal and main features in a few sentences…"
+              : undefined
+          }
+          onSubmit={(text) => {
+            if (awaitingDescription && session) {
+              describeMutation.mutate({ sessionId: session.id, text });
+              return;
+            }
+            createMutation.mutate(text);
+          }}
         />
       </main>
     </div>

@@ -2,6 +2,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { generateQuestions } from "@/lib/pipeline/mcq";
 import { LLMError } from "@/lib/errors";
 import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { SCOPING } from "@/lib/config/scoping";
+import type { MCQQuestion } from "@/lib/schemas/mcq";
 import { makeExtraction, makeParameters, makeQuestionsPayload } from "../fixtures/llm";
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -104,7 +106,7 @@ describe("generateQuestions: blocker mode", () => {
     expect(questions[0]?.is_blocker).toBe(true);
   });
 
-  it("ignores a model's is_blocker flag on a parameter that is not MISSING", async () => {
+  it("falls back to the static question when the model targets a parameter that is not MISSING", async () => {
     // P-03 is PRESENT in this extraction, so it cannot be the blocker.
     const payload = makeQuestionsPayload(["P-03"]);
     payload.questions[0]!.is_blocker = true;
@@ -116,7 +118,58 @@ describe("generateQuestions: blocker mode", () => {
       roundNumber: 0,
     });
 
-    expect(questions).toEqual([]);
+    // BUG-05: a blocker round always leaves something to answer.
+    expect(questions).toHaveLength(1);
+    expect(questions[0]).toMatchObject({
+      parameter_id: "P-01",
+      is_blocker: true,
+      question: SCOPING.blockerFallback.question,
+      options: [...SCOPING.blockerFallback.options],
+    });
+  });
+
+  it("falls back to the static question when the output stays invalid", async () => {
+    mock.override("generate_clarification_questions", { questions: [] });
+
+    const questions = await generateQuestions({
+      extraction: blockerExtraction(),
+      askedBefore: ["P-01"],
+      roundNumber: 2,
+    });
+
+    expect(questions.map((q) => q.question)).toEqual([SCOPING.blockerFallback.question]);
+    expect(questions[0]?.options.at(-1)).toBe("Other (describe)");
+  });
+
+  it("re-asks a blocker parameter asked before, telling the model to reframe", async () => {
+    mock.override("generate_clarification_questions", makeQuestionsPayload(["P-01"]));
+    const previous: MCQQuestion = {
+      id: "0f0e0d0c-0b0a-4908-8706-050403020100",
+      parameter_id: "P-01",
+      question: "Which best describes the core problem?",
+      options: ["Reporting", "Automation", "Other (describe)"],
+      allow_custom: true,
+      is_blocker: true,
+    };
+
+    const questions = await generateQuestions({
+      extraction: blockerExtraction(),
+      askedBefore: ["P-01", "P-07"],
+      roundNumber: 1,
+      previousQuestions: [previous],
+    });
+
+    // Asked before, but still MISSING, so it is asked again.
+    expect(questions).toHaveLength(1);
+    expect(questions[0]?.parameter_id).toBe("P-01");
+
+    const prompt = mock.callsFor("generate_clarification_questions")[0]!.userText;
+    expect(prompt).toContain("<reframe>");
+    expect(prompt).toContain("P-01 Project Goal / Problem Statement is STILL MISSING");
+    expect(prompt).toContain(previous.question);
+    expect(prompt).toContain("DIFFERENT wording");
+    // The blocker is not listed as "already asked", which would skip it.
+    expect(prompt).toContain("<asked_before>P-07</asked_before>");
   });
 
   it("outside blocker mode keeps the model's is_blocker flag and up to 3 questions", async () => {

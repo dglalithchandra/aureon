@@ -61,6 +61,8 @@ export const MCQ_SYSTEM_PROMPT = `You write clarification questions for Aureon's
 Inputs you receive:
   - The current ExtractionResult (domain, all 9 parameters with state/evidence/gap, modules, confidence).
   - A list of parameter ids already asked in prior rounds — do not re-ask them.
+  - Sometimes a <reframe> block: a BLOCKER parameter that is still MISSING after
+    being asked. Ask about it AGAIN, with different wording and different options.
   - The number of rounds completed so far (0..3).
 
 Your job: emit 1-3 MCQ questions that, when answered, would lift the lowest-scoring parameters fastest.
@@ -70,7 +72,7 @@ Your job: emit 1-3 MCQ questions that, when answered, would lift the lowest-scor
   1. BLOCKER first. If extraction.blocker = true (P-01 or P-03 MISSING), emit ONLY ONE question targeting whichever of those is MISSING. is_blocker = true.
   2. Otherwise: HIGH-weight MISSING (P-02 Users, P-04 Tech) before MED-weight, before LOW.
   3. Then PARTIAL_THIN, then PARTIAL_DEEP. Skip PRESENT.
-  4. Skip parameters in askedBefore.
+  4. Skip parameters in askedBefore — except one named in <reframe>, which must be re-asked.
 
 # Question style
 

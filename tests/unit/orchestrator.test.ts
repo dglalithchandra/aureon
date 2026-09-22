@@ -66,3 +66,12 @@ describe("shouldExit: diminishing returns", () => {
     expect(shouldExit(session, makeExtraction({ confidence: 47 }))).toBe(true);
   });
 });
+
+describe("shouldExit: the session round limit (BUG-05)", () => {
+  it("exits when no further round would fit in the session", () => {
+    const session = sessionWithConfidences(Array(9).fill(50));
+    expect(session.rounds).toHaveLength(9);
+    // A 10th round is the last one SessionSchema can store.
+    expect(shouldExit(session, makeExtraction({ confidence: 50 }))).toBe(true);
+  });
+});

@@ -22,6 +22,12 @@ export interface ScopingParameter {
   readonly description: string;
 }
 
+/** A static question the pipeline can always fall back to. */
+export interface FallbackQuestion {
+  readonly question: string;
+  readonly options: readonly string[];
+}
+
 export interface ScopingConfig {
   /** Ordered P-01 … P-09. */
   readonly parameters: readonly ScopingParameter[];
@@ -36,8 +42,15 @@ export interface ScopingConfig {
   readonly criticalCap: number;
   /** Confidence ceiling while a BLOCKER parameter (P-01, P-03) is MISSING. */
   readonly blockerCap: number;
-  /** Blocker-only rounds allowed before asking the user to rewrite the brief. */
+  /**
+   * Consecutive blocker rounds allowed before the user is asked to rewrite
+   * the description instead of answering another blocker question (BUG-05).
+   */
   readonly blockerMaxRounds: number;
+  /** Hard ceiling on rounds per session; SessionSchema stores at most this many. */
+  readonly maxTotalRounds: number;
+  /** Asked when the model fails to produce a usable blocker question. */
+  readonly blockerFallback: FallbackQuestion;
   /**
    * Share of "coverage" (vs "quality") the extraction prompt tells the model
    * to blend into its confidence number. Guidance for the LLM only.
@@ -123,6 +136,18 @@ export const SCOPING: ScopingConfig = {
   criticalCap: 65,
   blockerCap: 40,
   blockerMaxRounds: 3,
+  maxTotalRounds: 10,
+  blockerFallback: {
+    question: "What problem does this software solve?",
+    options: [
+      "Automate a manual process",
+      "Replace an existing tool",
+      "Connect two systems",
+      "Sell a product or service to customers",
+      "Give internal teams a better workflow",
+      "Other (describe)",
+    ],
+  },
   promptCoverageBlend: 0.7,
 };
 

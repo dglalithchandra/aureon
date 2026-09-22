@@ -72,7 +72,11 @@ export function deriveSteps(
   if (status === "error") {
     // A later round failed after the previous one landed.
     steps.decide = "error";
-  } else if (status === "blocker" || status === "awaiting_answers") {
+  } else if (
+    status === "blocker" ||
+    status === "awaiting_answers" ||
+    status === "needs_input"
+  ) {
     steps.decide = "running";
   } else if (status === "ready") {
     steps.decide = "done";

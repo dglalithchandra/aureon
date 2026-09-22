@@ -112,6 +112,23 @@ export async function submitAnswers(
   return readSessionAction(res);
 }
 
+/**
+ * Send the fuller description the chat asks for while the session is
+ * "needs_input" (BUG-05). Starts the next round.
+ */
+export async function describeSession(
+  sessionId: string,
+  text: string,
+): Promise<SessionActionResult> {
+  const res = await fetch(`/api/session/${sessionId}/describe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+    credentials: "same-origin",
+  });
+  return readSessionAction(res);
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function isUuid(s: string | null | undefined): s is string {

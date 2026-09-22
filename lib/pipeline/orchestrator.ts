@@ -117,6 +117,11 @@ async function executeRound(
   session: Session,
   reportProgress?: ProgressReporter,
 ): Promise<Session> {
+  if (session.rounds.length >= SCOPING.maxTotalRounds) {
+    throw new ValidationError(
+      `This session has used all ${SCOPING.maxTotalRounds} rounds. Start a new scope.`,
+    );
+  }
   const roundStart = Date.now();
   let working = await setPipelineStage(session, "extracting", reportProgress);
 
@@ -191,8 +196,19 @@ async function executeRound(
   await enterStage("clarifying");
 
   if (extraction.blocker) {
-    questions = await generateBlockerQuestion(working, extraction);
-    nextStatus = questions.length > 0 ? "blocker" : "ready";
+    // BUG-05: while the goal or core features are missing, a round never
+    // ends "ready". After blockerMaxRounds tries (or when no further round
+    // would fit) the user is asked for a fuller description instead.
+    const lastPossibleRound = roundNumber + 1 >= SCOPING.maxTotalRounds;
+    if (
+      blockerRoundStreak(working) + 1 >= SCOPING.blockerMaxRounds ||
+      lastPossibleRound
+    ) {
+      nextStatus = "needs_input";
+    } else {
+      questions = await generateBlockerQuestion(working, extraction);
+      nextStatus = questions.length > 0 ? "blocker" : "needs_input";
+    }
   } else if (shouldExit(working, extraction)) {
     nextStatus = "ready";
   } else {
@@ -219,6 +235,7 @@ async function executeRound(
     github_enrichment: enrichment,
     questions,
     answers: [],
+    added_description: null,
   };
 
   return {
@@ -310,6 +327,63 @@ export function applyAnswers(session: Session, answers: MCQAnswer[]): Session {
   };
 }
 
+/**
+ * Record the fuller description the user typed while the session was
+ * "needs_input" (BUG-05) and leave it "analyzing" for the next round, which
+ * re-extracts from the old text plus the new one. POST
+ * /api/session/[id]/describe stores this and queues the round as a job.
+ */
+export function applyDescription(session: Session, text: string): Session {
+  if (session.status !== "needs_input") {
+    throw new ValidationError(
+      `Cannot add a description when session status is ${session.status}`,
+    );
+  }
+  if (session.rounds.length >= SCOPING.maxTotalRounds) {
+    throw new ValidationError(
+      `This session has used all ${SCOPING.maxTotalRounds} rounds. Start a new scope.`,
+    );
+  }
+  const currentRound = session.rounds[session.rounds.length - 1];
+  if (!currentRound) {
+    throw new ValidationError("Session has no current round");
+  }
+
+  const description = text.trim();
+  if (!description) {
+    throw new ValidationError("Describe the goal and main features in a few sentences");
+  }
+  const userBytes = sumUserBytes(session, []) + Buffer.byteLength(description, "utf8");
+  if (userBytes > USER_CONTENT_BUDGET_BYTES) {
+    throw new ValidationError(
+      `User content exceeds ${USER_CONTENT_BUDGET_BYTES} byte budget`,
+    );
+  }
+
+  // The next round re-extracts from everything: the original text, every
+  // answer so far and this description.
+  const enrichedInputCandidate =
+    `${session.enriched_input}\n\n${buildDescriptionBlock(description)}`.slice(
+      0,
+      100_000,
+    );
+
+  const updatedRounds = [...session.rounds];
+  updatedRounds[updatedRounds.length - 1] = {
+    ...currentRound,
+    added_description: description,
+  };
+
+  return {
+    ...session,
+    rounds: updatedRounds,
+    enriched_input: enrichedInputCandidate,
+    status: "analyzing",
+    pipeline_stage: "extracting",
+    updated_at: Date.now(),
+  };
+}
+
 async function setPipelineStage(
   session: Session,
   pipelineStage: PipelineStage,
@@ -333,12 +407,29 @@ async function generateBlockerQuestion(
   session: Session,
   extraction: ExtractionResult,
 ): Promise<MCQQuestion[]> {
-  const askedBefore = collectAskedParams(session);
   return generateQuestions({
     extraction,
-    askedBefore,
+    askedBefore: collectAskedParams(session),
     roundNumber: session.rounds.length,
+    // A blocker asked before is re-asked, so the model needs the wording
+    // that already failed (BUG-05).
+    previousQuestions: session.rounds.flatMap((r) => r.questions),
   });
+}
+
+/**
+ * Consecutive rounds that ended with a blocker question, counting back from
+ * the latest. A round that asked for a fuller description instead (no
+ * question) ends the streak, so answering a rewrite starts the count again.
+ */
+function blockerRoundStreak(session: Session): number {
+  let streak = 0;
+  for (let i = session.rounds.length - 1; i >= 0; i--) {
+    const round = session.rounds[i];
+    if (!round?.extraction.blocker || round.questions.length === 0) break;
+    streak++;
+  }
+  return streak;
 }
 
 function collectAskedParams(session: Session): ParameterId[] {
@@ -359,6 +450,10 @@ function collectAskedParams(session: Session): ParameterId[] {
  */
 export function shouldExit(session: Session, newExtraction: ExtractionResult): boolean {
   if (newExtraction.confidence >= SCOPING.confidenceThreshold) {
+    return true;
+  }
+  // No further round would fit in the session (BUG-05).
+  if (session.rounds.length + 1 >= SCOPING.maxTotalRounds) {
     return true;
   }
   if (session.rounds.length >= SCOPING.maxRounds) {
@@ -398,10 +493,18 @@ function buildAnswerBlock(questions: MCQQuestion[], answers: MCQAnswer[]): strin
   return lines.join("\n");
 }
 
+function buildDescriptionBlock(description: string): string {
+  const tag = `added_description_${Date.now()}`;
+  return [`<${tag}>`, description, `</${tag}>`].join("\n");
+}
+
 function sumUserBytes(session: Session, newAnswers: MCQAnswer[]): number {
   let total = Buffer.byteLength(session.raw_input, "utf8");
   for (const r of session.rounds) {
     for (const a of r.answers) total += answerBytes(a);
+    if (r.added_description) {
+      total += Buffer.byteLength(r.added_description, "utf8");
+    }
   }
   for (const a of newAnswers) total += answerBytes(a);
   return total;

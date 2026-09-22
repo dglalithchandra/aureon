@@ -9,6 +9,7 @@ import {
   type MCQQuestion,
 } from "@/lib/schemas/mcq";
 import { type ExtractionResult, type ParameterId } from "@/lib/schemas/extraction";
+import { SCOPING } from "@/lib/config/scoping";
 import { BudgetExceededError, LLMError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
@@ -18,6 +19,11 @@ export interface GenerateQuestionsOptions {
   extraction: ExtractionResult;
   askedBefore: ParameterId[];
   roundNumber: number;
+  /**
+   * Questions from earlier rounds. A MISSING blocker parameter is asked
+   * again (BUG-05), and the model is shown the wording that did not work.
+   */
+  previousQuestions?: MCQQuestion[];
 }
 
 /**
@@ -30,17 +36,29 @@ export interface GenerateQuestionsOptions {
 export async function generateQuestions(
   opts: GenerateQuestionsOptions,
 ): Promise<MCQQuestion[]> {
-  const { extraction, askedBefore, roundNumber } = opts;
+  const { extraction, askedBefore, roundNumber, previousQuestions = [] } = opts;
+  const blockerExpected = isBlockerExtraction(extraction);
+  // A MISSING blocker parameter may always be asked again, with different
+  // framing; everything else is asked once (BUG-05).
+  const isAskable = (id: ParameterId): boolean =>
+    !askedBefore.includes(id) || isBlockerParam(extraction, id);
 
   // Pre-filter: nothing to ask if every non-PRESENT param is already asked.
   const candidates = extraction.parameters.filter(
-    (p) => p.state !== "PRESENT" && !askedBefore.includes(p.id),
+    (p) => p.state !== "PRESENT" && isAskable(p.id),
   );
-  if (candidates.length === 0) return [];
+  if (candidates.length === 0) {
+    return blockerExpected ? [blockerFallbackQuestion(extraction)] : [];
+  }
 
+  const reask = askedBefore.filter((id) => isBlockerParam(extraction, id));
   const userBlocks: string[] = [];
   userBlocks.push(`<round_number>${roundNumber}</round_number>`);
-  userBlocks.push(`<asked_before>${askedBefore.join(", ") || "(none)"}</asked_before>`);
+  const askedOnce = askedBefore.filter((id) => !reask.includes(id));
+  userBlocks.push(`<asked_before>${askedOnce.join(", ") || "(none)"}</asked_before>`);
+  if (reask.length > 0) {
+    userBlocks.push(reframeBlock(reask, extraction, previousQuestions));
+  }
   userBlocks.push(
     `<extraction>\n${formatExtractionForPrompt(extraction)}\n</extraction>`,
   );
@@ -80,17 +98,15 @@ export async function generateQuestions(
   if (!outcome.ok) {
     // Still invalid after the repair retry: no usable questions this round.
     logger.warn("mcq.invalid_output", { issues: outcome.issues });
-    return [];
+    return blockerExpected ? [blockerFallbackQuestion(extraction)] : [];
   }
-
-  const blockerExpected = isBlockerExtraction(extraction);
 
   // Filter: drop any question whose parameter was already asked. Also enforce
   // BLOCKER mode — when the extraction is in BLOCKER state, we only return
   // the first BLOCKER question, ignore the rest.
   const filtered: MCQQuestion[] = [];
   for (const item of outcome.data.questions) {
-    if (askedBefore.includes(item.parameter_id)) continue;
+    if (!isAskable(item.parameter_id)) continue;
     if (blockerExpected && !isBlockerParam(extraction, item.parameter_id)) continue;
     if (filtered.length >= MAX_QUESTIONS) break;
 
@@ -111,7 +127,59 @@ export async function generateQuestions(
     if (blockerExpected) break; // BLOCKER mode → exactly one question.
   }
 
+  // A blocker round must always leave the user something to answer, so it
+  // never ends up looking "ready" (BUG-05).
+  if (blockerExpected && filtered.length === 0) {
+    logger.warn("mcq.blocker_fallback", { roundNumber });
+    return [blockerFallbackQuestion(extraction)];
+  }
+
   return filtered;
+}
+
+/** The parameter a blocker question targets: whichever blocker is MISSING. */
+function missingBlockerParam(e: ExtractionResult): ParameterId {
+  return (["P-01", "P-03"] as const).find((id) => isBlockerParam(e, id)) ?? "P-01";
+}
+
+/** The static question from config, used when the model gives nothing usable. */
+function blockerFallbackQuestion(e: ExtractionResult): MCQQuestion {
+  return {
+    id: randomUUID(),
+    parameter_id: missingBlockerParam(e),
+    question: SCOPING.blockerFallback.question,
+    options: [...SCOPING.blockerFallback.options],
+    allow_custom: true,
+    is_blocker: true,
+  };
+}
+
+/**
+ * Tell the model that its earlier framing of a blocker question did not
+ * work, so it writes a different one instead of repeating itself.
+ */
+function reframeBlock(
+  reask: ParameterId[],
+  e: ExtractionResult,
+  previousQuestions: MCQQuestion[],
+): string {
+  const lines = ["<reframe>"];
+  for (const id of reask) {
+    const param = e.parameters.find((p) => p.id === id);
+    const previous = previousQuestions.filter((q) => q.parameter_id === id).pop();
+    lines.push(
+      `${id} ${param?.name ?? ""} is STILL MISSING after being asked before, so that framing did not work.`,
+    );
+    if (previous) {
+      lines.push(`  previous question: "${previous.question}"`);
+      lines.push(`  previous options: ${previous.options.join(" | ")}`);
+    }
+  }
+  lines.push(
+    "Ask about it again using DIFFERENT wording and DIFFERENT options: plainer language, a concrete everyday framing, no jargon.",
+  );
+  lines.push("</reframe>");
+  return lines.join("\n");
 }
 
 function isBlockerExtraction(e: ExtractionResult): boolean {

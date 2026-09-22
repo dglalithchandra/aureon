@@ -44,6 +44,7 @@ describe("SCOPING config", () => {
       criticalCap: SCOPING.criticalCap,
       blockerCap: SCOPING.blockerCap,
       blockerMaxRounds: SCOPING.blockerMaxRounds,
+      maxTotalRounds: SCOPING.maxTotalRounds,
     }).toEqual({
       confidenceThreshold: 70,
       maxRounds: 3,
@@ -51,6 +52,7 @@ describe("SCOPING config", () => {
       criticalCap: 65,
       blockerCap: 40,
       blockerMaxRounds: 3,
+      maxTotalRounds: 10,
     });
   });
 
@@ -99,5 +101,23 @@ describe("blocker invariant uses SCOPING.blockerCap", () => {
       makeExtraction({ parameters: swapped }),
     );
     expect(result.success).toBe(false);
+  });
+});
+
+describe("the blocker fallback question", () => {
+  it("is a plain-language question with 'Other (describe)' last", () => {
+    expect(SCOPING.blockerFallback.question).toBe(
+      "What problem does this software solve?",
+    );
+    expect(SCOPING.blockerFallback.options).toEqual([
+      "Automate a manual process",
+      "Replace an existing tool",
+      "Connect two systems",
+      "Sell a product or service to customers",
+      "Give internal teams a better workflow",
+      "Other (describe)",
+    ]);
+    // MCQQuestionSchema allows 3-8 options.
+    expect(SCOPING.blockerFallback.options.length).toBeLessThanOrEqual(8);
   });
 });

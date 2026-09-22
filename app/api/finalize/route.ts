@@ -15,7 +15,7 @@ import {
   withSessionLock,
 } from "@/lib/security/route-helpers";
 import { RATE_LIMITS } from "@/lib/security/rate-limit";
-import { BudgetExceededError, ValidationError } from "@/lib/errors";
+import { BlockedError, BudgetExceededError, ValidationError } from "@/lib/errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,6 +56,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // Idempotent fast-path: already finalized.
       if (session.status === "finalized" && session.final_output) {
         return NextResponse.json({ output: session.final_output, cached: true });
+      }
+
+      // No scope while the goal or core features are missing (BUG-05).
+      const latest = session.rounds[session.rounds.length - 1];
+      if (latest?.extraction.blocker && !override) {
+        throw new BlockedError();
       }
 
       if (session.status !== "ready" && !override) {

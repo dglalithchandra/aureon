@@ -208,6 +208,7 @@ export function makeRound(overrides: Partial<SessionRound> = {}): SessionRound {
     github_enrichment: null,
     questions: [],
     answers: [],
+    added_description: null,
     ...overrides,
   };
 }

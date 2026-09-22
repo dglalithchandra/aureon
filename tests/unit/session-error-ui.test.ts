@@ -4,7 +4,14 @@ import {
   sessionErrorNotice,
 } from "@/components/chat/sessionError";
 import { deriveSteps } from "@/components/chat/pipelineSteps";
-import { deriveMessages } from "@/components/chat/messageDerivation";
+import {
+  deriveMessages,
+  isAwaitingDescription,
+  NEEDS_INPUT_PROMPT,
+  ROUNDS_EXHAUSTED_PROMPT,
+} from "@/components/chat/messageDerivation";
+import { deriveSteps as _deriveSteps } from "@/components/chat/pipelineSteps";
+import { SCOPING } from "@/lib/config/scoping";
 import { makeRound, makeSession } from "../fixtures/llm";
 
 const retryableError = {
@@ -100,5 +107,47 @@ describe("chat messages after a failed round", () => {
       makeSession({ status: "error", pipeline_stage: null, rounds: [round] }),
     );
     expect(messages.some((m) => m.id === "answers-pending-0")).toBe(true);
+  });
+});
+
+describe("needs_input (BUG-05)", () => {
+  const needsInput = (rounds: number) =>
+    makeSession({
+      status: "needs_input",
+      pipeline_stage: null,
+      rounds: Array.from({ length: rounds }, (_, i) => makeRound({ round_number: i })),
+    });
+
+  it("unlocks the input box while a round is left to spend", () => {
+    expect(isAwaitingDescription(needsInput(3))).toBe(true);
+    expect(isAwaitingDescription(needsInput(SCOPING.maxTotalRounds))).toBe(false);
+    expect(isAwaitingDescription(makeSession({ status: "blocker" }))).toBe(false);
+    expect(isAwaitingDescription(null)).toBe(false);
+  });
+
+  it("asks for the description, or to start over once the rounds are used up", () => {
+    expect(deriveMessages(needsInput(3)).at(-1)).toMatchObject({
+      markdown: NEEDS_INPUT_PROMPT,
+    });
+    expect(deriveMessages(needsInput(SCOPING.maxTotalRounds)).at(-1)).toMatchObject({
+      markdown: ROUNDS_EXHAUSTED_PROMPT,
+    });
+  });
+
+  it("keeps the clarify step running, not done", () => {
+    expect(_deriveSteps(needsInput(3), false)).toMatchObject({
+      decide: "running",
+      output: "pending",
+    });
+  });
+
+  it("shows the description the user sent back", () => {
+    const session = makeSession({
+      status: "analyzing",
+      rounds: [makeRound({ added_description: "It books haircuts for my salon." })],
+    });
+    expect(deriveMessages(session).map((m) => ("text" in m ? m.text : ""))).toContain(
+      "It books haircuts for my salon.",
+    );
   });
 });

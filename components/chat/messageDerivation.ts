@@ -1,5 +1,23 @@
 import type { Session } from "@/lib/schemas/mcq";
 import type { ChatMessage } from "@/components/chat/MessageBubble";
+import { SCOPING } from "@/lib/config/scoping";
+
+/** Shown while the session waits for a fuller description (BUG-05). */
+export const NEEDS_INPUT_PROMPT =
+  "Please describe the goal and main features in a few sentences";
+
+/** Shown instead once the session has used every round it is allowed.  */
+export const ROUNDS_EXHAUSTED_PROMPT = `This session has used all ${SCOPING.maxTotalRounds} rounds without a clear goal. Start a new scope with a fuller description.`;
+
+/**
+ * True when the chat asked for a fuller description and the session still
+ * has a round left to spend on it (BUG-05). The input box unlocks only then.
+ */
+export function isAwaitingDescription(session: Session | null): boolean {
+  return (
+    session?.status === "needs_input" && session.rounds.length < SCOPING.maxTotalRounds
+  );
+}
 
 /**
  * Derive the chat thread from a Session. The session is the single source of
@@ -32,18 +50,24 @@ export function deriveMessages(session: Session): ChatMessage[] {
     const round = session.rounds[i];
     if (!round) continue;
 
-    // Render previous-round answers as a user message at the start of the next round.
+    // Render what the user sent after the previous round — MCQ answers, or
+    // the description they typed when asked to rewrite.
     if (i > 0) {
       const prev = session.rounds[i - 1];
-      if (prev && prev.answers.length > 0) {
-        const text = formatAnswersAsUserMessage(prev);
-        if (text) {
-          out.push({
-            kind: "user_input",
-            id: `answers-${i - 1}`,
-            text,
-          });
-        }
+      const text = prev ? formatAnswersAsUserMessage(prev) : null;
+      if (prev && text) {
+        out.push({
+          kind: "user_input",
+          id: `answers-${i - 1}`,
+          text,
+        });
+      }
+      if (prev?.added_description) {
+        out.push({
+          kind: "user_input",
+          id: `description-${i - 1}`,
+          text: prev.added_description,
+        });
       }
     }
 
@@ -77,6 +101,28 @@ export function deriveMessages(session: Session): ChatMessage[] {
         text,
       });
     }
+  }
+
+  if (
+    lastRound?.added_description &&
+    (session.status === "analyzing" || session.status === "error")
+  ) {
+    out.push({
+      kind: "user_input",
+      id: `description-pending-${lastRound.round_number}`,
+      text: lastRound.added_description,
+    });
+  }
+
+  if (session.status === "needs_input") {
+    out.push({
+      kind: "assistant_message",
+      id: "needs-input",
+      markdown:
+        session.rounds.length >= SCOPING.maxTotalRounds
+          ? ROUNDS_EXHAUSTED_PROMPT
+          : NEEDS_INPUT_PROMPT,
+    });
   }
 
   if (session.status === "ready") {
@@ -143,6 +189,10 @@ function assistantMarkdownForRound(session: Session, roundIdx: number): string {
         `I have **${round.questions.length} clarification question${round.questions.length === 1 ? "" : "s"}** below. Each one lifts the score noticeably if answered.`,
       );
     }
+  } else if (e.blocker) {
+    lines.push(
+      "I still can't tell **what the project is for** or **what it must do** from the text so far.",
+    );
   } else if (session.status === "ready") {
     lines.push("Confidence is high enough — your scope is ready to open.");
   }

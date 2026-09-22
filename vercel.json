@@ -6,6 +6,7 @@
     "app/api/session/route.ts": { "maxDuration": 60 },
     "app/api/session/[id]/run/route.ts": { "maxDuration": 300 },
     "app/api/session/[id]/answer/route.ts": { "maxDuration": 300 },
+    "app/api/session/[id]/describe/route.ts": { "maxDuration": 300 },
     "app/api/session/[id]/events/route.ts": { "maxDuration": 60 }
   }
 }

@@ -97,7 +97,11 @@ function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milest
     {
       id: "decide",
       label:
-        status === "blocker" ? "Blocker" : roundN > 1 ? `Round ${roundN}` : "Clarify",
+        status === "blocker" || status === "needs_input"
+          ? "Blocker"
+          : roundN > 1
+            ? `Round ${roundN}`
+            : "Clarify",
       state: init.decide,
       Icon: MessagesSquare,
       hint:
@@ -107,13 +111,15 @@ function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milest
             ? "Needs a retry"
             : status === "blocker"
               ? "Need core info"
-              : status === "awaiting_answers"
-                ? "Awaiting answers"
-                : status === "ready"
-                  ? "Threshold met"
-                  : init.decide === "pending"
-                    ? "Pending"
-                    : "Recomputing",
+              : status === "needs_input"
+                ? "Describe the goal"
+                : status === "awaiting_answers"
+                  ? "Awaiting answers"
+                  : status === "ready"
+                    ? "Threshold met"
+                    : init.decide === "pending"
+                      ? "Pending"
+                      : "Recomputing",
     },
     {
       id: "output",
@@ -339,7 +345,7 @@ export function PipelineRoadmap({
           <p className="text-blueprint-text font-display text-lg font-bold tracking-tight">
             {status === "ready" || status === "finalized"
               ? "Scope ready"
-              : status === "blocker"
+              : status === "blocker" || status === "needs_input"
                 ? "Blocker"
                 : status === "awaiting_answers"
                   ? "Your turn"

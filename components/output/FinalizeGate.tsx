@@ -67,6 +67,10 @@ export function FinalizeGate({
     const lowConfidenceExhausted =
       session.rounds.length >= SCOPING.maxRounds &&
       session.current_confidence < SCOPING.confidenceThreshold;
+    // The goal or core features are still missing (BUG-05).
+    const blocked =
+      session.status === "needs_input" ||
+      session.rounds[session.rounds.length - 1]?.extraction.blocker === true;
     return (
       <main className="bg-blueprint-bg flex min-h-[100dvh] items-center justify-center px-6 py-16 text-center">
         <div className="max-w-lg">
@@ -74,14 +78,18 @@ export function FinalizeGate({
             Not ready yet · {session.status}
           </p>
           <h1 className="text-blueprint-text font-display mt-3 text-2xl font-bold sm:text-3xl">
-            {lowConfidenceExhausted
-              ? "Confidence too low to lock the scope."
-              : "Answer the remaining questions first."}
+            {blocked
+              ? "The project goal and main features are still missing."
+              : lowConfidenceExhausted
+                ? "Confidence too low to lock the scope."
+                : "Answer the remaining questions first."}
           </h1>
           <p className="text-blueprint-muted mt-3 text-sm">
-            {lowConfidenceExhausted
-              ? `${SCOPING.maxRounds} clarification rounds didn't lift confidence above the threshold of ${SCOPING.confidenceThreshold} (currently ${session.current_confidence}/100). Add a paragraph of detail in the chat — even one new sentence about goal or features can move the needle.`
-              : "Aureon needs a bit more information before it can generate the two-stage output. Head back to the chat to continue."}
+            {blocked
+              ? "Aureon never writes a scope while it cannot tell what the software is for or what it must do. Describe the goal and main features in the chat, and the scope follows."
+              : lowConfidenceExhausted
+                ? `${SCOPING.maxRounds} clarification rounds didn't lift confidence above the threshold of ${SCOPING.confidenceThreshold} (currently ${session.current_confidence}/100). Add a paragraph of detail in the chat — even one new sentence about goal or features can move the needle.`
+                : "Aureon needs a bit more information before it can generate the two-stage output. Head back to the chat to continue."}
           </p>
           <Link
             href={`/chat?s=${session.id}`}

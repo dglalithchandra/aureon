@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SCOPING } from "@/lib/config/scoping";
 import { ExtractionResultSchema, ParameterIdSchema } from "@/lib/schemas/extraction";
 import { GitHubEnrichmentSchema } from "@/lib/schemas/github";
 import {
@@ -58,6 +59,12 @@ export const SessionStatusSchema = z.enum([
   "finalized",
   /** A round failed (LLM outage, bad output). Retry with POST /run. */
   "error",
+  /**
+   * The goal or core features are still missing after blockerMaxRounds
+   * blocker rounds (BUG-05): the chat asks for a fuller description and
+   * POST /api/session/[id]/describe starts the next round.
+   */
+  "needs_input",
 ]);
 
 /** The live server-side phase shown by the chat roadmap while a round runs. */
@@ -77,6 +84,8 @@ export const SessionRoundSchema = z.object({
   github_enrichment: GitHubEnrichmentSchema.nullable(),
   questions: z.array(MCQQuestionSchema).max(3),
   answers: z.array(MCQAnswerSchema).max(3),
+  /** Description the user added when this round ended in "needs_input". */
+  added_description: z.string().max(50_000).nullable().default(null),
 });
 export type SessionRound = z.infer<typeof SessionRoundSchema>;
 
@@ -107,7 +116,7 @@ export const SessionSchema = z.object({
   id: z.string().uuid(),
   raw_input: z.string().min(1).max(50_000),
   enriched_input: z.string().max(100_000),
-  rounds: z.array(SessionRoundSchema).max(10),
+  rounds: z.array(SessionRoundSchema).max(SCOPING.maxTotalRounds),
   status: SessionStatusSchema,
   pipeline_stage: PipelineStageSchema.nullable().default(null),
   current_confidence: z.number().int().min(0).max(100),
@@ -136,4 +145,9 @@ export const CreateSessionRequestSchema = z.object({
 
 export const SubmitAnswersRequestSchema = z.object({
   answers: z.array(MCQAnswerSchema).min(0).max(3),
+});
+
+/** A fuller description supplied while the session is "needs_input". */
+export const DescribeRequestSchema = z.object({
+  text: z.string().trim().min(1).max(50_000),
 });

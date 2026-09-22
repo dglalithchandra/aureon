@@ -13,6 +13,7 @@ export type ErrorCode =
   | "UNAUTHORIZED"
   | "BUDGET_EXCEEDED"
   | "IN_PROGRESS"
+  | "BLOCKED"
   | "STORAGE_UNAVAILABLE"
   | "INTERNAL_ERROR";
 
@@ -77,6 +78,19 @@ export class BudgetExceededError extends AppError {
   ) {
     super("BUDGET_EXCEEDED", message, 503);
     this.name = "BudgetExceededError";
+  }
+}
+
+/**
+ * The scope cannot be generated while the goal (P-01) or the core features
+ * (P-03) are missing (BUG-05). `override` bypasses it.
+ */
+export class BlockedError extends AppError {
+  constructor(
+    message = "The project goal or core features are still missing, so a scope cannot be generated yet.",
+  ) {
+    super("BLOCKED", message, 400);
+    this.name = "BlockedError";
   }
 }
 

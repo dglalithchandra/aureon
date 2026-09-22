@@ -23,6 +23,8 @@ interface InputBarProps {
   pending: boolean;
   /** Optional sample prompts shown when the input is empty. */
   samples?: ReadonlyArray<{ label: string; text: string }>;
+  /** Overrides the unlocked placeholder (e.g. when a rewrite is asked for). */
+  placeholder?: string;
   /**
    * Called with the trimmed text. Caller is responsible for clearing the
    * field when its higher-level state moves forward.
@@ -36,7 +38,7 @@ export interface InputBarHandle {
 }
 
 export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function InputBar(
-  { locked, pending, samples, onSubmit },
+  { locked, pending, samples, placeholder, onSubmit },
   ref,
 ) {
   const [value, setValue] = useState("");
@@ -183,7 +185,8 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
             placeholder={
               locked
                 ? "Pipeline is running…"
-                : "Paste raw client requirements. Enter to submit, Shift+Enter for new line."
+                : (placeholder ??
+                  "Paste raw client requirements. Enter to submit, Shift+Enter for new line.")
             }
             className={cn(
               "text-blueprint-text placeholder:text-blueprint-muted/70 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm leading-relaxed outline-none",
