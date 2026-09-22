@@ -6,7 +6,7 @@ Audit date: 2026-09-21 · Commit audited: `f095b6b` (local `main`) plus the READ
 
 ---
 
-## Final Phase status (updated 2026-09-22, after BUG-01, SEC-02 and BUG-08)
+## Final Phase status (updated 2026-09-22, after BUG-01, SEC-02, BUG-08, BUG-02 and ROB-01)
 
 Work happens on the `final-phase` branch (committed locally, **not pushed yet**). This table is the tracker for the Final Phase: update it whenever an issue is fixed.
 
@@ -16,6 +16,8 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 
 | ID | Severity | Status | Commits | What was done |
 |---|---|:-:|---|---|
+| BUG-02 | High | ✅ | `7e9e94a` | A failed round is saved as status `error` with `last_error` (answers kept) and rethrown as 502. `/run` resumes `error` and `analyzing` sessions idle for 120 s. The chat shows "The AI service had a problem. Your answers are saved." with Retry. Verified in the browser: 3× 529 → Retry panel → Retry → questions. |
+| ROB-01 | Medium | ✅ | `7e9e94a` | Blocker invariant repaired (confidence capped at 40) instead of rejected; one repair retry with the validation issues; one 1.5× `max_tokens` retry; bad output → 502 not 400; OpenRouter `length` → `max_tokens`; 45 s timeouts on OpenRouter and Anthropic. |
 | BUG-08 | Medium | ✅ | `3368eb7` | Per-session single-flight lock (`SET NX EX`, Lua compare-and-delete; TTL = maxDuration + 30 s) on run, answer and finalize. A duplicate gets 409 `IN_PROGRESS` with the session; the chat keeps polling and shows "Already working on it…". Verified in the browser: duplicate answer → 409, 4 model calls total, no second pipeline. |
 | BUG-01 | Critical | ✅ | `36f79e3` | Separate buckets: polls 120/60 s, other `/api` 30/60 s, LLM routes 6/60 s per route; one limiter per request elsewhere. Polling backs off 1.5 s → 3 s → 5 s, stops on 401/404, shows 429 as "busy, retrying". Verified in the browser: two 20 s mocked rounds plus Generate output, 25 requests, no 429. |
 | SEC-02 | Medium | ✅ | `5fe58ae` `16d10b2` | `/api/extract` and `/api/github` deleted (404). Client IP from the platform on Vercel, never the client's first X-Forwarded-For entry. Global daily LLM budget (`LLM_DAILY_CALL_LIMIT`, default 2000) → 503 `BUDGET_EXCEEDED`. Still manual: an Anthropic console spend limit. |
@@ -42,13 +44,12 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 | 2 | BUG-05 | High | `SCOPING.blockerMaxRounds` and `blockerCap` are ready in config. |
 | 3 | GOAL-02 | Medium | Build GitHub references on the server. |
 | 4 | GOAL-01 / DOC-01 | High / Medium | Finish the README and landing claims (see above). |
-| 5 | BUG-02 + ROB-01 | High / Medium | Error state, Retry button, validate–repair–retry. The BUG-08 lock already makes a retried `/run` safe. |
-| 6 | BUG-03 | High | `owner_id` cookie. |
-| 7 | BUG-06 + BUG-07 | Medium | Prompt assembly and text normalisation (touch the same lines). |
-| 8 | OPS-01 + PERF-01 | High / Medium | Parallel Haiku calls, fetch less from GitHub, split finalize, timeouts. |
-| 9 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. |
-| 10 | DATA-01, BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | |
-| 11 | SEC-04, SEC-05, BUG-10, BUG-11, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
+| 5 | BUG-03 | High | `owner_id` cookie. |
+| 6 | BUG-06 + BUG-07 | Medium | Prompt assembly and text normalisation (touch the same lines). |
+| 7 | OPS-01 + PERF-01 | High / Medium | Parallel Haiku calls, fetch less from GitHub, split finalize (45 s timeouts already added in ROB-01). A request the platform kills leaves the session `analyzing`: `/run` resumes it after 120 s, but the chat has no Retry for that case yet. |
+| 8 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. |
+| 9 | DATA-01, BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | |
+| 10 | SEC-04, SEC-05, BUG-10, BUG-11, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
 
 ### On hold (owner's decision)
 
