@@ -6,7 +6,7 @@ Audit date: 2026-09-21 · Commit audited: `f095b6b` (local `main`) plus the READ
 
 ---
 
-## Final Phase status (updated 2026-09-22, after BUG-01 and SEC-02)
+## Final Phase status (updated 2026-09-22, after BUG-01, SEC-02 and BUG-08)
 
 Work happens on the `final-phase` branch (committed locally, **not pushed yet**). This table is the tracker for the Final Phase: update it whenever an issue is fixed.
 
@@ -16,6 +16,7 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 
 | ID | Severity | Status | Commits | What was done |
 |---|---|:-:|---|---|
+| BUG-08 | Medium | ✅ | `3368eb7` | Per-session single-flight lock (`SET NX EX`, Lua compare-and-delete; TTL = maxDuration + 30 s) on run, answer and finalize. A duplicate gets 409 `IN_PROGRESS` with the session; the chat keeps polling and shows "Already working on it…". Verified in the browser: duplicate answer → 409, 4 model calls total, no second pipeline. |
 | BUG-01 | Critical | ✅ | `36f79e3` | Separate buckets: polls 120/60 s, other `/api` 30/60 s, LLM routes 6/60 s per route; one limiter per request elsewhere. Polling backs off 1.5 s → 3 s → 5 s, stops on 401/404, shows 429 as "busy, retrying". Verified in the browser: two 20 s mocked rounds plus Generate output, 25 requests, no 429. |
 | SEC-02 | Medium | ✅ | `5fe58ae` `16d10b2` | `/api/extract` and `/api/github` deleted (404). Client IP from the platform on Vercel, never the client's first X-Forwarded-For entry. Global daily LLM budget (`LLM_DAILY_CALL_LIMIT`, default 2000) → 503 `BUDGET_EXCEEDED`. Still manual: an Anthropic console spend limit. |
 | SEC-01 | High | ✅ | `73ed0aa` `b5cb9c2` `e56b913` `5305c8c` | `next` 16.3.5; `npm audit` reports 0 (dev included); Dependabot config and `npm run audit`. |
@@ -41,14 +42,13 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 | 2 | BUG-05 | High | `SCOPING.blockerMaxRounds` and `blockerCap` are ready in config. |
 | 3 | GOAL-02 | Medium | Build GitHub references on the server. |
 | 4 | GOAL-01 / DOC-01 | High / Medium | Finish the README and landing claims (see above). |
-| 5 | BUG-08 | Medium | Per-session lock; needed before BUG-02's retry. |
-| 6 | BUG-02 + ROB-01 | High / Medium | Error state, Retry button, validate–repair–retry. |
-| 7 | BUG-03 | High | `owner_id` cookie. |
-| 8 | BUG-06 + BUG-07 | Medium | Prompt assembly and text normalisation (touch the same lines). |
-| 9 | OPS-01 + PERF-01 | High / Medium | Parallel Haiku calls, fetch less from GitHub, split finalize, timeouts. |
-| 10 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. |
-| 11 | DATA-01, BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | |
-| 12 | SEC-04, SEC-05, BUG-10, BUG-11, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
+| 5 | BUG-02 + ROB-01 | High / Medium | Error state, Retry button, validate–repair–retry. The BUG-08 lock already makes a retried `/run` safe. |
+| 6 | BUG-03 | High | `owner_id` cookie. |
+| 7 | BUG-06 + BUG-07 | Medium | Prompt assembly and text normalisation (touch the same lines). |
+| 8 | OPS-01 + PERF-01 | High / Medium | Parallel Haiku calls, fetch less from GitHub, split finalize, timeouts. |
+| 9 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. |
+| 10 | DATA-01, BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | |
+| 11 | SEC-04, SEC-05, BUG-10, BUG-11, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
 
 ### On hold (owner's decision)
 
