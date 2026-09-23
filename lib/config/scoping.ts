@@ -1,5 +1,4 @@
-import type { z } from "zod";
-import type { ParameterId, ParameterStateSchema } from "@/lib/schemas/extraction";
+import type { ParameterId, ParameterState } from "@/lib/schemas/extraction";
 
 /**
  * Scoping configuration — the single source of truth for the 9 parameters,
@@ -9,8 +8,6 @@ import type { ParameterId, ParameterStateSchema } from "@/lib/schemas/extraction
  * prompt (its scoring rubric is generated from this file) and the chat /
  * output UI. It must therefore stay free of server-only imports.
  */
-
-type ParameterState = z.infer<typeof ParameterStateSchema>;
 
 export type ParameterTier = "BLOCKER" | "HIGH" | "MED" | "LOW";
 
@@ -52,10 +49,16 @@ export interface ScopingConfig {
   /** Asked when the model fails to produce a usable blocker question. */
   readonly blockerFallback: FallbackQuestion;
   /**
-   * Share of "coverage" (vs "quality") the extraction prompt tells the model
-   * to blend into its confidence number. Guidance for the LLM only.
+   * How the confidence score is blended from its components (ARCH-01).
+   * They sum to 1; the GitHub bonus is added on top, then the cap applies.
    */
-  readonly promptCoverageBlend: number;
+  readonly scoreWeights: {
+    readonly coverage: number;
+    readonly quality: number;
+    readonly consistency: number;
+  };
+  /** Most the GitHub corroboration bonus can add to the score. */
+  readonly githubBonusMax: number;
 }
 
 export const SCOPING: ScopingConfig = {
@@ -148,7 +151,8 @@ export const SCOPING: ScopingConfig = {
       "Other (describe)",
     ],
   },
-  promptCoverageBlend: 0.7,
+  scoreWeights: { coverage: 0.5, quality: 0.3, consistency: 0.2 },
+  githubBonusMax: 5,
 };
 
 const WEIGHT_BY_ID = new Map<ParameterId, number>(

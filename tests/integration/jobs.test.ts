@@ -222,7 +222,8 @@ describe("finalize jobs", () => {
     expect(await runJob(clientJob!)).toBe("waiting");
     const halfway = await getSession(id);
     expect(halfway?.pipeline_stage).toBe("finalizing");
-    expect(halfway?.draft_output?.client?.confidence_badge.score).toBe(82);
+    // Computed from the round's parameter states (ARCH-01).
+    expect(halfway?.draft_output?.client?.confidence_badge.score).toBe(55);
     expect(halfway?.draft_output?.engineer).toBeNull();
     expect(halfway?.draft_output?.pending).toEqual(["engineer"]);
     expect(halfway?.final_output).toBeNull();
@@ -237,7 +238,7 @@ describe("finalize jobs", () => {
       draft_output: null,
       last_error: null,
     });
-    expect(done?.final_output?.client.confidence_badge.score).toBe(82);
+    expect(done?.final_output?.client.confidence_badge.score).toBe(55);
     expect(done?.final_output?.engineer.effort_summary.confidence_band).toContain("high");
 
     const cached = await finalizeRoute(post(id));

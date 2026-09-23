@@ -11,6 +11,7 @@ import {
   ClientViewSchema,
   EngineerViewSchema,
   type ClientView,
+  type ConfidenceBadge,
   type EngineerView,
   type FinalOutput,
 } from "@/lib/schemas/output";
@@ -19,7 +20,7 @@ import { BudgetExceededError, LLMError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { promptSafe, promptText, truncateText } from "@/lib/text/prompt-safe";
 import { coerceClientView, coerceEngineerView } from "@/lib/pipeline/coerce";
-import { parameterWeight, stateMultiplier } from "@/lib/config/scoping";
+import { computeConfidence } from "@/lib/scoring/confidence";
 
 const MAX_CONTEXT_CHARS = 40_000;
 /** How much of the brief the finalize context may carry (BUG-06). */
@@ -100,59 +101,22 @@ function confidenceBand(score: number): string {
 }
 
 /**
- * Deterministic confidence badge derived from the canonical pipeline state
- * — never from the finalize LLM.
- *
- *   score             = session.current_confidence (the number the
- *                       extraction pipeline computed and gated on)
- *   coverage          = tier-weighted parameter-state completeness
- *   llm_quality       = the extraction's own holistic confidence read
- *   github_validation = avg similarity of GitHub matches × 100, or the
- *                       share of modules that got github-validated when
- *                       there are no scored matches
+ * The confidence badge: the score the pipeline computed and every component
+ * behind it (ARCH-01) — never the finalize model's own read.
  */
-function computeConfidenceBadge(session: Session): {
-  score: number;
-  breakdown: { coverage: number; llm_quality: number; github_validation: number };
-} {
+function computeConfidenceBadge(session: Session): ConfidenceBadge {
   const round = session.rounds[session.rounds.length - 1]!;
-  const ex = round.extraction;
-
-  // Same weights and multipliers the extraction prompt is generated from.
-  let num = 0;
-  let den = 0;
-  for (const p of ex.parameters) {
-    const w = parameterWeight(p.id);
-    den += w;
-    num += w * stateMultiplier(p.state);
-  }
-  const coverage = den > 0 ? Math.round((num / den) * 100) : 0;
-
-  const enrichment = round.github_enrichment;
-  let githubValidation = 0;
-  if (enrichment && enrichment.matches.length > 0) {
-    const avgSim =
-      enrichment.matches.reduce((s, m) => s + m.similarity, 0) /
-      enrichment.matches.length;
-    githubValidation = Math.round(avgSim * 100);
-  } else {
-    const total = ex.modules.length || 1;
-    const validated = ex.modules.filter((m) => m.github_validated).length;
-    githubValidation = Math.round((validated / total) * 100);
-  }
-
+  const scored = computeConfidence(round.extraction);
   return {
-    score: clampInt(session.current_confidence),
+    score: scored.score,
     breakdown: {
-      coverage: clampInt(coverage),
-      llm_quality: clampInt(ex.confidence),
-      github_validation: clampInt(githubValidation),
+      coverage: scored.coverage,
+      ai_clarity: scored.quality,
+      consistency: scored.consistency,
+      github_bonus: scored.githubBonus,
+      cap_applied: scored.cap,
     },
   };
-}
-
-function clampInt(n: number): number {
-  return Math.max(0, Math.min(100, Math.round(n)));
 }
 
 /* ──────────────────────────────────────────────────────────────

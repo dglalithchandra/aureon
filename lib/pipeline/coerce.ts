@@ -45,7 +45,13 @@ export function coerceClientView(input: unknown): unknown {
     if (typeof cb.score === "number") cb.score = Math.round(cb.score);
     if (isPlainObject(cb.breakdown)) {
       const bd: UnknownObject = { ...(cb.breakdown as UnknownObject) };
-      for (const k of ["coverage", "llm_quality", "github_validation"]) {
+      for (const k of [
+        "coverage",
+        "ai_clarity",
+        "consistency",
+        "github_bonus",
+        "cap_applied",
+      ]) {
         if (typeof bd[k] === "number") {
           bd[k] = Math.round(bd[k] as number);
         }

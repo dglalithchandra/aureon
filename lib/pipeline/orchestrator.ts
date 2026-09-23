@@ -15,6 +15,7 @@ import type { ExtractionResult, ParameterId } from "@/lib/schemas/extraction";
 import { AppError, BudgetExceededError, LLMError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { SCOPING } from "@/lib/config/scoping";
+import { computeConfidence } from "@/lib/scoring/confidence";
 import { budgetExceededMessage, utf8Bytes, withinBudget } from "@/lib/text/budget";
 import { promptSafe } from "@/lib/text/prompt-safe";
 
@@ -253,7 +254,9 @@ async function executeRound(
     status: nextStatus,
     pipeline_stage: null,
     last_error: null,
-    current_confidence: extraction.confidence,
+    // Computed here from the parameter states, never taken from the model
+    // (ARCH-01).
+    current_confidence: computeConfidence(extraction).score,
     updated_at: Date.now(),
   };
 }
@@ -432,10 +435,14 @@ function collectAskedParams(session: Session): ParameterId[] {
  *   2. Completed rounds >= SCOPING.maxRounds
  *   3. Diminishing returns: confidence delta < SCOPING.diminishingDelta for 2 rounds
  *
+ * Every number here is the computed score (ARCH-01), so the same input
+ * always makes the same ready/ask decision.
+ *
  * Exported for unit tests.
  */
 export function shouldExit(session: Session, newExtraction: ExtractionResult): boolean {
-  if (newExtraction.confidence >= SCOPING.confidenceThreshold) {
+  const score = computeConfidence(newExtraction).score;
+  if (score >= SCOPING.confidenceThreshold) {
     return true;
   }
   // No further round would fit in the session (BUG-05).
@@ -446,10 +453,12 @@ export function shouldExit(session: Session, newExtraction: ExtractionResult): b
     return true;
   }
   if (session.rounds.length >= 2) {
-    const prev = session.rounds[session.rounds.length - 1]?.extraction.confidence;
-    const prevPrev = session.rounds[session.rounds.length - 2]?.extraction.confidence;
+    const scoreOf = (round: SessionRound | undefined): number | undefined =>
+      round ? computeConfidence(round.extraction).score : undefined;
+    const prev = scoreOf(session.rounds[session.rounds.length - 1]);
+    const prevPrev = scoreOf(session.rounds[session.rounds.length - 2]);
     if (prev !== undefined && prevPrev !== undefined) {
-      const d1 = newExtraction.confidence - prev;
+      const d1 = score - prev;
       const d2 = prev - prevPrev;
       if (d1 < SCOPING.diminishingDelta && d2 < SCOPING.diminishingDelta) {
         return true;

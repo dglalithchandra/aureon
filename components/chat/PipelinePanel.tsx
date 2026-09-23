@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { gsap, useGSAP } from "@/lib/gsap-init";
 import type { Session } from "@/lib/schemas/mcq";
 import { ConfidenceMeter } from "@/components/chat/ConfidenceMeter";
+import { computeConfidence } from "@/lib/scoring/confidence";
 import { StepIndicator } from "@/components/chat/StepIndicator";
 import {
   deriveSteps,
@@ -162,6 +163,20 @@ export function PipelinePanel({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const confidence = session?.current_confidence ?? 0;
+  // The same pure function the server scored with (ARCH-01), so the meter can
+  // show where the number came from.
+  const lastExtraction = session?.rounds[session.rounds.length - 1]?.extraction;
+  const scoreParts = useMemo(() => {
+    if (!lastExtraction) return undefined;
+    const scored = computeConfidence(lastExtraction);
+    return {
+      coverage: scored.coverage,
+      aiClarity: scored.quality,
+      consistency: scored.consistency,
+      githubBonus: scored.githubBonus,
+      cap: scored.cap,
+    };
+  }, [lastExtraction]);
 
   // Stagger steps on initial mount.
   useGSAP(
@@ -181,7 +196,7 @@ export function PipelinePanel({
 
   const body = (
     <>
-      <ConfidenceMeter value={confidence} />
+      <ConfidenceMeter value={confidence} parts={scoreParts} />
       <div
         className="border-blueprint-line/15 bg-blueprint-line/5 mt-4 flex flex-col gap-1 rounded-lg border p-3"
         aria-live="polite"

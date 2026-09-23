@@ -39,7 +39,13 @@ const client: ClientView = {
   open_items: ["Which payment provider for billing?"],
   confidence_badge: {
     score: 72,
-    breakdown: { coverage: 75, llm_quality: 80, github_validation: 60 },
+    breakdown: {
+      coverage: 75,
+      ai_clarity: 80,
+      consistency: 95,
+      github_bonus: 0,
+      cap_applied: 100,
+    },
   },
 };
 

@@ -29,12 +29,25 @@ export const MilestoneSchema = z.object({
 });
 export type Milestone = z.infer<typeof MilestoneSchema>;
 
+/**
+ * The score and the components behind it (ARCH-01). Every field is computed
+ * on the server by lib/scoring/confidence.ts; whatever the model writes here
+ * is replaced. The components default so documents written before this
+ * breakdown existed still load.
+ */
 export const ConfidenceBadgeSchema = z.object({
   score: z.number().int().min(0).max(100),
   breakdown: z.object({
+    /** Weighted completeness of the 9 parameters. */
     coverage: z.number().int().min(0).max(100),
-    llm_quality: z.number().int().min(0).max(100),
-    github_validation: z.number().int().min(0).max(100),
+    /** The model's clarity read — "AI clarity read" in the UI. */
+    ai_clarity: z.number().int().min(0).max(100).default(0),
+    /** How closely coverage and the clarity read agree. */
+    consistency: z.number().int().min(0).max(100).default(0),
+    /** Corroboration from similar public repos, at most SCOPING.githubBonusMax. */
+    github_bonus: z.number().int().min(0).max(100).default(0),
+    /** The ceiling that applied: 40, 65, or 100 when none did. */
+    cap_applied: z.number().int().min(0).max(100).default(100),
   }),
 });
 export type ConfidenceBadge = z.infer<typeof ConfidenceBadgeSchema>;

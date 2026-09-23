@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { SCOPING } from "@/lib/config/scoping";
 
 /**
  * Extraction schemas — the structured shape the LLM must return.
@@ -17,6 +16,7 @@ export const ParameterStateSchema = z.enum([
   "PARTIAL_THIN",
   "MISSING",
 ]);
+export type ParameterState = z.infer<typeof ParameterStateSchema>;
 
 export const ParameterIdSchema = z.enum([
   "P-01",
@@ -68,20 +68,19 @@ export const ExtractionResultSchema = z.object({
 export type ExtractionResult = z.infer<typeof ExtractionResultSchema>;
 
 /**
- * Enforce the BLOCKER invariant the LLM is told to obey, by repair rather than
- * rejection: if P-01 or P-03 is MISSING, blocker is forced to true and
- * confidence capped at SCOPING.blockerCap. A misbehaving model therefore can
- * neither bypass the gate nor fail the whole round over a fixable number.
+ * Enforce the BLOCKER invariant the LLM is told to obey, by repair rather
+ * than rejection: if P-01 or P-03 is MISSING, blocker is forced to true. A
+ * misbehaving model can therefore neither bypass the gate nor fail the whole
+ * round over a fixable flag. The score it would reach is capped separately,
+ * in lib/scoring/confidence.ts.
  */
 export function repairBlockerInvariant(data: ExtractionResult): ExtractionResult {
   const missing = (id: ParameterId) =>
     data.parameters.find((p) => p.id === id)?.state === "MISSING";
   if (!missing("P-01") && !missing("P-03")) return data;
-  return {
-    ...data,
-    blocker: true,
-    confidence: Math.min(data.confidence, SCOPING.blockerCap),
-  };
+  // `confidence` is only the model's clarity read now; the score it feeds is
+  // capped at blockerCap by lib/scoring/confidence.ts (ARCH-01).
+  return { ...data, blocker: true };
 }
 
 /**

@@ -124,43 +124,48 @@ export const submitExtractionTool: Anthropic.Tool = {
         type: "integer",
         minimum: 0,
         maximum: 100,
-        description: `Overall confidence 0-100. Hard cap at ${SCOPING.blockerCap} if blocker is true.`,
+        description:
+          "Your CLARITY READ 0-100: how clearly this brief describes a buildable product. It is one input to the score the server computes; do not try to compute that score.",
       },
       confidence_reasoning: {
         type: "string",
         maxLength: 800,
         description:
-          "One short paragraph explaining the score. Cite which parameters dragged it down.",
+          "ONE line explaining the clarity read. Name what made the brief clear or unclear.",
       },
       blocker: {
         type: "boolean",
-        description: `True iff P-01 (Goal) or P-03 (Features) is MISSING. When true, confidence MUST be <= ${SCOPING.blockerCap}.`,
+        description:
+          "True iff P-01 (Goal) or P-03 (Features) is MISSING. The server caps the score in that case; you do not.",
       },
     },
   },
 };
 
 /**
- * The "Confidence scoring" section of the system prompt, generated from
- * lib/config/scoping.ts so the weights and caps the model is told always
- * match the ones the server uses.
+ * The "Clarity read" section of the system prompt (ARCH-01). The server
+ * computes the confidence score from the parameter states it has validated;
+ * the model contributes one component, so this tells it what that component
+ * is and — explicitly — that it is not the score.
  */
 export function buildScoringRubric(config: ScopingConfig = SCOPING): string {
-  const weights = config.parameters.map((p) => `${p.id}: ${p.weight}`).join(", ");
-  const multipliers = Object.entries(config.stateMultipliers)
-    .map(([state, m]) => `${state}=${m.toFixed(1)}`)
-    .join(", ");
-  const coveragePct = Math.round(config.promptCoverageBlend * 100);
   return [
-    "# Confidence scoring",
+    "# Clarity read (the confidence field)",
     "",
-    "Use this rubric for the overall confidence number 0-100:",
-    "  - Coverage component: weighted average of parameter states. Weights:",
-    `      ${weights}`,
-    `      State multipliers: ${multipliers}`,
-    "  - Quality component: are features described precisely enough to build? Are user roles defined? Are NFRs stated?",
-    `  - Blend ~${coveragePct}% coverage + ${100 - coveragePct}% quality. Round to integer.`,
-    `  - Cap at ${config.blockerCap} if blocker.`,
+    "You do NOT compute the project's confidence score. The server computes it",
+    "from the parameter states you return, and caps it when a BLOCKER or HIGH",
+    `parameter is MISSING (${config.blockerCap} and ${config.criticalCap}).`,
+    "",
+    "`confidence` is your CLARITY READ 0-100 — how clearly this brief describes",
+    "a product somebody could build:",
+    "  90-100  precise and unambiguous, a developer could start today",
+    "  70-89   clear intent, some details left to assume",
+    "  40-69   understandable but vague in important places",
+    "  0-39    hard to tell what is wanted at all",
+    "",
+    "Judge how clear the writing is, not how complete the scope is — the",
+    "parameter states already carry completeness.",
+    "`confidence_reasoning` is ONE line naming what made it clear or unclear.",
   ].join("\n");
 }
 
@@ -242,12 +247,11 @@ P-09 — Success Metrics / Definition of Done
 
 If P-01 OR P-03 is MISSING:
   - Set blocker = true
-  - Set confidence <= ${SCOPING.blockerCap} (no exceptions)
   - Still extract everything else you can — the BLOCKER question generator runs separately
+  - The server caps the score; you only report your clarity read honestly
 
 If both P-01 and P-03 have any non-MISSING state:
   - Set blocker = false
-  - Compute confidence honestly (see scoring below)
 
 ${buildScoringRubric()}
 
@@ -266,6 +270,6 @@ Always include modules that are STANDARD for the domain even if the client did n
   - Always emit all 9 parameters in order P-01..P-09.
   - Never invent specific integrations the user did not mention. If they said "payments", P-05 is PARTIAL_DEEP, not PRESENT.
   - Quote evidence verbatim from the input. Do not paraphrase the quote.
-  - Be honest about gaps. A high confidence score on a thin input misleads the team.
+  - Be honest about gaps. A high clarity read on a thin input misleads the team.
   - Surface every assumption you make. The client edits these later.
 `;

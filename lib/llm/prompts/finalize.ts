@@ -82,15 +82,15 @@ export const submitClientViewTool: Anthropic.Tool = {
       confidence_badge: {
         type: "object",
         required: ["score", "breakdown"],
+        description:
+          "Placeholder only: the server computes the real score and its components and replaces this object. Send your rough read; do not agonise over it.",
         properties: {
           score: { type: "integer", minimum: 0, maximum: 100 },
           breakdown: {
             type: "object",
-            required: ["coverage", "llm_quality", "github_validation"],
+            required: ["coverage"],
             properties: {
               coverage: { type: "integer", minimum: 0, maximum: 100 },
-              llm_quality: { type: "integer", minimum: 0, maximum: 100 },
-              github_validation: { type: "integer", minimum: 0, maximum: 100 },
             },
           },
         },

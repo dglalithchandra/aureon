@@ -27,7 +27,10 @@ clarified before development starts.
 - 🧠 **Requirement Intelligence** — identifies PRESENT, PARTIAL and MISSING requirements
 - 🔎 **Hybrid Retrieval** — Vector Search + BM25 + Reciprocal Rank Fusion
 - 🎯 **Smart Questioning** — asks targeted questions instead of generic follow-ups
-- 📊 **Scope Confidence** — measures how complete the project definition is
+- 📊 **Scope Confidence** — a score the server computes from the parameter
+  states (coverage, the AI's clarity read, how far those two agree, and a
+  small GitHub bonus), capped while the goal, features, users or tech
+  constraints are missing. The AI never grades its own answer.
 - 🧩 **Domain-Aware Analysis** — adapts requirements to the project domain
 - 👤 **Client View** — simple, non-technical project scope
 - 👨‍💻 **Engineer View** — technical modules, constraints and effort indicators

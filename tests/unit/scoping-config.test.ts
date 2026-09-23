@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parameterWeight, SCOPING, stateMultiplier } from "@/lib/config/scoping";
+import { computeConfidence } from "@/lib/scoring/confidence";
 import {
   ExtractionResultStrictSchema,
   ParameterIdSchema,
@@ -74,10 +75,11 @@ describe("blocker invariant uses SCOPING.blockerCap", () => {
     expect(ExtractionResultStrictSchema.safeParse(blocked(40)).success).toBe(true);
   });
 
-  it("repairs confidence above the cap instead of rejecting it (ROB-01)", () => {
+  it("keeps the model's clarity read and caps the score instead (ARCH-01)", () => {
     const result = ExtractionResultStrictSchema.safeParse(blocked(55));
     expect(result.success).toBe(true);
-    expect(result.data?.confidence).toBe(40);
+    expect(result.data?.confidence).toBe(55);
+    expect(computeConfidence(result.data!).score).toBe(SCOPING.blockerCap);
   });
 
   it("forces blocker=true when P-01 or P-03 is MISSING", () => {

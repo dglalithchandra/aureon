@@ -33,7 +33,13 @@ describe("coerceClientView", () => {
       open_items: "Confirm the budget.",
       confidence_badge: {
         score: 87.5,
-        breakdown: { coverage: 70.4, llm_quality: 80.6, github_validation: 0.2 },
+        breakdown: {
+          coverage: 70.4,
+          ai_clarity: 80.6,
+          consistency: 90.5,
+          github_bonus: 0.2,
+          cap_applied: 100,
+        },
       },
     };
 
@@ -46,7 +52,13 @@ describe("coerceClientView", () => {
     expect(out.open_items).toEqual(["Confirm the budget."]);
     expect(out.confidence_badge).toEqual({
       score: 88,
-      breakdown: { coverage: 70, llm_quality: 81, github_validation: 0 },
+      breakdown: {
+        coverage: 70,
+        ai_clarity: 81,
+        consistency: 91,
+        github_bonus: 0,
+        cap_applied: 100,
+      },
     });
     expect(ClientViewSchema.safeParse(out).success).toBe(true);
   });

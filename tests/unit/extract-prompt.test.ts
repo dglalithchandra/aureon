@@ -6,55 +6,47 @@ import {
   submitExtractionTool,
 } from "@/lib/llm/prompts/extract";
 
-describe("extraction prompt is generated from lib/config/scoping.ts", () => {
-  it.each(SCOPING.parameters.map((p) => [p.id, p.weight] as const))(
-    "states the configured weight for %s (%d)",
-    (id, weight) => {
-      expect(EXTRACTION_SYSTEM_PROMPT).toContain(`${id}: ${weight}`);
-    },
-  );
+/** ARCH-01: the model reports a clarity read; the server computes the score. */
 
-  it("lists every weight in parameter order on one line", () => {
-    const line = SCOPING.parameters.map((p) => `${p.id}: ${p.weight}`).join(", ");
-    expect(line).toBe(
-      "P-01: 5, P-02: 4, P-03: 5, P-04: 3.5, P-05: 2.5, P-06: 2, P-07: 2, P-08: 2, P-09: 1",
+describe("the extraction prompt asks for a clarity read, not a score", () => {
+  it("tells the model it does not compute the score", () => {
+    expect(EXTRACTION_SYSTEM_PROMPT).toContain(
+      "You do NOT compute the project's confidence score",
     );
-    expect(EXTRACTION_SYSTEM_PROMPT).toContain(line);
+    expect(EXTRACTION_SYSTEM_PROMPT).toContain("CLARITY READ");
   });
 
-  it("states the configured state multipliers", () => {
-    expect(EXTRACTION_SYSTEM_PROMPT).toContain(
-      "State multipliers: PRESENT=1.0, PARTIAL_DEEP=0.7, PARTIAL_THIN=0.3, MISSING=0.0",
-    );
+  it("no longer asks the model to blend coverage and quality itself", () => {
+    expect(EXTRACTION_SYSTEM_PROMPT).not.toContain("Blend ~");
+    expect(EXTRACTION_SYSTEM_PROMPT).not.toContain("State multipliers:");
+    expect(EXTRACTION_SYSTEM_PROMPT).not.toContain("Cap at");
   });
 
-  it("uses the configured blocker cap in the prompt and the tool schema", () => {
-    const cap = SCOPING.blockerCap;
-    expect(EXTRACTION_SYSTEM_PROMPT).toContain(
-      `Set confidence <= ${cap} (no exceptions)`,
-    );
-    expect(EXTRACTION_SYSTEM_PROMPT).toContain(`Cap at ${cap} if blocker.`);
-    expect(JSON.stringify(submitExtractionTool.input_schema)).toContain(
-      `confidence MUST be <= ${cap}`,
-    );
+  it("does not tell the model to cap its own number", () => {
+    const schema = JSON.stringify(submitExtractionTool.input_schema);
+    expect(EXTRACTION_SYSTEM_PROMPT).not.toContain("Set confidence <=");
+    expect(schema).not.toContain("confidence MUST be <=");
+    expect(schema).toContain("do not try to compute that score");
   });
 
   it("embeds the generated rubric verbatim", () => {
     expect(EXTRACTION_SYSTEM_PROMPT).toContain(buildScoringRubric());
   });
 
-  it("follows the config when a weight or cap changes", () => {
-    const changed = {
-      ...SCOPING,
-      blockerCap: 35,
-      promptCoverageBlend: 0.6,
-      parameters: SCOPING.parameters.map((p) =>
-        p.id === "P-09" ? { ...p, weight: 1.5 } : p,
-      ),
-    };
-    const rubric = buildScoringRubric(changed);
-    expect(rubric).toContain("P-09: 1.5");
-    expect(rubric).toContain("Blend ~60% coverage + 40% quality.");
-    expect(rubric).toContain("Cap at 35 if blocker.");
+  it("names the configured caps so the model knows what the server does", () => {
+    expect(buildScoringRubric()).toContain(
+      `(${SCOPING.blockerCap} and ${SCOPING.criticalCap})`,
+    );
+    const changed = { ...SCOPING, blockerCap: 35, criticalCap: 60 };
+    expect(buildScoringRubric(changed)).toContain("(35 and 60)");
+  });
+
+  it("still describes all 9 parameters and their states", () => {
+    for (const p of SCOPING.parameters) {
+      expect(EXTRACTION_SYSTEM_PROMPT).toContain(`${p.id} — ${p.name}`);
+    }
+    for (const state of Object.keys(SCOPING.stateMultipliers)) {
+      expect(EXTRACTION_SYSTEM_PROMPT).toContain(state);
+    }
   });
 });

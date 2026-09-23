@@ -145,7 +145,13 @@ export function makeClientView(): ClientView {
     // Deliberately wrong: generateOutput must overwrite the LLM's badge.
     confidence_badge: {
       score: 12,
-      breakdown: { coverage: 1, llm_quality: 2, github_validation: 3 },
+      breakdown: {
+        coverage: 1,
+        ai_clarity: 2,
+        consistency: 3,
+        github_bonus: 4,
+        cap_applied: 5,
+      },
     },
   };
 }

@@ -1,11 +1,18 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Info } from "lucide-react";
 import { gsap } from "@/lib/gsap-init";
 import { SCOPING } from "@/lib/config/scoping";
+import {
+  ConfidenceExplainer,
+  type ConfidenceParts,
+} from "@/components/ConfidenceExplainer";
 
 interface ConfidenceMeterProps {
   value: number;
   threshold?: number;
+  /** Components behind the score; when given, the meter explains itself. */
+  parts?: ConfidenceParts;
 }
 
 /**
@@ -16,7 +23,9 @@ interface ConfidenceMeterProps {
 export function ConfidenceMeter({
   value,
   threshold = SCOPING.confidenceThreshold,
+  parts,
 }: ConfidenceMeterProps): React.ReactElement {
+  const [explainerOpen, setExplainerOpen] = useState(false);
   const numberRef = useRef<HTMLSpanElement | null>(null);
   const barRef = useRef<HTMLSpanElement | null>(null);
   const stateRef = useRef({ n: 0 });
@@ -55,7 +64,21 @@ export function ConfidenceMeter({
         <span className="text-blueprint-muted font-mono text-[10px] tracking-[0.2em] uppercase">
           Confidence
         </span>
-        <span className="text-blueprint-muted text-[10px]">target {threshold}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-blueprint-muted text-[10px]">target {threshold}</span>
+          {parts && (
+            <button
+              type="button"
+              onClick={() => setExplainerOpen((open) => !open)}
+              aria-expanded={explainerOpen}
+              aria-controls="confidence-explainer"
+              className="text-blueprint-muted hover:text-blueprint-text inline-flex items-center gap-1 rounded text-[10px] focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/60 focus-visible:outline-none"
+            >
+              <Info size={11} />
+              How is this calculated?
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex items-baseline gap-2">
         <span
@@ -88,6 +111,14 @@ export function ConfidenceMeter({
           aria-hidden
         />
       </div>
+      {parts && explainerOpen && (
+        <div
+          id="confidence-explainer"
+          className="border-blueprint-line/20 bg-blueprint-bg/60 mt-2 rounded-lg border p-3 text-xs"
+        >
+          <ConfidenceExplainer parts={parts} />
+        </div>
+      )}
     </div>
   );
 }

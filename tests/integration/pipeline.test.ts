@@ -56,7 +56,8 @@ describe("scoping pipeline (mock LLM)", () => {
     expect(stages).toEqual(["extracting", "github", "scoring", "clarifying"]);
     expect(session.status).toBe("awaiting_answers");
     expect(session.pipeline_stage).toBeNull();
-    expect(session.current_confidence).toBe(45);
+    // Computed from the parameter states, not the model's number (ARCH-01).
+    expect(session.current_confidence).toBe(55);
     expect(session.rounds).toHaveLength(1);
 
     const round0 = session.rounds[0]!;
@@ -72,9 +73,10 @@ describe("scoping pipeline (mock LLM)", () => {
     mock.enqueue(
       "submit_extraction",
       makeExtraction({
-        confidence: 78,
+        confidence: 70,
         parameters: makeParameters({
           "P-02": "PRESENT",
+          "P-04": "PRESENT",
           "P-07": "PARTIAL_DEEP",
           "P-08": "PRESENT",
         }),
@@ -89,7 +91,7 @@ describe("scoping pipeline (mock LLM)", () => {
     session = await submitAnswers(session, answers);
 
     expect(session.status).toBe("ready");
-    expect(session.current_confidence).toBe(78);
+    expect(session.current_confidence).toBe(79);
     expect(session.rounds).toHaveLength(2);
     expect(session.rounds[0]!.answers).toEqual(answers);
     expect(session.raw_input).toBe(RAW_INPUT);
@@ -106,17 +108,23 @@ describe("scoping pipeline (mock LLM)", () => {
     expect(extractionCalls[1]!.userText).toContain(
       "Custom: Field sales managers in three regions",
     );
-    // Confidence 78 is past the threshold, so no further questions were generated.
+    // The score (79) is past the threshold, so no further questions were generated.
     expect(mock.callsFor("generate_clarification_questions")).toHaveLength(1);
 
     // ── final output ────────────────────────────────────────────
     const output = await generateOutput(session);
 
     expect(FinalOutputSchema.safeParse(output).success).toBe(true);
-    // The LLM fixture says score 12; the server must use the pipeline's value.
+    // The LLM fixture says score 12; the server must use the computed value.
     expect(output.client.confidence_badge).toEqual({
-      score: 78,
-      breakdown: { coverage: 67, llm_quality: 78, github_validation: 0 },
+      score: 79,
+      breakdown: {
+        coverage: 80,
+        ai_clarity: 70,
+        consistency: 90,
+        github_bonus: 0,
+        cap_applied: 100,
+      },
     });
     expect(output.engineer.effort_summary.confidence_band).toBe(
       "±35% (medium confidence)",
@@ -124,13 +132,27 @@ describe("scoping pipeline (mock LLM)", () => {
     expect(mock.callsFor("submit_client_view")).toHaveLength(1);
     expect(mock.callsFor("submit_engineer_view")).toHaveLength(1);
     expect(mock.callsFor("submit_client_view")[0]?.userText).toContain(
-      "current_confidence: 78",
+      "current_confidence: 79",
     );
     expect(mock.calls).toHaveLength(5);
   });
 
   it("goes straight to ready when round 0 is already confident", async () => {
-    mock.override("submit_extraction", makeExtraction({ confidence: 72 }));
+    mock.override(
+      "submit_extraction",
+      makeExtraction({
+        confidence: 72,
+        parameters: makeParameters({
+          "P-02": "PRESENT",
+          "P-04": "PRESENT",
+          "P-05": "PRESENT",
+          "P-06": "PRESENT",
+          "P-07": "PRESENT",
+          "P-08": "PRESENT",
+          "P-09": "PRESENT",
+        }),
+      }),
+    );
 
     const session = await runRound(createSession(RAW_INPUT));
 
@@ -168,8 +190,9 @@ describe("scoping pipeline: LLM failures", () => {
     expect(mock.calls).toHaveLength(3);
   });
 
-  it("repairs an extraction that breaks the blocker invariant (blocker, 55 → 40)", async () => {
-    // P-01 MISSING requires blocker=true and confidence <= 40.
+  it("repairs an extraction that breaks the blocker invariant and caps the score", async () => {
+    // P-01 MISSING forces blocker=true; the score is capped at 40 (ARCH-01),
+    // while the model's clarity read is kept as it was.
     mock.override(
       "submit_extraction",
       makeExtraction({
@@ -184,7 +207,7 @@ describe("scoping pipeline: LLM failures", () => {
     expect(session.status).not.toBe("error");
     expect(session.rounds[0]!.extraction).toMatchObject({
       blocker: true,
-      confidence: 40,
+      confidence: 55,
     });
     expect(session.current_confidence).toBe(40);
     expect(mock.callsFor("submit_extraction")).toHaveLength(1); // repaired, not retried

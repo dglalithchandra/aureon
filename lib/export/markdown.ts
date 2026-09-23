@@ -35,8 +35,10 @@ export function clientToMarkdown(view: ClientView): string {
   out.push(
     `**Confidence:** ${view.confidence_badge.score}/100 ` +
       `(coverage ${view.confidence_badge.breakdown.coverage}, ` +
-      `clarity ${view.confidence_badge.breakdown.llm_quality}, ` +
-      `real-world match ${view.confidence_badge.breakdown.github_validation})`,
+      `AI clarity read ${view.confidence_badge.breakdown.ai_clarity}, ` +
+      `consistency ${view.confidence_badge.breakdown.consistency}, ` +
+      `GitHub bonus +${view.confidence_badge.breakdown.github_bonus}, ` +
+      `cap ${view.confidence_badge.breakdown.cap_applied})`,
   );
   out.push("");
   out.push("## Summary");
