@@ -1,8 +1,10 @@
 import { NextRequest } from "next/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { POST as createRoute } from "@/app/api/session/route";
 import { POST as shareRoute } from "@/app/api/share/route";
 import { putSession } from "@/lib/storage/session";
+import { getDatabase, setDatabase } from "@/lib/db/client";
+import { truncateAll, startTestDatabase } from "../helpers/db";
 import { createShareLink } from "@/lib/storage/share";
 import { StorageUnavailableError } from "@/lib/errors";
 import { buildOwnerCookie, OWNER_COOKIE_NAME } from "@/lib/security/session-cookie";
@@ -13,21 +15,27 @@ import {
   makeSession,
 } from "../fixtures/llm";
 
-/** DATA-01: a failed Redis write is an error, never a silent success. */
+/** DATA-01: a failed database write is an error, never a silent success. */
 
-// A fake Upstash client whose reads work and whose writes fail.
-const fake = vi.hoisted(() => ({ store: new Map<string, unknown>() }));
-vi.mock("@/lib/storage/redis", () => ({
-  getRedis: () => ({
-    get: async (key: string) => fake.store.get(key) ?? null,
-    set: async () => {
-      throw new Error("ECONNRESET (test)");
-    },
-    del: async () => {
-      throw new Error("ECONNRESET (test)");
-    },
-  }),
-}));
+/**
+ * The real database for reads, a broken one for writes: the case that made
+ * DATA-01 dangerous is the write that fails after the read succeeded.
+ */
+function breakWrites(): void {
+  const real = getDatabase();
+  const fail = (): never => {
+    throw new Error("ECONNRESET (test)");
+  };
+  setDatabase(
+    new Proxy(real, {
+      get(target, prop, receiver) {
+        if (prop === "insert" || prop === "update" || prop === "delete") return fail;
+        if (prop === "transaction") return async () => fail();
+        return Reflect.get(target, prop, receiver) as unknown;
+      },
+    }),
+  );
+}
 
 const OWNER = "c0ffee00-0000-4000-8000-0000000000aa";
 const session = makeSession({
@@ -39,9 +47,14 @@ const session = makeSession({
   final_output: { client: makeClientView(), engineer: makeEngineerView() },
 });
 
-beforeEach(() => {
-  fake.store.clear();
-  fake.store.set(`scopeai:session:${session.id}`, session);
+beforeEach(async () => {
+  await truncateAll();
+  await putSession(session);
+  breakWrites();
+});
+
+afterEach(async () => {
+  await startTestDatabase();
 });
 
 describe("storage writes fail loudly", () => {

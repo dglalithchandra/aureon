@@ -15,6 +15,9 @@ async function load() {
 function production(): void {
   vi.stubEnv("NODE_ENV", "production");
   vi.stubEnv("NEXT_RUNTIME", "nodejs");
+  // Projects live in Postgres, so production also needs a database; the
+  // test below covers what happens without one.
+  vi.stubEnv("DATABASE_URL", "postgres://user:pass@db.example.com/aureon");
 }
 
 afterEach(() => {
@@ -22,6 +25,16 @@ afterEach(() => {
 });
 
 describe("production storage requirement", () => {
+  it("a production env without a database throws at startup", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_RUNTIME", "nodejs");
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://example.upstash.io");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "test-token-0000000000");
+    const { getServerEnv } = await load();
+
+    expect(() => getServerEnv()).toThrow(/DATABASE_URL/);
+  });
+
   it("a production env without Upstash throws at startup", async () => {
     production();
     const { getServerEnv, register } = await load();

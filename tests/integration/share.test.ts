@@ -6,6 +6,7 @@ import { POST as shareRoute } from "@/app/api/share/route";
 import { DELETE as revokeRoute } from "@/app/api/share/[token]/route";
 import { PATCH as patchRoute } from "@/app/api/session/[id]/route";
 import SharePage from "@/app/share/[token]/page";
+import { resolveShareToken } from "@/lib/storage/share";
 import { deleteSession, putSession } from "@/lib/storage/session";
 import { buildOwnerCookie, OWNER_COOKIE_NAME } from "@/lib/security/session-cookie";
 import type { Session } from "@/lib/schemas/mcq";
@@ -109,16 +110,25 @@ describe("POST /api/share", () => {
 });
 
 describe("share page", () => {
-  it("still renders after the session key is deleted", async () => {
+  it("renders from its own snapshot, with the title it was shared under", async () => {
     const session = await finalizedSession();
     const { body } = await share(session.id, cookieFor(OWNER), "Craft marketplace MVP");
-    await deleteSession(session.id);
 
     const html = await renderShare(body.token);
     expect(html).toContain("Craft marketplace MVP");
     expect(html).toContain("Original summary of the marketplace scope");
     expect(html).toContain("Snapshot taken");
     expect(html).toContain("Re-share to include later edits.");
+  });
+
+  it("goes down with the project when the project is deleted", async () => {
+    // Deleting a project is a hard delete: its shares go too, so a link
+    // cannot outlive the data it was made from.
+    const session = await finalizedSession();
+    const { body } = await share(session.id);
+    await deleteSession(session.id);
+
+    expect(await resolveShareToken(body.token)).toBeNull();
   });
 
   it("shows the snapshot, not edits made after sharing", async () => {
@@ -173,10 +183,9 @@ describe("DELETE /api/share/[token]", () => {
     expect(again.body.token).not.toBe(body.token);
   });
 
-  it("is owner only, even after the session expired", async () => {
+  it("is owner only", async () => {
     const session = await finalizedSession();
     const { body } = await share(session.id);
-    await deleteSession(session.id);
 
     expect((await revoke(body.token, cookieFor(STRANGER))).status).toBe(401);
     expect((await revoke(body.token, "")).status).toBe(401);

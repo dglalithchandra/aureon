@@ -82,10 +82,11 @@ describe("BUG-03: sessions are owned by the browser, not the latest cookie", () 
   });
 
   it("a session cookie value does not pass as an owner cookie", async () => {
-    const res = await create();
-    const a = await sessionOf(res);
-    const stored: Session = { ...a, owner_id: a.id };
-    await putSession(stored);
+    // A project whose owner id happens to equal its own id: the only case
+    // where a session cookie could be replayed as an owner cookie.
+    const id = "d15ea5e0-0000-4000-8000-0000000000cd";
+    const a: Session = makeSession({ id, owner_id: id });
+    await putSession(a);
     // `${id}.${sig(id)}` is a valid session cookie but not a valid owner cookie.
     const reused = `${OWNER_COOKIE_NAME}=${buildSessionCookie(a.id).value}`;
     expect((await read(a.id, reused)).status).toBe(401);

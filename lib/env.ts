@@ -33,6 +33,11 @@ const serverSchema = z
     /** Override the model used when LLM_PROVIDER=openrouter. */
     OPENROUTER_MODEL: z.string().optional(),
     GITHUB_TOKEN: z.string().optional(),
+    /**
+     * Postgres connection string (Neon's pooled endpoint, or any Postgres).
+     * Required in production: projects, shares and accounts live here.
+     */
+    DATABASE_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(10).optional(),
     /**
@@ -79,8 +84,17 @@ const serverSchema = z
         message: "GEMINI_API_KEY required when LLM_PROVIDER=gemini (the default)",
       });
     }
-    // Serverless instances do not share memory: without Redis, sessions and
-    // share links would randomly "disappear" between requests (DATA-01).
+    // Without a database there is nowhere to keep projects, shares or
+    // accounts, and nothing to fall back on.
+    if (data.NODE_ENV === "production" && !data.DATABASE_URL) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["DATABASE_URL"],
+        message: "DATABASE_URL is required in production",
+      });
+    }
+    // Serverless instances do not share memory: without Redis, locks and
+    // rate limits would be per-instance (DATA-01).
     if (
       data.NODE_ENV === "production" &&
       data.ALLOW_MEMORY_STORE !== "1" &&
