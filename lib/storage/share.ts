@@ -3,12 +3,14 @@ import { randomBytes } from "node:crypto";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 import { getDatabase } from "@/lib/db/client";
-import { shares } from "@/lib/db/schema";
+import { shares, SHARE_EXPIRY_DAYS, SHARE_MODES, type ShareMode } from "@/lib/db/schema";
 import { FinalOutputSchema } from "@/lib/schemas/output";
 import { StorageUnavailableError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
-const SHARE_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+/** Default life of a link; the owner may pick 7, 30 or 90 days. */
+const SHARE_TTL_SECONDS = 30 * 24 * 60 * 60;
+const DAY_SECONDS = 24 * 60 * 60;
 
 /**
  * What a share link shows (BUG-04): a copy of the output taken when it was
@@ -26,6 +28,12 @@ const ShareSnapshotSchema = z.object({
   title: z.string().min(1).max(120),
   final_output: FinalOutputSchema,
   created_at: z.number().int(),
+  /** "view" (read-only) or "approval" (blueprint step 13). */
+  mode: z.enum(SHARE_MODES).default("view"),
+  /** The version the client is being asked to approve. */
+  version_id: z.string().uuid().nullable().default(null),
+  version_number: z.number().int().positive().nullable().default(null),
+  expires_at: z.number().int().nullable().default(null),
 });
 export type ShareSnapshot = z.infer<typeof ShareSnapshotSchema>;
 
@@ -49,6 +57,10 @@ function toSnapshot(row: ShareRow): ShareSnapshot | null {
     title: row.title,
     final_output: row.finalOutput,
     created_at: row.createdAt.getTime(),
+    mode: row.mode,
+    version_id: row.versionId,
+    version_number: row.versionNumber,
+    expires_at: row.expiresAt.getTime(),
   });
   if (!parsed.success) {
     logger.warn("share.zod_failure", {
@@ -110,15 +122,54 @@ export async function findActiveShare(
   }
 }
 
+export interface CreateShareInput extends Omit<
+  ShareSnapshot,
+  "created_at" | "expires_at" | "mode" | "version_id" | "version_number"
+> {
+  mode?: ShareMode;
+  version_id?: string | null;
+  version_number?: number | null;
+  /** 7, 30 or 90; anything else falls back to the default 30. */
+  expires_in_days?: number;
+}
+
+/** The link's life in seconds. Only the offered choices are honoured. */
+function expirySeconds(days: number | undefined): number {
+  if (days === undefined) return SHARE_TTL_SECONDS;
+  const allowed = (SHARE_EXPIRY_DAYS as readonly number[]).includes(days);
+  return allowed ? days * DAY_SECONDS : SHARE_TTL_SECONDS;
+}
+
+/** Every live link of a project, newest first — for share management. */
+export async function listShares(
+  sessionId: string,
+): Promise<Array<{ token: string; snapshot: ShareSnapshot; active: boolean }>> {
+  const rows = await getDatabase()
+    .select()
+    .from(shares)
+    .where(and(eq(shares.projectId, sessionId), gt(shares.expiresAt, new Date())))
+    .orderBy(desc(shares.createdAt));
+  return rows.flatMap((row) => {
+    const snapshot = toSnapshot(row);
+    return snapshot ? [{ token: row.token, snapshot, active: row.active }] : [];
+  });
+}
+
 /** Store a new snapshot under a fresh token and make it the active share. */
 export async function createShareLink(
-  input: Omit<ShareSnapshot, "created_at">,
+  input: CreateShareInput,
 ): Promise<{ token: string; snapshot: ShareSnapshot }> {
   const token = newShareToken();
   const createdAt = new Date();
+  const ttlSeconds = expirySeconds(input.expires_in_days);
+  const expiresAt = new Date(createdAt.getTime() + ttlSeconds * 1000);
   const snapshot = ShareSnapshotSchema.parse({
     ...input,
+    mode: input.mode ?? "view",
+    version_id: input.version_id ?? null,
+    version_number: input.version_number ?? null,
     created_at: createdAt.getTime(),
+    expires_at: expiresAt.getTime(),
   });
   const db = getDatabase();
   try {
@@ -136,8 +187,11 @@ export async function createShareLink(
         title: snapshot.title,
         finalOutput: snapshot.final_output,
         active: true,
+        mode: snapshot.mode,
+        versionId: snapshot.version_id,
+        versionNumber: snapshot.version_number,
         createdAt,
-        expiresAt: new Date(createdAt.getTime() + SHARE_TTL_SECONDS * 1000),
+        expiresAt,
       });
     });
   } catch (err) {

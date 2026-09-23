@@ -224,6 +224,16 @@ export const shares = pgTable(
     finalOutput: jsonb("final_output").notNull(),
     /** Only the newest share of a project is the "active" one. */
     active: boolean("active").notNull().default(true),
+    /**
+     * view     read-only, what a share link has always been
+     * approval the same document plus Approve / Request changes
+     */
+    mode: text("mode").notNull().default("view"),
+    /** The version being approved, for an approval link. */
+    versionId: uuid("version_id").references(() => versions.id, {
+      onDelete: "set null",
+    }),
+    versionNumber: integer("version_number"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
@@ -236,9 +246,20 @@ export const shares = pgTable(
 );
 
 /* ──────────────────────────────────────────────────────────────
- *  Versions and approvals (step 17)
+ *  Versions and approvals (blueprint steps 13 and 14)
  * ────────────────────────────────────────────────────────────── */
 
+/** Why a version exists. */
+export const VERSION_REASONS = ["generated", "edited", "clarified"] as const;
+export type VersionReason = (typeof VERSION_REASONS)[number];
+
+/**
+ * One immutable snapshot of a project's output.
+ *
+ * Immutable is enforced by the database, not only by convention: a trigger
+ * (see the migration) refuses any UPDATE that changes the content columns.
+ * Approval may set `lockedAt`, `label` and `approvedBy`, and nothing else.
+ */
 export const versions = pgTable(
   "versions",
   {
@@ -249,11 +270,19 @@ export const versions = pgTable(
     versionNumber: integer("version_number").notNull(),
     /** The whole FinalOutput as it stood; diffed against its predecessor. */
     output: jsonb("output").notNull(),
+    /** generated | edited | clarified */
+    reason: text("reason").notNull().default("generated"),
+    /** The computed confidence at the time (ARCH-01). */
+    confidence: integer("confidence").notNull().default(0),
     label: text("label"),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+    /** Set when a client approves it: the version can never change after. */
+    lockedAt: timestamp("locked_at", { withTimezone: true, mode: "date" }),
+    /** The name the approver gave, for the "Approved v3 — date" label. */
+    approvedBy: text("approved_by"),
   },
   (table) => [
     uniqueIndex("versions_project_number_idx").on(table.projectId, table.versionNumber),
@@ -263,6 +292,11 @@ export const versions = pgTable(
 export const APPROVAL_STATES = ["pending", "approved", "changes_requested"] as const;
 export type ApprovalState = (typeof APPROVAL_STATES)[number];
 
+/**
+ * A client's decision on one version. The client needs no account, so the
+ * identity kept is what they typed plus a hash of their IP — enough to show
+ * who approved and to tell two approvals apart, without storing an address.
+ */
 export const approvals = pgTable(
   "approvals",
   {
@@ -271,15 +305,27 @@ export const approvals = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     versionId: uuid("version_id").references(() => versions.id, { onDelete: "cascade" }),
+    /** The number shown to the client, kept even if the version row goes. */
+    versionNumber: integer("version_number"),
+    /** pending | approved | changes_requested */
     state: text("state").notNull().default("pending"),
     comment: text("comment"),
+    approverName: text("approver_name"),
+    approverEmail: text("approver_email"),
+    /** SHA-256 of the client's IP. Never the address itself. */
+    approverIpHash: text("approver_ip_hash"),
+    /** The share link the decision came through. */
+    shareToken: text("share_token"),
     decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "set null" }),
     decidedAt: timestamp("decided_at", { withTimezone: true, mode: "date" }),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("approvals_project_idx").on(table.projectId)],
+  (table) => [
+    index("approvals_project_idx").on(table.projectId),
+    index("approvals_version_idx").on(table.versionId),
+  ],
 );
 
 /* ──────────────────────────────────────────────────────────────
@@ -344,6 +390,13 @@ export const auditLog = pgTable(
     index("audit_log_created_idx").on(table.createdAt),
   ],
 );
+
+export const SHARE_MODES = ["view", "approval"] as const;
+export type ShareMode = (typeof SHARE_MODES)[number];
+
+/** Expiry choices offered when a link is made (blueprint step 13). */
+export const SHARE_EXPIRY_DAYS = [7, 30, 90] as const;
+export type ShareExpiryDays = (typeof SHARE_EXPIRY_DAYS)[number];
 
 export const schema = {
   users,

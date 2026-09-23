@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { putSession } from "@/lib/storage/session";
+import { recordVersion } from "@/lib/versions/store";
+import { getViewer } from "@/lib/auth/viewer";
 import { FinalOutputSchema } from "@/lib/schemas/output";
 import {
   jsonError,
@@ -88,6 +90,15 @@ export async function PATCH(
       updated_at: Date.now(),
     };
     await putSession(updated);
+    // Blueprint step 14: a saved edit is a version of its own, so the diff
+    // can show what the owner changed by hand.
+    await recordVersion({
+      projectId: updated.id,
+      output: final_output,
+      reason: "edited",
+      confidence: updated.current_confidence,
+      createdBy: (await getViewer(req)).userId,
+    });
     return NextResponse.json({ session: updated });
   } catch (err) {
     return jsonError(err);

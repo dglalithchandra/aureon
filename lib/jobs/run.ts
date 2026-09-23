@@ -2,6 +2,7 @@ import "@/lib/server-only";
 import { runRound } from "@/lib/pipeline/orchestrator";
 import { generateClientView, generateEngineerView } from "@/lib/pipeline/finalize";
 import { getSession, mutateSession, putSession } from "@/lib/storage/session";
+import { latestVersion, recordVersion } from "@/lib/versions/store";
 import {
   acquireLock,
   ownsLock,
@@ -97,6 +98,18 @@ async function runFinalizePartJob(job: Job, part: OutputPart): Promise<JobOutcom
       applyFinalizePart(current, result),
     );
     if (!stored) return "not_found";
+    // Blueprint step 14: a finished document is a version. "clarified" when
+    // the project already had one — the client answered more questions and
+    // this is what came back.
+    if (stored.status === "finalized" && stored.final_output) {
+      const existing = await latestVersion(stored.id);
+      await recordVersion({
+        projectId: stored.id,
+        output: stored.final_output,
+        reason: existing ? "clarified" : "generated",
+        confidence: stored.current_confidence,
+      });
+    }
     if ("error" in result) return "failed";
     return (stored.draft_output?.pending.length ?? 0) > 0 ? "waiting" : "completed";
   } finally {

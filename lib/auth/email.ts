@@ -65,11 +65,20 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Send one magic link. Throws so Auth.js can show the user a failure. */
-export async function sendMagicLink({ to, url, host }: MagicLinkEmail): Promise<void> {
+export interface OutgoingEmail {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  /** For the log line, so a failure says which kind of email it was. */
+  label: string;
+}
+
+/** Send one email. Throws, so the caller can tell the user it failed. */
+export async function sendEmail(email: OutgoingEmail): Promise<void> {
   const env = getServerEnv();
   if (!env.EMAIL_API_KEY || !env.EMAIL_FROM) {
-    throw new Error("Email sign-in is not configured (EMAIL_API_KEY, EMAIL_FROM)");
+    throw new Error("Email is not configured (EMAIL_API_KEY, EMAIL_FROM)");
   }
 
   const res = await fetch(env.EMAIL_API_URL ?? DEFAULT_ENDPOINT, {
@@ -80,18 +89,75 @@ export async function sendMagicLink({ to, url, host }: MagicLinkEmail): Promise<
     },
     body: JSON.stringify({
       from: env.EMAIL_FROM,
-      to: [to],
-      subject: `Sign in to Aureon`,
-      html: magicLinkHtml({ url, host }),
-      text: magicLinkText({ url, host }),
+      to: [email.to],
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
     }),
     signal: AbortSignal.timeout(15_000),
   });
 
   if (!res.ok) {
     const detail = (await res.text().catch(() => "")).slice(0, 200);
-    logger.error("auth.magic_link_failed", { status: res.status, detail });
-    throw new Error(`Could not send the sign-in email (${res.status})`);
+    logger.error("email.failed", { label: email.label, status: res.status, detail });
+    throw new Error(`Could not send the email (${res.status})`);
   }
-  logger.info("auth.magic_link_sent", { host });
+  logger.info("email.sent", { label: email.label });
+}
+
+/** Send one magic link. Throws so Auth.js can show the user a failure. */
+export async function sendMagicLink({ to, url, host }: MagicLinkEmail): Promise<void> {
+  await sendEmail({
+    to,
+    subject: "Sign in to Aureon",
+    html: magicLinkHtml({ url, host }),
+    text: magicLinkText({ url, host }),
+    label: "magic_link",
+  });
+}
+
+export interface ChangesRequestedEmail {
+  to: string;
+  /** The project's title, as the owner named it. */
+  title: string;
+  approver: string;
+  comment: string;
+  /** Where the owner goes to read it. */
+  url: string;
+}
+
+/** Tell an owner that a client asked for changes (blueprint step 13). */
+export async function sendChangesRequested(email: ChangesRequestedEmail): Promise<void> {
+  const body = [
+    `${email.approver} asked for changes to "${email.title}".`,
+    "",
+    email.comment || "(no comment left)",
+    "",
+    email.url,
+  ].join("\n");
+
+  await sendEmail({
+    to: email.to,
+    subject: `Changes requested: ${email.title}`.slice(0, 120),
+    html: `<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:32px;background:#0b0d12;font-family:ui-sans-serif,system-ui,sans-serif;color:#e7e9ee">
+    <div style="max-width:480px;margin:0 auto">
+      <p style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8b93a7;margin:0 0 24px">Aureon</p>
+      <h1 style="font-size:20px;line-height:1.3;margin:0 0 12px">Changes requested</h1>
+      <p style="font-size:14px;line-height:1.6;color:#b8bfd0;margin:0 0 16px">
+        ${escapeHtml(email.approver)} reviewed <strong>${escapeHtml(email.title)}</strong> and asked for changes.
+      </p>
+      <blockquote style="margin:0 0 24px;padding:12px 16px;border-left:3px solid #7dd3fc;background:rgba(255,255,255,0.03);font-size:14px;line-height:1.6;color:#e7e9ee">
+        ${escapeHtml(email.comment || "(no comment left)")}
+      </blockquote>
+      <p style="margin:0">
+        <a href="${escapeHtml(email.url)}" style="display:inline-block;background:#7dd3fc;color:#0b0d12;font-weight:600;font-size:14px;text-decoration:none;padding:12px 20px;border-radius:10px">Open the scope</a>
+      </p>
+    </div>
+  </body>
+</html>`,
+    text: body,
+    label: "changes_requested",
+  });
 }

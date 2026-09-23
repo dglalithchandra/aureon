@@ -184,17 +184,66 @@ const ShareResponseSchema = z.object({
   url: z.string(),
   /** When the snapshot behind the link was taken (ms). */
   created_at: z.number(),
+  /** When it stops working (ms). */
+  expires_at: z.number().nullable().default(null),
+  /** "view" or "approval" (blueprint step 13). */
+  mode: z.enum(["view", "approval"]).default("view"),
+  /** The version an approval link is asking about. */
+  version_number: z.number().nullable().default(null),
   /** True when the session's existing link was returned. */
   reused: z.boolean(),
 });
 export type ShareLink = z.infer<typeof ShareResponseSchema>;
 
+const ShareListSchema = z.object({
+  shares: z.array(
+    z.object({
+      token: z.string(),
+      url: z.string(),
+      mode: z.enum(["view", "approval"]),
+      version_number: z.number().nullable(),
+      created_at: z.number(),
+      expires_at: z.number().nullable(),
+      active: z.boolean(),
+    }),
+  ),
+});
+export type ShareListItem = z.infer<typeof ShareListSchema>["shares"][number];
+
+/** Every live link of a session (owner only). */
+export async function listShares(sessionId: string): Promise<ShareListItem[]> {
+  const res = await fetch(`/api/share?sessionId=${encodeURIComponent(sessionId)}`, {
+    credentials: "same-origin",
+  });
+  if (!res.ok) throw await readError(res);
+  return ShareListSchema.parse(await res.json()).shares;
+}
+
+export interface CreateShareOptions {
+  title?: string;
+  /** "approval" asks the client to approve the latest version. */
+  mode?: "view" | "approval";
+  /** 7, 30 or 90 days. */
+  expiresInDays?: 7 | 30 | 90;
+  /** Make a new link even when one is already active. */
+  fresh?: boolean;
+}
+
 /** Share a finalized session: its active link, or a new snapshot link. */
-export async function createShare(sessionId: string, title?: string): Promise<ShareLink> {
+export async function createShare(
+  sessionId: string,
+  options: CreateShareOptions = {},
+): Promise<ShareLink> {
   const res = await fetch(`/api/share`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionId, title }),
+    body: JSON.stringify({
+      sessionId,
+      title: options.title,
+      mode: options.mode ?? "view",
+      expiresInDays: options.expiresInDays ?? 30,
+      fresh: options.fresh ?? false,
+    }),
     credentials: "same-origin",
   });
   if (!res.ok) throw await readError(res);

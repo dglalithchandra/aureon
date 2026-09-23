@@ -121,16 +121,40 @@ describe("share links", () => {
     );
   });
 
-  it("createShare sends the title and returns the snapshot time", async () => {
+  it("createShare sends the title, mode and expiry, and returns the snapshot time", async () => {
     respond(200, { token: "t".repeat(43), url: "/share/x", created_at: 5, reused: true });
-    await expect(createShare(SESSION.id, "My scope")).resolves.toMatchObject({
+    await expect(createShare(SESSION.id, { title: "My scope" })).resolves.toMatchObject({
       created_at: 5,
       reused: true,
+      mode: "view",
     });
     const init = vi.mocked(fetch).mock.calls[0]?.[1];
     expect(JSON.parse(String(init?.body))).toEqual({
       sessionId: SESSION.id,
       title: "My scope",
+      mode: "view",
+      expiresInDays: 30,
+      fresh: false,
+    });
+  });
+
+  it("createShare asks for an approval link when told to", async () => {
+    respond(200, {
+      token: "t".repeat(43),
+      url: "/share/x",
+      created_at: 5,
+      reused: false,
+      mode: "approval",
+      version_number: 3,
+    });
+    await expect(
+      createShare(SESSION.id, { mode: "approval", expiresInDays: 7, fresh: true }),
+    ).resolves.toMatchObject({ mode: "approval", version_number: 3 });
+    const init = vi.mocked(fetch).mock.calls[0]?.[1];
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      mode: "approval",
+      expiresInDays: 7,
+      fresh: true,
     });
   });
 

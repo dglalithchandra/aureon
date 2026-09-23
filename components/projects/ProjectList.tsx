@@ -2,7 +2,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, ExternalLink, Search, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, History, Search, Trash2 } from "lucide-react";
 import type { ProjectSummary } from "@/lib/projects/list";
 import { cn } from "@/lib/utils";
 
@@ -129,6 +129,13 @@ export function ProjectList({
                 className="border-blueprint-line/25 text-blueprint-muted hover:text-blueprint-text inline-flex h-8 w-8 items-center justify-center rounded-lg border"
               >
                 <ExternalLink size={13} />
+              </Link>
+              <Link
+                href={`/projects/${project.id}/versions`}
+                aria-label={`Version history of ${project.title}`}
+                className="border-blueprint-line/25 text-blueprint-muted hover:text-blueprint-text inline-flex h-8 w-8 items-center justify-center rounded-lg border"
+              >
+                <History size={13} />
               </Link>
               <button
                 type="button"
