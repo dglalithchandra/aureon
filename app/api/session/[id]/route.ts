@@ -5,6 +5,7 @@ import { putSession } from "@/lib/storage/session";
 import { FinalOutputSchema } from "@/lib/schemas/output";
 import {
   jsonError,
+  loadAccessibleSession,
   loadOwnedSession,
   readJsonBody,
   requireJsonContentType,
@@ -32,7 +33,8 @@ export async function GET(
   }
 
   try {
-    const session = await loadOwnedSession(req, id);
+    // A viewer may read a project; editing it needs "write" (see the PATCH).
+    const session = await loadAccessibleSession(req, id, "read");
     if (session instanceof NextResponse) return session;
     return NextResponse.json({ session });
   } catch (err) {

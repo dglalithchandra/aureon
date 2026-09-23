@@ -90,6 +90,28 @@ app forwards the resulting secret to QStash so its calls get through.
 
 ---
 
+## 🗄️ Accounts and storage
+
+Projects, share links and accounts live in Postgres (Drizzle). Redis keeps
+only what may vanish: locks, rate limits, caches and live job progress.
+
+```bash
+cp .env.example .env.local     # then fill DATABASE_URL
+npm run db:migrate             # create the tables
+npm run dev
+```
+
+Without `DATABASE_URL`, development starts on a local file-backed Postgres
+(PGlite in `.pglite/`) so the app runs before any database exists. Production
+refuses to start without a real one.
+
+Sign-in is [Auth.js](https://authjs.dev) with a magic link and Google, and it
+is optional: with neither configured the app works anonymously, one scope per
+browser. Signing in claims every scope that browser made. A daily cron
+(`/api/cron/retention`) blanks raw client input after the workspace's
+retention period — 90 days of no activity by default — and keeps the
+documents.
+
 ## 🧪 Testing
 
 Tests use [Vitest](https://vitest.dev) and never call a paid API or GitHub.

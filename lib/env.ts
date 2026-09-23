@@ -38,6 +38,23 @@ const serverSchema = z
      * Required in production: projects, shares and accounts live here.
      */
     DATABASE_URL: z.string().url().optional(),
+    /**
+     * Auth.js. AUTH_SECRET signs the session cookie and the magic-link
+     * tokens; the rest turn a sign-in method on. With none of them set the
+     * app still runs, anonymously — which is what the tests do.
+     */
+    AUTH_SECRET: z.string().min(32).optional(),
+    AUTH_URL: z.string().url().optional(),
+    AUTH_GOOGLE_ID: z.string().optional(),
+    AUTH_GOOGLE_SECRET: z.string().optional(),
+    /**
+     * Magic links are sent over an HTTPS email API (lib/auth/email.ts), not
+     * SMTP. EMAIL_API_URL defaults to Resend's endpoint; any API that takes
+     * {from, to, subject, html, text} with a bearer token works.
+     */
+    EMAIL_API_KEY: z.string().optional(),
+    EMAIL_API_URL: z.string().url().optional(),
+    EMAIL_FROM: z.string().optional(),
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(10).optional(),
     /**
@@ -67,6 +84,11 @@ const serverSchema = z
      * Defaults to the origin of the request that queued the job.
      */
     JOBS_BASE_URL: z.string().url().optional(),
+    /**
+     * Bearer token Vercel's cron scheduler sends. Without it the retention
+     * job refuses to run, so a missing secret cannot become an open endpoint.
+     */
+    CRON_SECRET: z.string().min(16).optional(),
     /** Set by Vercel when "Protection Bypass for Automation" is enabled. */
     VERCEL_AUTOMATION_BYPASS_SECRET: z.string().min(1).optional(),
     /** Global cap on LLM calls per UTC day, across all users (cost guard). */
@@ -117,6 +139,19 @@ const serverSchema = z
         path: ["QSTASH_CURRENT_SIGNING_KEY"],
         message:
           "QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY are required when QSTASH_TOKEN is set",
+      });
+    }
+    // A sign-in method without AUTH_SECRET would hand out unsigned cookies.
+    if (
+      data.NODE_ENV === "production" &&
+      (data.AUTH_GOOGLE_ID ?? data.EMAIL_API_KEY) &&
+      !data.AUTH_SECRET
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["AUTH_SECRET"],
+        message:
+          "AUTH_SECRET is required once a sign-in method is configured (32+ random characters)",
       });
     }
     if (data.LLM_PROVIDER === "openrouter" && !data.OPENROUTER_API_KEY) {

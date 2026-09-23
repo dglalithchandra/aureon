@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 *.log
+
+# Local development database (PGlite fallback when DATABASE_URL is unset)
+.pglite/

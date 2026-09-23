@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { sessionEventStream } from "@/lib/storage/session-events";
-import { jsonError, loadOwnedSession, validateUuid } from "@/lib/security/route-helpers";
+import {
+  jsonError,
+  loadAccessibleSession,
+  validateUuid,
+} from "@/lib/security/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +29,7 @@ export async function GET(req: NextRequest, { params }: RouteParams): Promise<Re
   }
 
   try {
-    const owned = await loadOwnedSession(req, id);
+    const owned = await loadAccessibleSession(req, id, "read");
     if (owned instanceof NextResponse) return owned;
   } catch (err) {
     return jsonError(err);

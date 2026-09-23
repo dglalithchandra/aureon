@@ -440,12 +440,27 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
           />
         )}
 
-        {!errorNotice && createMutation.isError && createMutation.error && (
-          <ErrorBanner
-            message={createMutation.error.message}
-            onRetry={() => createMutation.reset()}
-          />
-        )}
+        {!errorNotice &&
+          createMutation.isError &&
+          createMutation.error &&
+          (createMutation.error.code === "SIGN_IN_REQUIRED" ? (
+            // The anonymous limit is not a failure: it is the moment to
+            // offer an account, with the current scope still safe.
+            <div className="border-blueprint-line/30 text-blueprint-muted rounded-xl border bg-white/[0.03] px-4 py-3 text-sm">
+              {createMutation.error.message}{" "}
+              <Link
+                href="/sign-in"
+                className="text-[var(--color-blueprint-accent)] underline decoration-dotted underline-offset-4"
+              >
+                Sign in
+              </Link>
+            </div>
+          ) : (
+            <ErrorBanner
+              message={createMutation.error.message}
+              onRetry={() => createMutation.reset()}
+            />
+          ))}
 
         {!errorNotice && answerMutation.isError && answerMutation.error && (
           <ErrorBanner

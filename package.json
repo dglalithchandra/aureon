@@ -21,6 +21,7 @@
     "audit": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
+    "@auth/drizzle-adapter": "^1.11.3",
     "@gsap/react": "2.1.2",
     "@octokit/rest": "22.0.1",
     "@splinetool/react-spline": "4.1.0",
@@ -35,6 +36,7 @@
     "html2pdf.js": "0.14.0",
     "lucide-react": "1.14.0",
     "next": "16.3.5",
+    "next-auth": "^5.0.0-beta.32",
     "postgres": "^3.4.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",

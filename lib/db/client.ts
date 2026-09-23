@@ -17,19 +17,30 @@ import { schema } from "@/lib/db/schema";
 
 export type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
 
-let db: Database | null = null;
-let client: ReturnType<typeof postgres> | null = null;
+/**
+ * The handle lives on globalThis, not in a module variable. Two reasons:
+ * `instrumentation.ts` runs in its own module instance (what it sets would
+ * otherwise be invisible to route handlers), and Next.js Fast Refresh
+ * re-evaluates modules on every edit, which would drop a local one.
+ */
+const globalForDb = globalThis as typeof globalThis & {
+  __aureon_db?: Database;
+  __aureon_pg?: ReturnType<typeof postgres>;
+};
 
 /**
- * Point every caller at a different database. Tests use it to inject PGlite;
- * nothing in the app calls it.
+ * Point every caller at a different database: the local development
+ * fallback (instrumentation.ts) and the tests (tests/helpers/db.ts) both
+ * use it. Nothing in a request path calls it.
  */
 export function setDatabase(next: Database | null): void {
-  db = next;
+  if (next) globalForDb.__aureon_db = next;
+  else delete globalForDb.__aureon_db;
 }
 
 export function getDatabase(): Database {
-  if (db) return db;
+  const existing = globalForDb.__aureon_db;
+  if (existing) return existing;
   const url = getServerEnv().DATABASE_URL;
   if (!url) {
     throw new Error(
@@ -38,7 +49,7 @@ export function getDatabase(): Database {
   }
   // One pool per process. Serverless keeps instances warm long enough for a
   // small pool to pay for itself, and Fluid compute reuses them further.
-  client = postgres(url, {
+  const client = postgres(url, {
     max: 5,
     idle_timeout: 20,
     connect_timeout: 10,
@@ -46,16 +57,19 @@ export function getDatabase(): Database {
     // reconnect quietly rather than surfacing the disconnect as an error.
     onnotice: () => undefined,
   });
-  db = drizzlePostgres(client, { schema }) as unknown as Database;
+  const db = drizzlePostgres(client, { schema }) as unknown as Database;
+  globalForDb.__aureon_pg = client;
+  globalForDb.__aureon_db = db;
   logger.info("db.connected", { pool: 5 });
   return db;
 }
 
 /** Close the pool. Used by scripts and tests, never by a request. */
 export async function closeDatabase(): Promise<void> {
+  const client = globalForDb.__aureon_pg;
   if (client) {
     await client.end({ timeout: 5 });
-    client = null;
+    delete globalForDb.__aureon_pg;
   }
-  db = null;
+  delete globalForDb.__aureon_db;
 }

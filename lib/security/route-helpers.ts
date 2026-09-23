@@ -5,6 +5,8 @@ import type { z } from "zod";
 import { AppError, serializeError, ValidationError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { buildOwnerCookie, ownsSession } from "@/lib/security/session-cookie";
+import { can, loadAccessSubject, roleFor, type Capability } from "@/lib/auth/access";
+import { getViewer } from "@/lib/auth/viewer";
 import type { Session } from "@/lib/schemas/mcq";
 import { logger } from "@/lib/logger";
 import { getSession } from "@/lib/storage/session";
@@ -117,22 +119,54 @@ export function requireSessionOwner(
   );
 }
 
+function unauthorized(): NextResponse {
+  return NextResponse.json(
+    { error: { code: "UNAUTHORIZED", message: "Session ownership required" } },
+    { status: 401 },
+  );
+}
+
+function notFound(): NextResponse {
+  return NextResponse.json(
+    { error: { code: "NOT_FOUND", message: "Session not found or expired" } },
+    { status: 404 },
+  );
+}
+
 /**
- * The stored session if the request owns it; otherwise the 404 or 401
- * response to return. Callers: `if (loaded instanceof NextResponse) return loaded;`
+ * The stored session if the viewer may do `capability` to it; otherwise the
+ * 404 or 401 response to return. Callers:
+ * `if (loaded instanceof NextResponse) return loaded;`
+ *
+ * Access comes from lib/auth/access.ts: the signed-in owner, the anonymous
+ * browser that made it, or a workspace member at their role. The legacy
+ * per-session cookie still opens a project stored before owner ids existed.
  */
+export async function loadAccessibleSession(
+  req: NextRequest,
+  sessionId: string,
+  capability: Capability = "write",
+): Promise<Session | NextResponse> {
+  const session = await getSession(sessionId);
+  if (!session) return notFound();
+
+  // The pre-owner_id fallback, unchanged: that cookie proves the browser
+  // created this one session.
+  if (session.owner_id === null && ownsSession(req.cookies, session)) return session;
+
+  const subject = await loadAccessSubject(sessionId);
+  if (!subject) return notFound();
+  const viewer = await getViewer(req);
+  const role = await roleFor(viewer, subject);
+  return can(role, capability) ? session : unauthorized();
+}
+
+/** Backwards-compatible name: ownership is "write" access. */
 export async function loadOwnedSession(
   req: NextRequest,
   sessionId: string,
 ): Promise<Session | NextResponse> {
-  const session = await getSession(sessionId);
-  if (!session) {
-    return NextResponse.json(
-      { error: { code: "NOT_FOUND", message: "Session not found or expired" } },
-      { status: 404 },
-    );
-  }
-  return requireSessionOwner(req, session) ?? session;
+  return loadAccessibleSession(req, sessionId, "write");
 }
 
 /**

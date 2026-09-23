@@ -15,6 +15,7 @@ export type ErrorCode =
   | "IN_PROGRESS"
   | "BLOCKED"
   | "STORAGE_UNAVAILABLE"
+  | "SIGN_IN_REQUIRED"
   | "INTERNAL_ERROR";
 
 export class AppError extends Error {
@@ -33,6 +34,19 @@ export class ValidationError extends AppError {
   constructor(message: string) {
     super("VALIDATION_ERROR", message, 400);
     this.name = "ValidationError";
+  }
+}
+
+/**
+ * An anonymous browser may keep one scope. The next one needs an account,
+ * which also gives it somewhere to live.
+ */
+export class SignInRequiredError extends AppError {
+  constructor(
+    message = "Sign in to start another scope. Your current one stays where it is.",
+  ) {
+    super("SIGN_IN_REQUIRED", message, 401);
+    this.name = "SignInRequiredError";
   }
 }
 
