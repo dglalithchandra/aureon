@@ -1,0 +1,81 @@
+name: evals
+
+# Manual only. This workflow calls the real model and spends real money, so it
+# is never attached to push or pull_request; normal CI runs `npm run evals:mock`.
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "Runs per case (3 gives a usable standard deviation)"
+        required: true
+        default: "3"
+      cases:
+        description: "Optional: only cases whose id contains one of these, comma separated"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check the key is present
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::Set the ANTHROPIC_API_KEY repository secret before running the evals."
+            exit 1
+          fi
+
+      # Inputs are validated before they reach the shell, never interpolated
+      # into it: a workflow input is untrusted text.
+      - name: Run the evaluation
+        env:
+          EVAL_RUNS: ${{ inputs.runs }}
+          EVAL_CASES: ${{ inputs.cases }}
+        run: |
+          case "$EVAL_RUNS" in
+            ''|*[!0-9]*) echo "::error::runs must be a whole number"; exit 1 ;;
+          esac
+          ARGS="--allow-ci --runs=$EVAL_RUNS"
+          if [ -n "$EVAL_CASES" ]; then
+            case "$EVAL_CASES" in
+              *[!a-zA-Z0-9,_-]*) echo "::error::cases must be ids, comma separated"; exit 1 ;;
+            esac
+            ARGS="$ARGS --cases=$EVAL_CASES"
+          fi
+          npx tsx evals/run.ts $ARGS
+
+      - name: Add the report to the job summary
+        if: always()
+        run: |
+          latest=$(ls -t evals/reports/*.md 2>/dev/null | head -n 1)
+          if [ -n "$latest" ]; then cat "$latest" >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evals-report
+          path: evals/reports/
+          if-no-files-found: error
+
+# The report is not committed from here. Download the artifact, commit the
+# .md and .json under evals/reports/, and let evals/run.ts update the README
+# link the next time it runs locally.

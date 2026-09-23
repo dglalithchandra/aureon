@@ -1,0 +1,24 @@
+{
+  "id": "ecom-01-d2c-skincare",
+  "label_status": "draft",
+  "tags": ["rich"],
+  "text": "We are a D2C skincare brand moving off Instagram DMs onto our own store. Customers browse products, add to cart, check out with Razorpay or cash on delivery, and track their order. We sell refill subscriptions every 30 or 60 days. Our ops team needs to see the day's orders, print Shiprocket labels and manage stock across two warehouses. Reviews with photos matter to us. 80% of our traffic is mobile and a lot of it is on 3G, so it has to stay light. Budget is about 12 lakh, we want it live before Diwali, and success is a repeat purchase rate above 30%.",
+  "expected": {
+    "domain": "E-Commerce",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PARTIAL_DEEP",
+      "P-05": "PRESENT",
+      "P-06": "PARTIAL_DEEP",
+      "P-07": "PRESENT",
+      "P-08": "PARTIAL_DEEP",
+      "P-09": "PRESENT"
+    },
+    "must_have_modules": ["Catalog", "Cart", "Checkout", "Orders"],
+    "forbidden_strings": []
+  },
+  "notes": "Mobile and 3G are a constraint without a stack (P-04 PARTIAL_DEEP) and an NFR without a number (P-06 PARTIAL_DEEP). Before Diwali is relative, so P-08 is not PRESENT."
+}

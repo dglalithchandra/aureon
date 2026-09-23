@@ -1,0 +1,24 @@
+{
+  "id": "internal-01-ops-console",
+  "label_status": "draft",
+  "tags": ["rich"],
+  "text": "An internal console for our operations team, replacing three spreadsheets that people edit at the same time. Ops staff search a customer, see every order and support ticket in one place and trigger a refund; team leads approve any refund over 5,000 rupees; and everything anyone does is logged for the auditor. Roles decide who can see payment details. It sits on our existing Postgres and our internal SSO. About 30 staff use it, rolling out next quarter.",
+  "expected": {
+    "domain": "Internal Tool",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PRESENT",
+      "P-05": "PARTIAL_DEEP",
+      "P-06": "PARTIAL_DEEP",
+      "P-07": "MISSING",
+      "P-08": "PARTIAL_DEEP",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": ["Auth", "RBAC", "Audit Log", "Search"],
+    "forbidden_strings": []
+  },
+  "notes": "Postgres and SSO are the constraint (P-04 PRESENT) but the SSO product is never named (P-05 PARTIAL_DEEP). Audit logging is an NFR with no retention target. Next quarter is relative."
+}

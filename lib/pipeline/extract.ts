@@ -22,10 +22,26 @@ const PROMPT_BUDGET_CHARS = 50_000;
 /** The brief always keeps at least this much, even against long answers. */
 const MIN_RAW_CHARS = 2_000;
 
+/** What one extraction call cost, for the evaluation harness (evals/run.ts). */
+export interface ExtractionUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  /** 1 unless the output needed the larger-budget or repair retry. */
+  attempts: number;
+}
+
 interface RunExtractionOptions {
   rawText: string;
   /** Answers and added descriptions from earlier rounds, already formatted. */
   priorContext?: string;
+  /**
+   * Called with the usage of the final model response — a discarded earlier
+   * attempt is not counted, so `attempts > 1` means the real spend was
+   * higher. The pipeline ignores this; evals/run.ts reports tokens and cost.
+   */
+  onUsage?: (usage: ExtractionUsage) => void;
 }
 
 /**
@@ -90,14 +106,18 @@ export async function runExtraction(
   }
 
   const { response } = outcome;
-  logger.info("extract.completed", {
-    durationMs: Date.now() - startedAt,
-    attempts: outcome.attempts,
+  const usage: ExtractionUsage = {
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
     cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
     cacheCreationTokens: response.usage.cache_creation_input_tokens ?? 0,
+    attempts: outcome.attempts,
+  };
+  opts.onUsage?.(usage);
+  logger.info("extract.completed", {
+    durationMs: Date.now() - startedAt,
     stopReason: response.stop_reason,
+    ...usage,
   });
 
   if (!outcome.ok) {

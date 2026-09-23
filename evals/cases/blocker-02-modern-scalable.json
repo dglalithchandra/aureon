@@ -1,0 +1,24 @@
+{
+  "id": "blocker-02-modern-scalable",
+  "label_status": "draft",
+  "tags": ["blocker"],
+  "text": "Make it modern and scalable. React on the front, Node and Postgres on AWS behind it. Must be fast and secure, and the UI should look clean, something like Linear.",
+  "expected": {
+    "domain": null,
+    "blocker": true,
+    "parameters": {
+      "P-01": "MISSING",
+      "P-02": "MISSING",
+      "P-03": "MISSING",
+      "P-04": "PRESENT",
+      "P-05": "MISSING",
+      "P-06": "PARTIAL_DEEP",
+      "P-07": "MISSING",
+      "P-08": "MISSING",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": [],
+    "forbidden_strings": []
+  },
+  "notes": "A stack with no product behind it. P-04 is PRESENT and everything that matters is MISSING, which is the case the blocker cap exists for: a rich-sounding brief that cannot be estimated."
+}

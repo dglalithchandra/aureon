@@ -1,0 +1,24 @@
+{
+  "id": "blocker-03-same-as-before",
+  "label_status": "draft",
+  "tags": ["blocker"],
+  "text": "As discussed last week about the thing for the office. Same as before but better, and this time it should handle everything properly. You know what we need.",
+  "expected": {
+    "domain": null,
+    "blocker": true,
+    "parameters": {
+      "P-01": "MISSING",
+      "P-02": "MISSING",
+      "P-03": "MISSING",
+      "P-04": "MISSING",
+      "P-05": "MISSING",
+      "P-06": "MISSING",
+      "P-07": "MISSING",
+      "P-08": "MISSING",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": [],
+    "forbidden_strings": []
+  },
+  "notes": "Nine parameters MISSING. The test is whether the extraction invents an office tool from 'the thing for the office' instead of blocking; modules should stay empty or near-empty."
+}

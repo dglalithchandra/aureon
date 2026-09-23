@@ -1,0 +1,24 @@
+{
+  "id": "saas-01-store-analytics",
+  "label_status": "draft",
+  "tags": ["rich"],
+  "text": "A SaaS analytics platform for e-commerce store owners. Users connect their Shopify or WooCommerce store over OAuth and see dashboards for revenue, top products and conversion funnels. Stripe billing with a Starter tier at $29 and a Pro tier at $99, team invitations with editor and viewer roles, and CSV export. Next.js and Postgres on Vercel. Budget is $40k, MVP in 8 weeks, and we count it a success at 50 paying customers in the first three months.",
+  "expected": {
+    "domain": "SaaS",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PRESENT",
+      "P-05": "PRESENT",
+      "P-06": "MISSING",
+      "P-07": "PRESENT",
+      "P-08": "PRESENT",
+      "P-09": "PRESENT"
+    },
+    "must_have_modules": ["Auth", "Dashboard", "Billing", "Team Management"],
+    "forbidden_strings": []
+  },
+  "notes": "The reference rich brief: eight of nine parameters answered, only non-functional requirements missing. The domain is SaaS even though the customers run e-commerce stores, because the product sold is subscription software."
+}

@@ -1,0 +1,24 @@
+{
+  "id": "thin-03-team-dashboard",
+  "label_status": "draft",
+  "tags": ["thin"],
+  "text": "We need a dashboard for my team.",
+  "expected": {
+    "domain": "Internal Tool",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PARTIAL_THIN",
+      "P-02": "PARTIAL_THIN",
+      "P-03": "PARTIAL_THIN",
+      "P-04": "MISSING",
+      "P-05": "MISSING",
+      "P-06": "MISSING",
+      "P-07": "MISSING",
+      "P-08": "MISSING",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": ["Auth", "Dashboard"],
+    "forbidden_strings": []
+  },
+  "notes": "'My team' is users without roles or responsibilities, so P-02 is PARTIAL_THIN. A dashboard of what is never said."
+}

@@ -1,0 +1,24 @@
+{
+  "id": "health-02-teleconsult",
+  "label_status": "draft",
+  "tags": ["medium"],
+  "text": "An Android app for video consultations with doctors in tier-2 cities. A patient picks a doctor, pays the fee, joins the video call and gets a prescription PDF afterwards. Doctors set the hours they are available. It has to work on a weak connection.",
+  "expected": {
+    "domain": "Healthcare",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PRESENT",
+      "P-05": "PARTIAL_DEEP",
+      "P-06": "PARTIAL_DEEP",
+      "P-07": "MISSING",
+      "P-08": "MISSING",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": ["Auth", "Appointments", "Payments"],
+    "forbidden_strings": []
+  },
+  "notes": "Android is an explicit platform (P-04 PRESENT). Video calling and payment are both categories with no provider named. A domain of Healthcare or Telemedicine both count; Mobile alone would not."
+}

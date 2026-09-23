@@ -1,0 +1,24 @@
+{
+  "id": "indic-01-kirana-hinglish",
+  "label_status": "draft",
+  "tags": ["indian-language", "medium"],
+  "text": "Bhai humara kirana store hai Nagpur mein. Customers WhatsApp pe order bhejte hain aur hum manually bill banate hain, bahut time waste hota hai aur kabhi kabhi order miss ho jata hai. Ek app chahiye jisme customer khud order kare, payment UPI se ho jaye, aur delivery boy ko address dikhe. Stock bhi track karna hai - kya khatam ho raha hai wo pata chale. Owner ko daily sales ki report chahiye. Budget 2-3 lakh, aur 2 mahine mein launch karna hai.",
+  "expected": {
+    "domain": "E-Commerce",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PARTIAL_DEEP",
+      "P-05": "PRESENT",
+      "P-06": "MISSING",
+      "P-07": "PRESENT",
+      "P-08": "PRESENT",
+      "P-09": "PARTIAL_THIN"
+    },
+    "must_have_modules": ["Orders", "Payments", "Inventory"],
+    "forbidden_strings": []
+  },
+  "notes": "Hinglish in Latin script, the way a shop owner actually writes. Three roles with responsibilities (customer, delivery boy, owner) make P-02 PRESENT. UPI is a named rail, so P-05 PRESENT; PARTIAL_DEEP is defensible. 'Time waste kam ho' is an intent, not a metric, hence P-09 PARTIAL_THIN."
+}

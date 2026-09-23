@@ -1,0 +1,24 @@
+{
+  "id": "mobile-01-driver-app",
+  "label_status": "draft",
+  "tags": ["rich"],
+  "text": "An Android app for our 200 delivery drivers. A driver sees today's route, marks each stop delivered or failed with a photo, and captures a signature. It has to keep working with no signal in basements and sync when the phone reconnects. Push notification when a new job is assigned. Dispatchers watch the same jobs on a web board. Google Maps for navigation, Twilio for the customer SMS. 99.9% uptime, 5,000 deliveries a day. Roughly $120k over six months, and success is 20% fewer late deliveries.",
+  "expected": {
+    "domain": "Mobile",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PRESENT",
+      "P-05": "PRESENT",
+      "P-06": "PRESENT",
+      "P-07": "PRESENT",
+      "P-08": "PRESENT",
+      "P-09": "PRESENT"
+    },
+    "must_have_modules": ["Auth", "Offline Sync", "Push Notifications"],
+    "forbidden_strings": []
+  },
+  "notes": "The least certain domain label in the set: Mobile fits the driver app, Logistics or Internal Tool fits the dispatch board, and both are honest readings. Decide which one counts before this becomes ground truth."
+}

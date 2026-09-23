@@ -1,0 +1,24 @@
+{
+  "id": "thin-01-shop-billing",
+  "label_status": "draft",
+  "tags": ["thin"],
+  "text": "Something for my shop to handle billing.",
+  "expected": {
+    "domain": "E-Commerce",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PARTIAL_THIN",
+      "P-02": "MISSING",
+      "P-03": "PARTIAL_THIN",
+      "P-04": "MISSING",
+      "P-05": "MISSING",
+      "P-06": "MISSING",
+      "P-07": "MISSING",
+      "P-08": "MISSING",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": ["Billing"],
+    "forbidden_strings": []
+  },
+  "notes": "Seven words. One generic feature keeps P-03 out of MISSING, so this is thin but not a blocker. 'Retail' or 'Point of Sale' also count as the E-Commerce family; a domain of 'Small Business' would not."
+}

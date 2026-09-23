@@ -1,0 +1,24 @@
+{
+  "id": "indic-02-coaching-hindi",
+  "label_status": "draft",
+  "tags": ["indian-language", "medium"],
+  "text": "हमारा कोचिंग इंस्टिट्यूट है, हर साल लगभग 1200 छात्र पढ़ते हैं। हमें एक ऐसा प्लेटफ़ॉर्म चाहिए जहाँ छात्र रिकॉर्डेड लेक्चर देख सकें, टेस्ट दे सकें और अपनी रैंक देख सकें। शिक्षक लेक्चर अपलोड करें, टेस्ट बनाएँ और नतीजे देखें। फीस का भुगतान Razorpay से होना चाहिए। मोबाइल पर ठीक से चलना ज़रूरी है क्योंकि ज़्यादातर छात्र फ़ोन इस्तेमाल करते हैं। जून के नए बैच से पहले लॉन्च करना है।",
+  "expected": {
+    "domain": "EdTech",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PARTIAL_DEEP",
+      "P-05": "PRESENT",
+      "P-06": "PARTIAL_THIN",
+      "P-07": "MISSING",
+      "P-08": "PRESENT",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": ["Auth", "Courses", "Quizzes", "Payments"],
+    "forbidden_strings": []
+  },
+  "notes": "Devanagari throughout, with two Latin-script proper nouns (Razorpay, June intake). Students and teachers both have responsibilities. Mobile is a platform constraint (P-04); 'phone par theek se chale' is only a hint of an NFR."
+}

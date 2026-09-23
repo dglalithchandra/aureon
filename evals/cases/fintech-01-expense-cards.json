@@ -1,0 +1,24 @@
+{
+  "id": "fintech-01-expense-cards",
+  "label_status": "draft",
+  "tags": ["rich"],
+  "text": "An expense management product for Indian startups. Finance issues virtual cards to employees, each employee photographs the bill against their spend, and anything still unmatched after three days is chased automatically. Finance closes the month by exporting to Zoho Books. We plug into a card issuer over their REST API and run KYC through DigiLocker. Customer data has to stay in India and SOC 2 is on the roadmap. Budget 40 lakh over six months. Done means month-end close takes under two days.",
+  "expected": {
+    "domain": "FinTech",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PRESENT",
+      "P-05": "PRESENT",
+      "P-06": "PRESENT",
+      "P-07": "PRESENT",
+      "P-08": "PRESENT",
+      "P-09": "PRESENT"
+    },
+    "must_have_modules": ["Auth", "KYC", "Transactions"],
+    "forbidden_strings": []
+  },
+  "notes": "All nine answered, the ceiling case for the score. Data residency plus SOC 2 is a real NFR, the card issuer REST API is the technical constraint, and Zoho Books and DigiLocker are the named integrations."
+}

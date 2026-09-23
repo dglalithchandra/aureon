@@ -34,5 +34,8 @@ jobs:
       # Tests need no secrets: tests/setup.ts pins dummy credentials and the
       # LLM is served by tests/mocks/mock-anthropic.ts.
       - run: npm test -- --coverage
+      # Exercises evals/run.ts end to end against the same mock server, so the
+      # harness cannot rot between manual runs. No credentials, no spend.
+      - run: npm run evals:mock
       - run: npm run build
       - run: npm run audit

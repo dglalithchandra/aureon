@@ -1,0 +1,24 @@
+{
+  "id": "saas-02-hr-onboarding",
+  "label_status": "draft",
+  "tags": ["medium"],
+  "text": "We sell an HR tool to mid-size companies and want to add employee onboarding to it. An HR admin builds a checklist template, assigns it to a new joiner and sees who is stuck. New joiners get their own task list and upload documents such as ID proof. It has to work with our existing Django backend and our Okta login. Nothing else is decided yet.",
+  "expected": {
+    "domain": "SaaS",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PRESENT",
+      "P-05": "PRESENT",
+      "P-06": "MISSING",
+      "P-07": "MISSING",
+      "P-08": "MISSING",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": ["Auth", "Onboarding", "Dashboard"],
+    "forbidden_strings": []
+  },
+  "notes": "A feature inside an existing product, so the stack (Django) and the login (Okta) are fixed while the commercials are absent. Seeing who is stuck is the dashboard signal."
+}

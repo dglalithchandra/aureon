@@ -1,0 +1,24 @@
+{
+  "id": "blocker-01-budget-only",
+  "label_status": "draft",
+  "tags": ["blocker"],
+  "text": "Hi, following up from our call on Tuesday. The budget is approved, around 8 lakh, and we need it live before Diwali. Four people on our side will be involved. Let me know the next steps and what you need from us.",
+  "expected": {
+    "domain": null,
+    "blocker": true,
+    "parameters": {
+      "P-01": "MISSING",
+      "P-02": "MISSING",
+      "P-03": "MISSING",
+      "P-04": "MISSING",
+      "P-05": "MISSING",
+      "P-06": "MISSING",
+      "P-07": "PRESENT",
+      "P-08": "PARTIAL_DEEP",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": [],
+    "forbidden_strings": []
+  },
+  "notes": "Commercials without a project. The four people are the client's staff, not users, so P-02 stays MISSING. 'Before Diwali' is a relative date. No domain is inferable, so this case is left out of the domain accuracy."
+}

@@ -13,6 +13,8 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "test": "vitest run",
     "test:watch": "vitest",
+    "evals": "tsx evals/run.ts",
+    "evals:mock": "tsx evals/run.ts --mock",
     "audit": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {

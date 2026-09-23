@@ -1,0 +1,5 @@
+{
+  "parameter_exact_accuracy": 0.8,
+  "domain_accuracy": 0.9,
+  "score_sd": 5
+}

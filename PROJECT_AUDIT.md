@@ -6,7 +6,7 @@ Audit date: 2026-09-21 · Commit audited: `f095b6b` (local `main`) plus the READ
 
 ---
 
-## Final Phase status (updated 2026-09-23, after BUG-01, SEC-02, BUG-08, BUG-02, ROB-01, OPS-01, PERF-01, BUG-03, BUG-04, DATA-01, BUG-05, BUG-06, BUG-07, BUG-10, BUG-11, SEC-04, ARCH-01, GOAL-02, SEC-05 and blueprint step 07)
+## Final Phase status (updated 2026-09-23, after BUG-01, SEC-02, BUG-08, BUG-02, ROB-01, OPS-01, PERF-01, BUG-03, BUG-04, DATA-01, BUG-05, BUG-06, BUG-07, BUG-10, BUG-11, SEC-04, ARCH-01, GOAL-02, SEC-05, blueprint step 07 and the evaluation harness)
 
 Work happens on the `final-phase` branch (committed locally, **not pushed yet**). This table is the tracker for the Final Phase: update it whenever an issue is fixed.
 
@@ -16,6 +16,7 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 
 | ID | Severity | Status | Commits | What was done |
 |---|---|:-:|---|---|
+| EVAL-01 (new) | — | 🟡 | `PLACEHOLDER` | Evaluation harness: 30 labelled briefs in `evals/cases/` (5 thin, 3 blocker, 3 over 20k characters, 3 Hinglish/Hindi, 2 prompt injection, rich and medium briefs across the 9 domains), each with the expected P-01..P-09 states, domain, must-have modules and notes. `evals/run.ts` runs the real extraction N times per case and writes `evals/reports/<date>.md` and `.json`: per-parameter exact and within-one-level accuracy, self-agreement, domain accuracy, module recall, blocker accuracy, injection resistance, score standard deviation, ready/ask agreement, tokens, estimated cost and latency p50/p95. `npm run evals:mock` runs the whole harness against the mock server and is now a CI step; a manual `evals` workflow runs the real thing with the API key secret. Left: the labels are drafts until the owner reviews `evals/LABELS.md`, and the first real report needs the owner's key (about 90 Sonnet calls). |
 | GOAL-02 | Medium | ✅ | `95761c8` | `engineer.github_references` is built on the server from the round's `github_enrichment.matches` (top 5 by similarity, with `repo`, `url`, `why_relevant`); the field is gone from the finalize tool and prompt, and an empty round shows "No similar public projects found". The audit's `made-up/nonexistent-repo` is dropped. |
 | SEC-05 | Low | ✅ | `95761c8` | Every stored GitHub URL must match `^https://github\.com/<owner>/<repo>/?$` — references, matches and search results. `javascript:`, `data:`, `vbscript:`, look-alike hosts, `http://` and deep links are refused; an older document with unusable references loads with an empty list. |
 | Step 07 (blueprint) | — | ✅ | `95761c8` | Per-module confidence in `lib/scoring/modules.ts`: `0.45·paramSignal + 0.35·githubFreq + 0.20·templateMatch`, with standard module lists for the 9 domains and a synonym table in config. HIGH > 0.80, MEDIUM ≥ 0.55, LOW below; LOW modules move to "Candidate modules — please confirm" in the client view, cards show "Seen in N similar projects" with links, and the engineer table gains a confidence column. This also switches on ARCH-01's GitHub bonus. |
@@ -68,6 +69,7 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 - Set a monthly spend limit in the Anthropic console, and `LLM_DAILY_CALL_LIMIT` in the Vercel environment if 2000 calls/day is not right.
 - Self-hosting (not Vercel) needs a reverse proxy that appends the client IP to `X-Forwarded-For`; otherwise the rate-limit key can be spoofed.
 - Run `npx tsx scripts/measure-confidence.ts` with a real API key (about 50 Sonnet calls) and record the before/after spread of the score, to close ARCH-01.
+- Review the draft labels in `evals/LABELS.md` (correct the case files, set `"label_status": "reviewed"`), then run `npm run evals` with a real key (about 90 Sonnet calls, 10-20 minutes) to produce the first real report and adjust `evals/targets.json` against that baseline.
 - Create an Upstash QStash project and set `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY` and `QSTASH_NEXT_SIGNING_KEY` in Vercel (Production and Preview). Enable "Protection Bypass for Automation" for protected previews. Then run `test-flow.ts --runs=10` against the preview to close OPS-01.
 
 ---

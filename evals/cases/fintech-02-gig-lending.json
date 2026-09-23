@@ -1,0 +1,24 @@
+{
+  "id": "fintech-02-gig-lending",
+  "label_status": "draft",
+  "tags": ["medium"],
+  "text": "We give small loans to gig workers. An applicant applies from their phone, we pull their bank statements to score them, and an approved loan is disbursed the same day. The collections team follows up on missed EMIs. RBI rules apply to all of it. No stack chosen yet.",
+  "expected": {
+    "domain": "FinTech",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PARTIAL_DEEP",
+      "P-05": "PARTIAL_DEEP",
+      "P-06": "PARTIAL_DEEP",
+      "P-07": "MISSING",
+      "P-08": "MISSING",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": ["Auth", "KYC", "Payments"],
+    "forbidden_strings": []
+  },
+  "notes": "Bank statement analysis needs an aggregator that is never named (P-05 PARTIAL_DEEP), and RBI rules are cited without saying which (P-06 PARTIAL_DEEP). Applying from a phone is the only platform hint."
+}

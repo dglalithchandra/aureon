@@ -1,0 +1,24 @@
+{
+  "id": "market-02-home-services",
+  "label_status": "draft",
+  "tags": ["medium"],
+  "text": "Think Fiverr for local home services. Plumbers and electricians create a profile with their rates and the areas they cover, customers post a job, and the two sides chat before agreeing a price. The payment is held until the customer marks the job done. Mobile-first. We are a two-person team and want something live quickly.",
+  "expected": {
+    "domain": "Marketplace",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PARTIAL_DEEP",
+      "P-05": "PARTIAL_DEEP",
+      "P-06": "MISSING",
+      "P-07": "MISSING",
+      "P-08": "PARTIAL_THIN",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": ["Auth", "Messaging", "Payments"],
+    "forbidden_strings": []
+  },
+  "notes": "Escrow is described but no provider is named (P-05 PARTIAL_DEEP). Quickly is a hint, not a timeline. A two-person team says nothing about budget, so P-07 stays MISSING."
+}

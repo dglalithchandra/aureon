@@ -1,0 +1,24 @@
+{
+  "id": "thin-04-school-marks",
+  "label_status": "draft",
+  "tags": ["thin"],
+  "text": "School app where parents can see marks.",
+  "expected": {
+    "domain": "EdTech",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PARTIAL_THIN",
+      "P-02": "PARTIAL_DEEP",
+      "P-03": "PARTIAL_THIN",
+      "P-04": "PARTIAL_DEEP",
+      "P-05": "MISSING",
+      "P-06": "MISSING",
+      "P-07": "MISSING",
+      "P-08": "MISSING",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": ["Auth", "Progress Tracking"],
+    "forbidden_strings": []
+  },
+  "notes": "Parents are named as a role with one thing they do, which is the boundary between PARTIAL_THIN and PARTIAL_DEEP on P-02. 'App' is a platform hint (P-04 PARTIAL_DEEP)."
+}

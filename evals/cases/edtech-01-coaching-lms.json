@@ -1,0 +1,24 @@
+{
+  "id": "edtech-01-coaching-lms",
+  "label_status": "draft",
+  "tags": ["rich"],
+  "text": "A learning platform for a coaching institute with about 5,000 students. Students watch recorded lessons, take timed quizzes and see their progress and rank; teachers upload content, set quizzes and grade them. Parents get a weekly progress email. Payments through Razorpay, video stored on S3 behind CloudFront. Peak load is 2,000 students online together on results day. Launch before the June intake, budget around 15 lakh, and success is 70% of students finishing their course.",
+  "expected": {
+    "domain": "EdTech",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PRESENT",
+      "P-05": "PRESENT",
+      "P-06": "PRESENT",
+      "P-07": "PRESENT",
+      "P-08": "PRESENT",
+      "P-09": "PRESENT"
+    },
+    "must_have_modules": ["Auth", "Courses", "Quizzes", "Progress Tracking", "Payments"],
+    "forbidden_strings": []
+  },
+  "notes": "Three roles, a named stack for video, a concrete peak-load target and a measurable finish. The only soft edge is the June intake as a date."
+}

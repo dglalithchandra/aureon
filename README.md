@@ -122,3 +122,36 @@ every round (p95 must be under 45 s). To measure a Vercel preview over 10 runs:
 ```bash
 SCOPEAI_BASE_URL=https://<preview-url> npx tsx scripts/test-flow.ts --runs=10
 ```
+
+## 📏 Evaluation
+
+The extraction is measured against 30 labelled briefs in [`evals/cases/`](evals/cases):
+five thin one-liners, three that block, three over 20,000 characters, three in
+Hinglish or Hindi, two prompt-injection attempts, and rich briefs across the
+nine domains. Each case carries the expected state of P-01…P-09, the expected
+domain, the modules a usable scope must contain, and a note explaining the
+judgement calls.
+
+```bash
+npm run evals:mock          # the harness against the mock server: no spend, runs in CI
+npm run evals               # 30 cases x 3 runs against the REAL provider (costs money)
+npx tsx evals/run.ts --dry-run          # print the plan and the cost estimate only
+npx tsx evals/run.ts --runs=1 --cases=thin,blocker
+```
+
+A run writes `evals/reports/<date>.md` and `.json` with per-parameter exact and
+within-one-level accuracy, domain accuracy, module recall, the score's standard
+deviation across identical runs, ready/ask agreement, tokens and estimated
+cost, and latency p50/p95. Targets live in [`evals/targets.json`](evals/targets.json).
+
+<!-- evals:latest -->
+
+No real report yet. `npm run evals` writes one and updates this line; the mock
+run in CI proves the harness works but says nothing about quality.
+
+<!-- /evals:latest -->
+
+**The labels are drafts.** They are one person's reading of each brief, and
+several are genuinely arguable (each case says which). Until they are reviewed
+and the case files say `"label_status": "reviewed"`, the accuracy numbers
+measure agreement with a guess.

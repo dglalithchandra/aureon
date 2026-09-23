@@ -1,0 +1,24 @@
+{
+  "id": "content-01-newsroom-cms",
+  "label_status": "draft",
+  "tags": ["rich"],
+  "text": "A publishing platform for a regional news site. Reporters draft stories with images, an editor reviews and schedules them, and published pages have to load fast and rank well on search. We publish in English and Marathi. Readers comment and moderators remove abuse. The editor wants per-story analytics. We are migrating 40,000 old articles off WordPress, and ad slots come from Google Ad Manager. Six-month project. Success is a page load under two seconds on a mid-range phone.",
+  "expected": {
+    "domain": "Content Platform",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PARTIAL_DEEP",
+      "P-05": "PRESENT",
+      "P-06": "PRESENT",
+      "P-07": "MISSING",
+      "P-08": "PRESENT",
+      "P-09": "PRESENT"
+    },
+    "must_have_modules": ["Auth", "Content Editor", "Publishing", "Comments"],
+    "forbidden_strings": []
+  },
+  "notes": "WordPress appears as the source of a migration rather than as the target stack, so P-04 is PARTIAL_DEEP and P-05 is PRESENT (WordPress and Google Ad Manager). The two-second page load is both the NFR and the success metric."
+}

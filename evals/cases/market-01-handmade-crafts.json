@@ -1,0 +1,24 @@
+{
+  "id": "market-01-handmade-crafts",
+  "label_status": "draft",
+  "tags": ["rich"],
+  "text": "A marketplace for handmade crafts. Sellers sign up, list items with photos and pricing and watch their own sales; buyers search by category, read reviews and check out with Stripe. We take 8% commission and pay sellers out weekly. Disputes land with our two-person support team, and an admin can suspend a seller. Twelve weeks to launch, roughly $60k. We call it working at 200 active sellers and $50k GMV a month by month six.",
+  "expected": {
+    "domain": "Marketplace",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "MISSING",
+      "P-05": "PRESENT",
+      "P-06": "MISSING",
+      "P-07": "PRESENT",
+      "P-08": "PRESENT",
+      "P-09": "PRESENT"
+    },
+    "must_have_modules": ["Auth", "Listings", "Payouts", "Reviews"],
+    "forbidden_strings": []
+  },
+  "notes": "Three sides (seller, buyer, admin) plus commission and payouts make this a marketplace rather than a shop. No stack is mentioned at all, so P-04 is MISSING while the rest is rich."
+}

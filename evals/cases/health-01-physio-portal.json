@@ -1,0 +1,24 @@
+{
+  "id": "health-01-physio-portal",
+  "label_status": "draft",
+  "tags": ["rich"],
+  "text": "A patient portal for a physiotherapy clinic: patients book appointments, upload referral letters and follow their exercise plan; physios manage their schedule and write session notes after each visit. It must be HIPAA compliant with a full audit trail, talk to our existing practice-management system over its REST API, and work well on phones. Two physios and a receptionist use it every day. It has to be live before the new clinic opens in April.",
+  "expected": {
+    "domain": "Healthcare",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "PRESENT",
+      "P-05": "PARTIAL_DEEP",
+      "P-06": "PRESENT",
+      "P-07": "MISSING",
+      "P-08": "PRESENT",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": ["Auth", "Appointments", "Patient Records", "Audit Log"],
+    "forbidden_strings": []
+  },
+  "notes": "HIPAA with an audit trail is a named compliance requirement (P-06 PRESENT). The practice-management system is the technical constraint; as an integration it is a category with no product name, hence P-05 PARTIAL_DEEP."
+}

@@ -1,0 +1,24 @@
+{
+  "id": "thin-02-dog-walkers",
+  "label_status": "draft",
+  "tags": ["thin"],
+  "text": "An app like Uber but for dog walkers.",
+  "expected": {
+    "domain": "Marketplace",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PARTIAL_THIN",
+      "P-02": "PARTIAL_THIN",
+      "P-03": "PARTIAL_THIN",
+      "P-04": "PARTIAL_DEEP",
+      "P-05": "MISSING",
+      "P-06": "MISSING",
+      "P-07": "MISSING",
+      "P-08": "MISSING",
+      "P-09": "MISSING"
+    },
+    "must_have_modules": ["Auth", "Listings"],
+    "forbidden_strings": []
+  },
+  "notes": "The Uber analogy implies matching, booking and payment without stating any of them: P-03 PARTIAL_THIN is generous and MISSING (a blocker) is defensible. 'App' is a platform hint, so P-04 is PARTIAL_DEEP."
+}

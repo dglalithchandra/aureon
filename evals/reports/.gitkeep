@@ -1,0 +1,3 @@
+Reports land here: <date>.md and <date>.json, one pair per run of evals/run.ts.
+The mock mode writes to a temp directory instead, so nothing in this folder
+comes from the fixture model.

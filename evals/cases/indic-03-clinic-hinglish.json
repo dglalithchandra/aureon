@@ -1,0 +1,24 @@
+{
+  "id": "indic-03-clinic-hinglish",
+  "label_status": "draft",
+  "tags": ["indian-language", "medium"],
+  "text": "Bengaluru mein humari physiotherapy clinic hai. Patients phone karke appointment lete hain aur receptionist register mein likhti hai, isliye double booking ho jati hai. ಆನ್‌ಲೈನ್ ಬುಕಿಂಗ್ ಬೇಕು. Patient khud slot choose kare, usko reminder SMS jaye, aur physio ko apne din ka schedule dikhe. Purane patients ka treatment history bhi open ho jaye. Patient ka data private rehna chahiye, sirf uska physio dekh sake. Abhi 3 physios aur 1 receptionist hain.",
+  "expected": {
+    "domain": "Healthcare",
+    "blocker": false,
+    "parameters": {
+      "P-01": "PRESENT",
+      "P-02": "PRESENT",
+      "P-03": "PRESENT",
+      "P-04": "MISSING",
+      "P-05": "PARTIAL_DEEP",
+      "P-06": "PARTIAL_DEEP",
+      "P-07": "MISSING",
+      "P-08": "MISSING",
+      "P-09": "PARTIAL_THIN"
+    },
+    "must_have_modules": ["Auth", "Appointments", "Patient Records"],
+    "forbidden_strings": []
+  },
+  "notes": "Hinglish with one Kannada sentence ('online booking is needed'). SMS is a category with no provider (P-05 PARTIAL_DEEP) and the privacy rule has no regulation or target attached (P-06 PARTIAL_DEEP). Ending double bookings is the implied outcome, not a stated metric."
+}
