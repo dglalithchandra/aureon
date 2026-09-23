@@ -6,7 +6,7 @@ Audit date: 2026-09-21 · Commit audited: `f095b6b` (local `main`) plus the READ
 
 ---
 
-## Final Phase status (updated 2026-09-22, after BUG-01, SEC-02, BUG-08, BUG-02, ROB-01, OPS-01, PERF-01, BUG-03, BUG-04, DATA-01, BUG-05, BUG-06, BUG-07, BUG-10, BUG-11 and SEC-04)
+## Final Phase status (updated 2026-09-23, after BUG-01, SEC-02, BUG-08, BUG-02, ROB-01, OPS-01, PERF-01, BUG-03, BUG-04, DATA-01, BUG-05, BUG-06, BUG-07, BUG-10, BUG-11, SEC-04 and ARCH-01)
 
 Work happens on the `final-phase` branch (committed locally, **not pushed yet**). This table is the tracker for the Final Phase: update it whenever an issue is fixed.
 
@@ -16,6 +16,7 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 
 | ID | Severity | Status | Commits | What was done |
 |---|---|:-:|---|---|
+| ARCH-01 | High | 🟡 | `9060707` | `lib/scoring/confidence.ts` computes the score from the validated parameter states: `0.5·coverage + 0.3·clarity + 0.2·consistency + GitHub bonus`, capped at 40 (blocker) or 65 (P-02/P-04 MISSING); weights and caps come from `lib/config/scoping.ts`. It drives `current_confidence`, `shouldExit`, the output badge (with every component and the cap) and the chat meter, both with a plain-English "How is this calculated?". The extraction prompt now asks only for a 0-100 clarity read with a one-line reason. Left: run `scripts/measure-confidence.ts` against the real provider (10 briefs × 5 runs) and record the before/after spread — it spends real tokens, so it needs the owner's key. The GitHub bonus stays 0 until modules carry a per-module confidence (GOAL-02). |
 | BUG-06 | Medium | ✅ | `f25aa70` | The extraction prompt is assembled from the brief and the answers as separate blocks: answers first, the brief gets the rest of the 50,000-character budget. T8 (49,961 characters plus an answer) now keeps the answer. The finalize context carries 12,000 characters of the brief and every answer and description in full, ahead of the GitHub section. |
 | BUG-07 | Medium | ✅ | `f25aa70` | `stripHtml` is gone; `lib/text/prompt-safe.ts` normalises newlines, drops control characters and defuses only our own delimiters with a zero-width space. "List<Order>" and "<5 users & R&D" reach the prompts and survive PATCH byte for byte. PATCH no longer sanitises (React escapes, react-markdown keeps its allow-lists, Zod bounds stay); `isomorphic-dompurify` removed. |
 | BUG-10 | Low | ✅ | `f25aa70` | One 50,000 UTF-8 byte budget (`lib/text/budget.ts`) at creation, on answers and on descriptions, with one message stating size and limit; the chat's counter uses the same constant. 17,000 Kannada characters are refused at creation. |
@@ -53,9 +54,8 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 |:-:|---|---|---|
 | 1 | GOAL-02 | Medium | Build GitHub references on the server. |
 | 2 | GOAL-01 / DOC-01 | High / Medium | Finish the README and landing claims (see above). |
-| 3 | ARCH-01 | High | Deterministic score; `SCOPING.criticalCap` is ready in config. BUG-05 already landed the blocker half of the gate. |
-| 4 | BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | UX-01's locked, timestamped snapshot now exists (BUG-04). |
-| 5 | SEC-05, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
+| 3 | BUG-09, UX-01, UX-02, A11Y-01, SEC-03 | Medium / Low | UX-01's locked, timestamped snapshot now exists (BUG-04). |
+| 4 | SEC-05, PERF-02, PRIV-01, OBS-01 | Low / Medium | |
 
 ### On hold (owner's decision)
 
@@ -65,6 +65,7 @@ Legend: ✅ fixed · 🟡 partly fixed · ⬜ open.
 - Check the mobile pipeline panel in a real browser.
 - Set a monthly spend limit in the Anthropic console, and `LLM_DAILY_CALL_LIMIT` in the Vercel environment if 2000 calls/day is not right.
 - Self-hosting (not Vercel) needs a reverse proxy that appends the client IP to `X-Forwarded-For`; otherwise the rate-limit key can be spoofed.
+- Run `npx tsx scripts/measure-confidence.ts` with a real API key (about 50 Sonnet calls) and record the before/after spread of the score, to close ARCH-01.
 - Create an Upstash QStash project and set `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY` and `QSTASH_NEXT_SIGNING_KEY` in Vercel (Production and Preview). Enable "Protection Bypass for Automation" for protected previews. Then run `test-flow.ts --runs=10` against the preview to close OPS-01.
 
 ---
