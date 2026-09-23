@@ -1,10 +1,10 @@
-import type Anthropic from "@anthropic-ai/sdk";
+import type { LlmTool } from "@/lib/llm/types";
 
 /* ──────────────────────────────────────────────────────────────
  *  Client view tool
  * ────────────────────────────────────────────────────────────── */
 
-export const submitClientViewTool: Anthropic.Tool = {
+export const submitClientViewTool: LlmTool = {
   name: "submit_client_view",
   description:
     "Submit the client-facing scope document. Plain English, no jargon, every assumption explicit.",
@@ -117,7 +117,7 @@ Always call submit_client_view exactly once. No free-form text.`;
  *  Engineer view tool
  * ────────────────────────────────────────────────────────────── */
 
-export const submitEngineerViewTool: Anthropic.Tool = {
+export const submitEngineerViewTool: LlmTool = {
   name: "submit_engineer_view",
   description:
     "Submit the engineering-facing build document. Specific tech choices, concrete API surfaces, sprint math.",

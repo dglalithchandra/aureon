@@ -12,14 +12,14 @@
  * the exit threshold) flips between runs of the same brief.
  *
  * MANUAL ONLY — this calls the real provider and spends real tokens
- * (inputs x runs extraction calls; the default is 10 x 5 = 50 Sonnet calls).
+ * (inputs x runs extraction calls; the default is 10 x 5 = 50 model calls).
  *
  * Usage:
  *   npx tsx scripts/measure-confidence.ts               # 10 briefs x 5 runs
  *   npx tsx scripts/measure-confidence.ts --runs=3
  *   npx tsx scripts/measure-confidence.ts --inputs=3 --runs=2   # a cheap smoke test
  *
- * Env: ANTHROPIC_API_KEY (or OPENROUTER_API_KEY with LLM_PROVIDER=openrouter),
+ * Env: GEMINI_API_KEY (or OPENROUTER_API_KEY with LLM_PROVIDER=openrouter),
  * read from .env.local like the other scripts.
  */
 import { readFileSync } from "node:fs";
@@ -120,7 +120,7 @@ async function main(): Promise<void> {
     `Measuring ${briefs.length} briefs x ${RUNS} runs = ${briefs.length * RUNS} real extraction calls.`,
   );
   console.log(
-    `Provider: ${process.env.LLM_PROVIDER ?? "anthropic"} · exit threshold ${SCOPING.confidenceThreshold}\n`,
+    `Provider: ${process.env.LLM_PROVIDER ?? "gemini"} · exit threshold ${SCOPING.confidenceThreshold}\n`,
   );
   console.log(
     "brief             before: mean   sd  |  after: mean   sd  | ready/ask flips",

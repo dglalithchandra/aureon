@@ -16,7 +16,7 @@
  *   npx tsx scripts/test-flow.ts --runs=10         # timing report over 10 runs
  *
  * Env:
- *   ANTHROPIC_API_KEY                required by the server (.env.local or shell)
+ *   GEMINI_API_KEY                   required by the server (.env.local or shell)
  *   SCOPEAI_BASE_URL                 optional, e.g. a Vercel preview URL
  *   VERCEL_AUTOMATION_BYPASS_SECRET  optional, to reach a protected preview
  */

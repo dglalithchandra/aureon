@@ -103,8 +103,8 @@ npm test -- --coverage      # with a coverage report (coverage/)
 - `tests/unit/` — pure logic: exit rules, question filtering, GitHub signal
   merge, output coercion, query building, BM25, cookies, markdown export.
 - `tests/integration/` — the full create → round → answers → final output
-  pipeline against `tests/mocks/mock-anthropic.ts`, a local stand-in for the
-  Anthropic Messages API (selected through `ANTHROPIC_BASE_URL`).
+  pipeline against `tests/mocks/mock-llm.ts`, a local stand-in for the Gemini
+  Interactions API (selected through `GEMINI_BASE_URL`).
 - `tests/setup.ts` replaces every credential with a dummy value and blocks all
   non-local network requests, so a missing mock fails instead of spending money.
 
@@ -113,7 +113,7 @@ coverage, build and `npm run audit` on every push and pull request.
 
 The scripts in `scripts/` are manual smoke tests against **real** services:
 `test-flow.ts` drives a running server end to end (create → run → answer →
-finalize), while `test-extract.ts` and `test-github.ts` call Anthropic and
+finalize), while `test-extract.ts` and `test-github.ts` call Gemini and
 GitHub directly. They are not part of `npm test`.
 
 `test-flow.ts` also times every API response (each must take under 2 s) and

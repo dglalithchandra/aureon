@@ -3,22 +3,23 @@ import type { AddressInfo } from "node:net";
 import { defaultToolPayload, MOCK_TOOL_NAMES, type MockToolName } from "../fixtures/llm";
 
 /**
- * In-process stand-in for the Anthropic Messages API (POST /v1/messages).
+ * In-process stand-in for the Gemini Interactions API
+ * (POST /v1beta/interactions).
  *
- * Point the SDK at it with `process.env.ANTHROPIC_BASE_URL = mock.url` before
- * the first LLM call in a test file (lib/llm/anthropic.ts memoises its
- * client). The response is a single `tool_use` block for the tool named in
- * `tool_choice.name`, filled from tests/fixtures/llm.ts unless overridden.
+ * Point the client at it with `process.env.GEMINI_BASE_URL = mock.url` before
+ * the first LLM call in a test file (lib/llm/client.ts memoises the adapter).
+ * The reply is one `function_call` step for the tool the request forced,
+ * filled from tests/fixtures/llm.ts unless overridden.
  *
  * Per-test controls:
  *   setDelay(ms)            wait before answering every request
- *   failNext(n)             answer the next n HTTP requests with 529 overloaded.
- *                           The SDK retries twice (maxRetries: 2), so
+ *   failNext(n)             answer the next n HTTP requests with 429
+ *                           RESOURCE_EXHAUSTED. The client retries twice, so
  *                           failNext(3) makes one logical call fail.
  *   override(tool, payload) replace the fixture for a tool until reset()
  *   enqueue(tool, payload)  one-shot payload; queued payloads win over overrides
- *   truncateNext(n)         answer the next n requests with stop_reason
- *                           "max_tokens" and no tool call (truncated output)
+ *   truncateNext(n)         answer the next n requests with status
+ *                           "incomplete" and no tool call (truncated output)
  *   reset()                 clear all of the above and the call log
  */
 
@@ -30,7 +31,7 @@ export interface RecordedCall {
   userText: string;
 }
 
-export interface MockAnthropic {
+export interface MockLlm {
   readonly url: string;
   readonly calls: readonly RecordedCall[];
   callsFor(tool: MockToolName): RecordedCall[];
@@ -54,18 +55,28 @@ function isMockToolName(value: string): value is MockToolName {
 }
 
 function userTextOf(body: JsonObject): string {
-  const messages = Array.isArray(body.messages) ? body.messages : [];
+  const input = Array.isArray(body.input) ? body.input : [];
   const parts: string[] = [];
-  for (const m of messages) {
-    if (!isObject(m) || m.role !== "user") continue;
-    if (typeof m.content === "string") parts.push(m.content);
-    else if (Array.isArray(m.content)) {
-      for (const block of m.content) {
+  for (const step of input) {
+    if (!isObject(step)) continue;
+    if (typeof step.content === "string") parts.push(step.content);
+    else if (Array.isArray(step.content)) {
+      for (const block of step.content) {
         if (isObject(block) && typeof block.text === "string") parts.push(block.text);
       }
     }
   }
   return parts.join("\n");
+}
+
+/** The tool the request forced, from generation_config.tool_choice. */
+function forcedToolOf(body: JsonObject): string | null {
+  const config = isObject(body.generation_config) ? body.generation_config : {};
+  const choice = isObject(config.tool_choice) ? config.tool_choice : {};
+  const allowed = isObject(choice.allowed_tools) ? choice.allowed_tools : {};
+  const tools = Array.isArray(allowed.tools) ? allowed.tools : [];
+  const first = tools[0];
+  return typeof first === "string" ? first : null;
 }
 
 function readBody(req: IncomingMessage): Promise<string> {
@@ -91,7 +102,7 @@ function apiError(type: string, message: string): JsonObject {
   return { type: "error", error: { type, message } };
 }
 
-export async function startMockAnthropic(): Promise<MockAnthropic> {
+export async function startMockLlm(): Promise<MockLlm> {
   const calls: RecordedCall[] = [];
   const overrides = new Map<MockToolName, unknown>();
   const queues = new Map<MockToolName, unknown[]>();
@@ -101,7 +112,7 @@ export async function startMockAnthropic(): Promise<MockAnthropic> {
   let seq = 0;
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    if (req.method !== "POST" || !req.url?.startsWith("/v1/messages")) {
+    if (req.method !== "POST" || !req.url?.startsWith("/v1beta/interactions")) {
       sendJson(
         res,
         404,
@@ -122,19 +133,20 @@ export async function startMockAnthropic(): Promise<MockAnthropic> {
       return;
     }
 
-    const toolChoice = isObject(body.tool_choice) ? body.tool_choice : {};
-    const tool = typeof toolChoice.name === "string" ? toolChoice.name : null;
+    const tool = forcedToolOf(body);
     const model = typeof body.model === "string" ? body.model : null;
-    const maxTokens = typeof body.max_tokens === "number" ? body.max_tokens : null;
+    const config = isObject(body.generation_config) ? body.generation_config : {};
+    const maxTokens =
+      typeof config.max_output_tokens === "number" ? config.max_output_tokens : null;
     calls.push({ tool, model, maxTokens, userText: userTextOf(body) });
 
     if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
 
     if (failRemaining > 0) {
       failRemaining--;
-      // retry-after-ms keeps the SDK's retries instant instead of 0.5 s + 1 s.
-      sendJson(res, 529, apiError("overloaded_error", "Overloaded"), {
-        "retry-after-ms": "0",
+      // retry-after: 0 keeps the client's backoff instant in tests.
+      sendJson(res, 429, apiError("RESOURCE_EXHAUSTED", "Quota exceeded"), {
+        "retry-after": "0",
       });
       return;
     }
@@ -159,31 +171,37 @@ export async function startMockAnthropic(): Promise<MockAnthropic> {
     seq++;
     if (truncateRemaining > 0) {
       truncateRemaining--;
+      // "incomplete" is how the API reports output cut off at the token
+      // budget: no function_call step ever arrives.
       sendJson(res, 200, {
-        id: `msg_mock_${seq}`,
-        type: "message",
-        role: "assistant",
+        id: `int_mock_${seq}`,
         model: model ?? "mock",
-        content: [],
-        stop_reason: "max_tokens",
-        stop_sequence: null,
-        usage: { input_tokens: 100, output_tokens: maxTokens ?? 0 },
+        status: "incomplete",
+        steps: [],
+        usage: {
+          total_input_tokens: 100,
+          total_output_tokens: maxTokens ?? 0,
+        },
       });
       return;
     }
     sendJson(res, 200, {
-      id: `msg_mock_${seq}`,
-      type: "message",
-      role: "assistant",
+      id: `int_mock_${seq}`,
       model: model ?? "mock",
-      content: [{ type: "tool_use", id: `toolu_mock_${seq}`, name: tool, input }],
-      stop_reason: "tool_use",
-      stop_sequence: null,
+      status: "completed",
+      steps: [
+        {
+          type: "function_call",
+          id: `call_mock_${seq}`,
+          name: tool,
+          arguments: input,
+        },
+      ],
       usage: {
-        input_tokens: 100,
-        output_tokens: 50,
-        cache_creation_input_tokens: 0,
-        cache_read_input_tokens: 0,
+        total_input_tokens: 100,
+        total_output_tokens: 50,
+        total_cached_tokens: 0,
+        total_thought_tokens: 0,
       },
     });
   }

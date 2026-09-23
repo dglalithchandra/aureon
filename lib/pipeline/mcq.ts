@@ -1,6 +1,6 @@
 import "@/lib/server-only";
 import { randomUUID } from "node:crypto";
-import { PromptModel } from "@/lib/llm/anthropic";
+import { promptModel } from "@/lib/llm/client";
 import { callToolWithRepair } from "@/lib/llm/structured";
 import { generateQuestionsTool, MCQ_SYSTEM_PROMPT } from "@/lib/llm/prompts/mcq";
 import {
@@ -27,7 +27,7 @@ export interface GenerateQuestionsOptions {
 }
 
 /**
- * Run one Anthropic call to produce 1-3 MCQ questions targeting the
+ * Run one model call to produce 1-3 MCQ questions targeting the
  * lowest-scoring parameters. Server assigns UUIDs after Zod validation.
  *
  * Returns an empty array on transport / parse failure (caller treats this
@@ -72,7 +72,7 @@ export async function generateQuestions(
       toolName: generateQuestionsTool.name,
       parse: (input) => QuestionGenToolOutputSchema.safeParse(input),
       params: {
-        model: PromptModel.SONNET,
+        model: promptModel("main"),
         max_tokens: 2048,
         system: MCQ_SYSTEM_PROMPT,
         tools: [generateQuestionsTool],
@@ -84,7 +84,7 @@ export async function generateQuestions(
     // The budget error must reach the route as a 503, not become an LLMError.
     if (err instanceof BudgetExceededError) throw err;
     const message = err instanceof Error ? err.message : "unknown";
-    logger.error("mcq.anthropic_failure", { message });
+    logger.error("mcq.provider_failure", { message });
     throw new LLMError("MCQ generation failed");
   }
 

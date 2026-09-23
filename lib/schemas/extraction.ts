@@ -4,7 +4,7 @@ import { RepoLinkSchema } from "@/lib/schemas/github";
 /**
  * Extraction schemas — the structured shape the LLM must return.
  *
- * The LLM emits this via Anthropic tool use (`submit_extraction`), so the
+ * The LLM emits this via forced tool use (`submit_extraction`), so the
  * Zod schemas serve two roles:
  *   1. Source of truth for the JSON Schema attached to the tool definition.
  *   2. Runtime validator that runs on every tool_use response — never trust

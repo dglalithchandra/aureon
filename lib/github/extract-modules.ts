@@ -1,6 +1,6 @@
 import "@/lib/server-only";
-import type Anthropic from "@anthropic-ai/sdk";
-import { PromptModel } from "@/lib/llm/anthropic";
+import type { LlmTool } from "@/lib/llm/types";
+import { promptModel } from "@/lib/llm/client";
 import { callToolWithRepair } from "@/lib/llm/structured";
 import {
   ExtractModulesToolOutputSchema,
@@ -14,7 +14,7 @@ import { BudgetExceededError } from "@/lib/errors";
 const PROJECT_DESC_MAX = 4_000;
 const README_MAX = 6_000;
 
-const extractModulesTool: Anthropic.Tool = {
+const extractModulesTool: LlmTool = {
   name: "extract_modules",
   description:
     "Identify the major modules / pages / top-level features described in a GitHub repository's README, rate how similar that repo is to the target project, and explain in one sentence why it matched.",
@@ -72,7 +72,7 @@ export async function extractModulesFromReadme(
       toolName: extractModulesTool.name,
       parse: (input) => ExtractModulesToolOutputSchema.safeParse(input),
       params: {
-        model: PromptModel.HAIKU,
+        model: promptModel("fast"),
         max_tokens: 1024,
         system: SYSTEM_PROMPT,
         tools: [extractModulesTool],

@@ -5,7 +5,7 @@ import { GITHUB_REPO_URL_RE, GitHubMatchSchema } from "@/lib/schemas/github";
 import { GitHubReferenceSchema } from "@/lib/schemas/output";
 import { scoreModules } from "@/lib/scoring/modules";
 import type { Session } from "@/lib/schemas/mcq";
-import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { startMockLlm, type MockLlm } from "../mocks/mock-llm";
 import {
   makeEnrichment,
   makeEngineerView,
@@ -17,11 +17,11 @@ import {
 
 /** GOAL-02: references come from the round's matches. SEC-05: only real URLs. */
 
-let mock: MockAnthropic;
+let mock: MockLlm;
 
 beforeAll(async () => {
-  mock = await startMockAnthropic();
-  process.env.ANTHROPIC_BASE_URL = mock.url;
+  mock = await startMockLlm();
+  process.env.GEMINI_BASE_URL = mock.url;
 });
 
 afterAll(async () => {

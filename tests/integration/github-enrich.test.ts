@@ -10,7 +10,7 @@ import {
 } from "vitest";
 import { enrichWithGitHub, GITHUB_REQUEST_BUDGET } from "@/lib/pipeline/github-enrich";
 import { logger } from "@/lib/logger";
-import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { startMockLlm, type MockLlm } from "../mocks/mock-llm";
 import { makeExtraction } from "../fixtures/llm";
 
 /**
@@ -140,12 +140,12 @@ const extraction = makeExtraction({
 const RAW =
   "A marketplace for handmade crafts: seller catalog, checkout and weekly payouts.";
 
-let mock: MockAnthropic;
+let mock: MockLlm;
 const guardedFetch = globalThis.fetch;
 
 beforeAll(async () => {
-  mock = await startMockAnthropic();
-  process.env.ANTHROPIC_BASE_URL = mock.url;
+  mock = await startMockLlm();
+  process.env.GEMINI_BASE_URL = mock.url;
 });
 
 afterAll(async () => {

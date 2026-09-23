@@ -25,17 +25,18 @@ npx tsx evals/run.ts --cases=thin,long  # only ids containing these
 npx tsx evals/run.ts --labels           # regenerate LABELS.md, calls nothing
 ```
 
-`npm run evals` reads `ANTHROPIC_API_KEY` (or `OPENROUTER_API_KEY` with
+`npm run evals` reads `GEMINI_API_KEY` (or `OPENROUTER_API_KEY` with
 `LLM_PROVIDER=openrouter`) from the environment or `.env.local`, exactly like
 the scripts in `scripts/`. It refuses to start when `CI` is set unless
 `--allow-ci` is passed, which only the manual `evals` workflow does. The unit
 tests never touch it: they exercise `evals/lib/` directly and
 `npm run evals:mock` drives the whole runner against
-`tests/mocks/mock-anthropic.ts`.
+`tests/mocks/mock-llm.ts`.
 
-Roughly 90 Sonnet calls at three runs each, of which three cases are 20k
-characters, so expect a few dollars and 10–20 minutes. `--dry-run` prints the
-estimate before you commit to it.
+Roughly 90 model calls at three runs each, of which three cases are 20k
+characters. On the Gemini free tier that costs nothing but will hit the
+per-minute limit, so the runner keeps concurrency low and backs off on a 429;
+expect 15–30 minutes. `--dry-run` prints the plan first.
 
 ## A case
 

@@ -6,7 +6,7 @@ import { POST as runRoute } from "@/app/api/session/[id]/run/route";
 import { createSession } from "@/lib/pipeline/orchestrator";
 import { getSession, putSession } from "@/lib/storage/session";
 import { buildSessionCookie, SESSION_COOKIE_NAME } from "@/lib/security/session-cookie";
-import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { startMockLlm, type MockLlm } from "../mocks/mock-llm";
 import { drainJobs, queuedJobs, resetJobQueue } from "../mocks/job-queue";
 
 vi.mock("@/lib/jobs/transport", () => import("../mocks/job-queue"));
@@ -30,11 +30,11 @@ function resetMemoryBudget(): void {
   ).__scopeai_llm_budget?.clear();
 }
 
-let mock: MockAnthropic;
+let mock: MockLlm;
 
 beforeAll(async () => {
-  mock = await startMockAnthropic();
-  process.env.ANTHROPIC_BASE_URL = mock.url;
+  mock = await startMockLlm();
+  process.env.GEMINI_BASE_URL = mock.url;
 });
 
 afterAll(async () => {

@@ -11,7 +11,7 @@
  * THE DEFAULT MODE SPENDS REAL MONEY. It refuses to start in CI unless
  * --allow-ci is passed, which only .github/workflows/evals.yml does, behind a
  * manual trigger. Credentials come from the environment or .env.local:
- * ANTHROPIC_API_KEY, or OPENROUTER_API_KEY with LLM_PROVIDER=openrouter.
+ * GEMINI_API_KEY, or OPENROUTER_API_KEY with LLM_PROVIDER=openrouter.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -132,17 +132,14 @@ function loadCases(): EvalCase[] {
 /* --------------------------------------------------------------- prices */
 
 /**
- * List prices in US dollars per million tokens, correct for claude-sonnet-4-6
- * when this was written (September 2026). They move; override with
- * EVALS_PRICE_IN / _OUT / _CACHE_WRITE / _CACHE_READ rather than editing this.
- * OpenRouter's free models cost nothing, so that column is zero by default.
+ * Prices in US dollars per million tokens. Zero by default: the Gemini free
+ * tier and OpenRouter's free models cost nothing, and a run on a paid key
+ * should say what it actually cost — set EVALS_PRICE_IN / _OUT /
+ * _CACHE_WRITE / _CACHE_READ from the current price list before the run.
  */
 function pricesFor(provider: string): Prices {
-  if (provider === "mock") return { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
-  const base: Prices =
-    provider === "openrouter"
-      ? { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }
-      : { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 };
+  const base: Prices = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
+  if (provider === "mock") return base;
   const override = (envName: string, fallback: number): number => {
     const n = Number(process.env[envName]);
     return Number.isFinite(n) && n >= 0 ? n : fallback;
@@ -565,32 +562,32 @@ async function main(): Promise<void> {
   }
 
   let close: (() => Promise<void>) | null = null;
-  let provider = "anthropic";
+  let provider = "gemini";
   let model = "";
 
   if (MOCK) {
     // The in-process stand-in the test suite uses. It answers every input
     // with the same fixture, so this proves the harness runs, nothing else.
-    const { startMockAnthropic } = await import("@/tests/mocks/mock-anthropic");
-    const mock = await startMockAnthropic();
+    const { startMockLlm } = await import("@/tests/mocks/mock-llm");
+    const mock = await startMockLlm();
     close = () => mock.close();
-    process.env.LLM_PROVIDER = "anthropic";
-    process.env.ANTHROPIC_API_KEY = "sk-ant-evals-mock-000000000000";
-    process.env.ANTHROPIC_BASE_URL = mock.url;
+    process.env.LLM_PROVIDER = "gemini";
+    process.env.GEMINI_API_KEY = "AIza-evals-mock-0000000000000000000";
+    process.env.GEMINI_BASE_URL = mock.url;
     delete process.env.OPENROUTER_API_KEY;
     provider = "mock";
-    model = "tests/mocks/mock-anthropic.ts";
+    model = "tests/mocks/mock-llm.ts";
   } else {
     loadEnvFile(join(EVALS_DIR, "..", ".env.local"));
-    provider = process.env.LLM_PROVIDER === "openrouter" ? "openrouter" : "anthropic";
+    provider = process.env.LLM_PROVIDER === "openrouter" ? "openrouter" : "gemini";
     model =
       provider === "openrouter"
         ? (process.env.OPENROUTER_MODEL ?? "openrouter default")
-        : "claude-sonnet-4-6";
+        : (process.env.GEMINI_MODEL ?? "gemini-3.8-flash");
     const key =
       provider === "openrouter"
         ? process.env.OPENROUTER_API_KEY
-        : process.env.ANTHROPIC_API_KEY;
+        : process.env.GEMINI_API_KEY;
     if (!key) {
       throw new Error(
         `No API key for provider "${provider}". Set it in .env.local or the environment, or run npm run evals:mock.`,
@@ -612,7 +609,9 @@ async function main(): Promise<void> {
     // ~9k input tokens for a typical case, ~1.2k out; the long cases are 5x.
     const rough = (calls * 11_000 * prices.input + calls * 1_200 * prices.output) / 1e6;
     console.log(
-      `Rough cost before the run: $${rough.toFixed(2)} at $${prices.input}/$${prices.output} per Mtok. Cancel now if that is wrong.`,
+      prices.input === 0 && prices.output === 0
+        ? "Prices are 0 (free tier). Set EVALS_PRICE_IN / EVALS_PRICE_OUT to cost a paid run."
+        : `Rough cost before the run: $${rough.toFixed(2)} at $${prices.input}/$${prices.output} per Mtok. Cancel now if that is wrong.`,
     );
   }
   if (DRY_RUN) {

@@ -62,7 +62,6 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <link rel="preconnect" href="https://api.anthropic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://api.github.com" />
       </head>
       <body className="bg-blueprint-bg text-blueprint-text flex min-h-full flex-col font-sans">

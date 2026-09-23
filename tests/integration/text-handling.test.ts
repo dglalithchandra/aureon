@@ -10,7 +10,7 @@ import { getSession, putSession } from "@/lib/storage/session";
 import { buildSessionCookie, SESSION_COOKIE_NAME } from "@/lib/security/session-cookie";
 import type { Session } from "@/lib/schemas/mcq";
 import type { FinalOutput } from "@/lib/schemas/output";
-import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { startMockLlm, type MockLlm } from "../mocks/mock-llm";
 import { drainJobs, resetJobQueue } from "../mocks/job-queue";
 import {
   makeClientView,
@@ -27,12 +27,12 @@ vi.mock("@/lib/jobs/transport", () => import("../mocks/job-queue"));
 const GENERICS = "API returns List<Order> and Map<String, Integer>";
 const AMPERSANDS = "Fewer than <5 users & R&D";
 
-let mock: MockAnthropic;
+let mock: MockLlm;
 let ip = 0;
 
 beforeAll(async () => {
-  mock = await startMockAnthropic();
-  process.env.ANTHROPIC_BASE_URL = mock.url;
+  mock = await startMockLlm();
+  process.env.GEMINI_BASE_URL = mock.url;
 });
 
 afterAll(async () => {

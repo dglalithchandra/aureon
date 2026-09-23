@@ -9,16 +9,18 @@
  */
 
 const TEST_ENV: Record<string, string> = {
-  LLM_PROVIDER: "anthropic",
-  ANTHROPIC_API_KEY: "sk-ant-test-0000000000000000000000",
-  // Tests that need the LLM start tests/mocks/mock-anthropic.ts and point
+  LLM_PROVIDER: "gemini",
+  GEMINI_API_KEY: "AIza-test-00000000000000000000000000",
+  GEMINI_MODEL: "gemini-test-main",
+  GEMINI_FAST_MODEL: "gemini-test-fast",
+  // Tests that need the LLM start tests/mocks/mock-llm.ts and point
   // this at it. Port 9 (discard) makes a forgotten mock fail fast.
-  ANTHROPIC_BASE_URL: "http://127.0.0.1:9",
+  GEMINI_BASE_URL: "http://127.0.0.1:9",
   SESSION_SECRET: "test-session-secret-0123456789abcdef",
 };
 
 const UNSET = [
-  "ANTHROPIC_AUTH_TOKEN",
+  "ANTHROPIC_API_KEY",
   "OPENROUTER_API_KEY",
   "OPENROUTER_MODEL",
   "GITHUB_TOKEN",

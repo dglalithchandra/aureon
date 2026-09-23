@@ -11,7 +11,7 @@ import type { NextConfig } from "next";
  *     reducing impact even if `unsafe-inline` were exploited.
  *
  * `connect-src` allow-list:
- *   - api.anthropic.com   — LLM calls (server-only, but listed for safety)
+ *   - generativelanguage.googleapis.com — Gemini (server-only, listed for safety)
  *   - api.github.com      — Octokit
  *   - prod.spline.design  — Spline scene assets
  */
@@ -30,7 +30,7 @@ const cspDirectives: Record<string, string[]> = {
   "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
   "connect-src": [
     "'self'",
-    "https://api.anthropic.com",
+    "https://generativelanguage.googleapis.com",
     "https://api.github.com",
     "https://prod.spline.design",
     "https://*.upstash.io",

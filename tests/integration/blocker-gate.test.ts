@@ -10,7 +10,7 @@ import { buildSessionCookie, SESSION_COOKIE_NAME } from "@/lib/security/session-
 import { SCOPING } from "@/lib/config/scoping";
 import { deriveMessages, NEEDS_INPUT_PROMPT } from "@/components/chat/messageDerivation";
 import type { Session } from "@/lib/schemas/mcq";
-import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { startMockLlm, type MockLlm } from "../mocks/mock-llm";
 import { drainJobs, resetJobQueue } from "../mocks/job-queue";
 import {
   makeClientView,
@@ -34,12 +34,12 @@ const blockerExtraction = () =>
     confidence: 30,
   });
 
-let mock: MockAnthropic;
+let mock: MockLlm;
 let ip = 0;
 
 beforeAll(async () => {
-  mock = await startMockAnthropic();
-  process.env.ANTHROPIC_BASE_URL = mock.url;
+  mock = await startMockLlm();
+  process.env.GEMINI_BASE_URL = mock.url;
 });
 
 afterAll(async () => {

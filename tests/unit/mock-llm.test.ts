@@ -3,15 +3,15 @@ import { ExtractionResultStrictSchema } from "@/lib/schemas/extraction";
 import { ExtractModulesToolOutputSchema } from "@/lib/schemas/github";
 import { QuestionGenToolOutputSchema } from "@/lib/schemas/mcq";
 import { ClientViewSchema, EngineerViewSchema } from "@/lib/schemas/output";
-import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { startMockLlm, type MockLlm } from "../mocks/mock-llm";
 import { defaultToolPayload, MOCK_TOOL_NAMES, type MockToolName } from "../fixtures/llm";
 
 /** Checks the test infrastructure itself: fixtures, mock controls, network guard. */
 
-let mock: MockAnthropic;
+let mock: MockLlm;
 
 beforeAll(async () => {
-  mock = await startMockAnthropic();
+  mock = await startMockLlm();
 });
 
 afterAll(async () => {
@@ -25,27 +25,35 @@ beforeEach(() => {
 interface MockResponse {
   status: number;
   body: {
-    content?: Array<{ type: string; name: string; input: unknown }>;
+    status?: string;
+    steps?: Array<{ type: string; name: string; arguments: unknown }>;
     error?: { type: string };
   };
 }
 
-async function post(tool: string | null, path = "/v1/messages"): Promise<MockResponse> {
+/** One Interactions request, shaped the way lib/llm/gemini.ts sends them. */
+async function post(
+  tool: string | null,
+  path = "/v1beta/interactions",
+): Promise<MockResponse> {
   const res = await fetch(`${mock.url}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      model: "claude-test",
-      max_tokens: 10,
-      tool_choice: tool ? { type: "tool", name: tool } : undefined,
-      messages: [{ role: "user", content: "hi" }],
+      model: "gemini-test-main",
+      input: [{ type: "user_input", content: [{ type: "text", text: "hi" }] }],
+      generation_config: {
+        max_output_tokens: 10,
+        tool_choice: tool ? { allowed_tools: { mode: "any", tools: [tool] } } : undefined,
+      },
+      store: false,
     }),
   });
   return { status: res.status, body: (await res.json()) as MockResponse["body"] };
 }
 
 function inputOf(res: MockResponse): unknown {
-  return res.body.content?.[0]?.input;
+  return res.body.steps?.[0]?.arguments;
 }
 
 describe("default fixtures", () => {
@@ -65,35 +73,48 @@ describe("default fixtures", () => {
   });
 });
 
-describe("mock Anthropic server", () => {
-  it("answers with a tool_use block for the tool in tool_choice", async () => {
+describe("mock LLM server", () => {
+  it("answers with a function_call step for the forced tool", async () => {
     const res = await post("extract_modules");
 
     expect(res.status).toBe(200);
-    expect(res.body.content?.[0]).toMatchObject({
-      type: "tool_use",
+    expect(res.body.status).toBe("completed");
+    expect(res.body.steps?.[0]).toMatchObject({
+      type: "function_call",
       name: "extract_modules",
     });
     expect(inputOf(res)).toEqual(defaultToolPayload("extract_modules"));
     expect(mock.calls).toEqual([
-      { tool: "extract_modules", model: "claude-test", maxTokens: 10, userText: "hi" },
+      {
+        tool: "extract_modules",
+        model: "gemini-test-main",
+        maxTokens: 10,
+        userText: "hi",
+      },
     ]);
   });
 
   it("rejects unknown tools and unknown routes", async () => {
     expect((await post("no_such_tool")).status).toBe(400);
     expect((await post(null)).status).toBe(400);
-    expect((await post("extract_modules", "/v1/complete")).status).toBe(404);
+    expect((await post("extract_modules", "/v1beta/models")).status).toBe(404);
   });
 
-  it("fails exactly the next N requests with 529", async () => {
+  it("fails exactly the next N requests with 429", async () => {
     mock.failNext(2);
     const statuses = [
       (await post("extract_modules")).status,
       (await post("extract_modules")).status,
       (await post("extract_modules")).status,
     ];
-    expect(statuses).toEqual([529, 529, 200]);
+    expect(statuses).toEqual([429, 429, 200]);
+  });
+
+  it("reports truncated output as status incomplete with no call", async () => {
+    mock.truncateNext(1);
+    const res = await post("extract_modules");
+    expect(res.body.status).toBe("incomplete");
+    expect(res.body.steps).toEqual([]);
   });
 
   it("serves queued payloads first, then the override, then the default", async () => {
@@ -119,9 +140,9 @@ describe("mock Anthropic server", () => {
 
 describe("network guard (tests/setup.ts)", () => {
   it("blocks requests to non-loopback hosts", async () => {
-    await expect(fetch("https://api.anthropic.com/v1/messages")).rejects.toThrow(
-      /Network access is blocked/,
-    );
+    await expect(
+      fetch("https://generativelanguage.googleapis.com/v1beta/interactions"),
+    ).rejects.toThrow(/Network access is blocked/);
     await expect(
       fetch(new URL("https://api.github.com/search/repositories")),
     ).rejects.toThrow(/Network access is blocked/);

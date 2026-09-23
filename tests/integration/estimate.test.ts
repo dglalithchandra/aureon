@@ -5,7 +5,7 @@ import { estimateEffort } from "@/lib/scoring/effort";
 import { SCOPING } from "@/lib/config/scoping";
 import type { Session } from "@/lib/schemas/mcq";
 import type { ModuleCandidate } from "@/lib/schemas/extraction";
-import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { startMockLlm, type MockLlm } from "../mocks/mock-llm";
 import {
   makeEngineerView,
   makeExtraction,
@@ -20,11 +20,11 @@ import {
  * over its answer. A model that argues with them loses.
  */
 
-let mock: MockAnthropic;
+let mock: MockLlm;
 
 beforeAll(async () => {
-  mock = await startMockAnthropic();
-  process.env.ANTHROPIC_BASE_URL = mock.url;
+  mock = await startMockLlm();
+  process.env.GEMINI_BASE_URL = mock.url;
 });
 
 afterAll(async () => {

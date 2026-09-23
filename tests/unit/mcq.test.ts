@@ -1,18 +1,18 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { generateQuestions } from "@/lib/pipeline/mcq";
 import { LLMError } from "@/lib/errors";
-import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { startMockLlm, type MockLlm } from "../mocks/mock-llm";
 import { SCOPING } from "@/lib/config/scoping";
 import type { MCQQuestion } from "@/lib/schemas/mcq";
 import { makeExtraction, makeParameters, makeQuestionsPayload } from "../fixtures/llm";
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-let mock: MockAnthropic;
+let mock: MockLlm;
 
 beforeAll(async () => {
-  mock = await startMockAnthropic();
-  process.env.ANTHROPIC_BASE_URL = mock.url;
+  mock = await startMockLlm();
+  process.env.GEMINI_BASE_URL = mock.url;
 });
 
 afterAll(async () => {

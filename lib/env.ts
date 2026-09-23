@@ -15,13 +15,20 @@ import { z } from "zod";
 const serverSchema = z
   .object({
     /**
-     * Default LLM provider. `anthropic` (Sonnet/Haiku) is the production
-     * choice; `openrouter` routes calls through OpenRouter so a free model
-     * (e.g. Llama 3.3 70B) can be used during local development.
-     * Quality drops noticeably on free models — use only for smoke testing.
+     * Default LLM provider. `gemini` is the production choice; `openrouter`
+     * routes calls through OpenRouter so another free model can be used
+     * during local development. Quality drops noticeably on free models —
+     * use only for smoke testing.
      */
-    LLM_PROVIDER: z.enum(["anthropic", "openrouter"]).default("anthropic"),
-    ANTHROPIC_API_KEY: z.string().min(20).optional(),
+    LLM_PROVIDER: z.enum(["gemini", "openrouter"]).default("gemini"),
+    /** Google AI Studio key (https://aistudio.google.com/apikey). */
+    GEMINI_API_KEY: z.string().min(20).optional(),
+    /** Model for the pipeline: extraction, questions, both documents. */
+    GEMINI_MODEL: z.string().min(1).default("gemini-3.8-flash"),
+    /** Cheaper model for small mechanical jobs (README module names). */
+    GEMINI_FAST_MODEL: z.string().min(1).default("gemini-3.5-flash-lite"),
+    /** Override the API origin. Tests point this at their mock server. */
+    GEMINI_BASE_URL: z.string().url().optional(),
     OPENROUTER_API_KEY: z.string().min(20).optional(),
     /** Override the model used when LLM_PROVIDER=openrouter. */
     OPENROUTER_MODEL: z.string().optional(),
@@ -65,11 +72,11 @@ const serverSchema = z
     // Each provider needs its own credential; we don't fail fast at boot
     // because most local commands (typecheck, lint) shouldn't require LLM
     // creds — but we do refuse to issue an LLM call without the right key.
-    if (data.LLM_PROVIDER === "anthropic" && !data.ANTHROPIC_API_KEY) {
+    if (data.LLM_PROVIDER === "gemini" && !data.GEMINI_API_KEY) {
       ctx.addIssue({
         code: "custom",
-        path: ["ANTHROPIC_API_KEY"],
-        message: "ANTHROPIC_API_KEY required when LLM_PROVIDER=anthropic (the default)",
+        path: ["GEMINI_API_KEY"],
+        message: "GEMINI_API_KEY required when LLM_PROVIDER=gemini (the default)",
       });
     }
     // Serverless instances do not share memory: without Redis, sessions and

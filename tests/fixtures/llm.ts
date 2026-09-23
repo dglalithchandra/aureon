@@ -18,7 +18,7 @@ import type { ClientView, EngineerView } from "@/lib/schemas/output";
 import { SCOPING } from "@/lib/config/scoping";
 
 /**
- * Schema-valid fixtures shared by unit tests and the mock Anthropic server.
+ * Schema-valid fixtures shared by unit tests and the mock LLM server.
  * Every factory returns a fresh object, so tests may mutate the result.
  */
 

@@ -15,18 +15,18 @@ import {
 } from "@/lib/storage/lock";
 import { buildSessionCookie, SESSION_COOKIE_NAME } from "@/lib/security/session-cookie";
 import type { Session } from "@/lib/schemas/mcq";
-import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { startMockLlm, type MockLlm } from "../mocks/mock-llm";
 import { drainJobs, failNextSend, queuedJobs, resetJobQueue } from "../mocks/job-queue";
 import { makeRound } from "../fixtures/llm";
 
 vi.mock("@/lib/jobs/transport", () => import("../mocks/job-queue"));
 
-let mock: MockAnthropic;
+let mock: MockLlm;
 let ipCounter = 0;
 
 beforeAll(async () => {
-  mock = await startMockAnthropic();
-  process.env.ANTHROPIC_BASE_URL = mock.url;
+  mock = await startMockLlm();
+  process.env.GEMINI_BASE_URL = mock.url;
 });
 
 afterAll(async () => {

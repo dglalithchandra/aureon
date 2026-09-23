@@ -10,7 +10,7 @@ import { getSession, putSession } from "@/lib/storage/session";
 import { acquireLock, releaseLock, sessionLockKey } from "@/lib/storage/lock";
 import { buildSessionCookie, SESSION_COOKIE_NAME } from "@/lib/security/session-cookie";
 import type { Session } from "@/lib/schemas/mcq";
-import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { startMockLlm, type MockLlm } from "../mocks/mock-llm";
 import { drainJobs, queuedJobs, resetJobQueue } from "../mocks/job-queue";
 import { makeRound, makeSession } from "../fixtures/llm";
 
@@ -24,12 +24,12 @@ const NEXT_KEY = "sig_test_next_0123456789abc";
 process.env.QSTASH_CURRENT_SIGNING_KEY = CURRENT_KEY;
 process.env.QSTASH_NEXT_SIGNING_KEY = NEXT_KEY;
 
-let mock: MockAnthropic;
+let mock: MockLlm;
 let ip = 0;
 
 beforeAll(async () => {
-  mock = await startMockAnthropic();
-  process.env.ANTHROPIC_BASE_URL = mock.url;
+  mock = await startMockLlm();
+  process.env.GEMINI_BASE_URL = mock.url;
 });
 
 afterAll(async () => {

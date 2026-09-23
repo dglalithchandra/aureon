@@ -7,7 +7,7 @@ import { generateOutput } from "@/lib/pipeline/finalize";
 import { getSession, putSession } from "@/lib/storage/session";
 import { buildSessionCookie, SESSION_COOKIE_NAME } from "@/lib/security/session-cookie";
 import { SessionSchema, type MCQAnswer, type Session } from "@/lib/schemas/mcq";
-import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { startMockLlm, type MockLlm } from "../mocks/mock-llm";
 import { makeExtraction, makeRound, makeSession } from "../fixtures/llm";
 import { drainJobs, resetJobQueue } from "../mocks/job-queue";
 
@@ -15,12 +15,12 @@ import { drainJobs, resetJobQueue } from "../mocks/job-queue";
 
 vi.mock("@/lib/jobs/transport", () => import("../mocks/job-queue"));
 
-let mock: MockAnthropic;
+let mock: MockLlm;
 let ip = 0;
 
 beforeAll(async () => {
-  mock = await startMockAnthropic();
-  process.env.ANTHROPIC_BASE_URL = mock.url;
+  mock = await startMockLlm();
+  process.env.GEMINI_BASE_URL = mock.url;
 });
 
 afterAll(async () => {

@@ -1,5 +1,5 @@
 import "@/lib/server-only";
-import { ephemeralCacheControl, PromptModel } from "@/lib/llm/anthropic";
+import { promptModel } from "@/lib/llm/client";
 import { callToolWithRepair } from "@/lib/llm/structured";
 import {
   CLIENT_VIEW_SYSTEM_PROMPT,
@@ -301,15 +301,9 @@ async function runClientView(context: string): Promise<ClientView> {
       toolName: submitClientViewTool.name,
       parse: (input) => ClientViewSchema.safeParse(coerceClientView(input)),
       params: {
-        model: PromptModel.SONNET,
+        model: promptModel("main"),
         max_tokens: 4096,
-        system: [
-          {
-            type: "text",
-            text: CLIENT_VIEW_SYSTEM_PROMPT,
-            cache_control: ephemeralCacheControl,
-          },
-        ],
+        system: [{ type: "text", text: CLIENT_VIEW_SYSTEM_PROMPT }],
         tools: [submitClientViewTool],
         tool_choice: { type: "tool", name: submitClientViewTool.name },
         messages: [{ role: "user", content: context }],
@@ -346,15 +340,9 @@ async function runEngineerView(context: string): Promise<EngineerView> {
       toolName: submitEngineerViewTool.name,
       parse: (input) => EngineerViewSchema.safeParse(coerceEngineerView(input)),
       params: {
-        model: PromptModel.SONNET,
+        model: promptModel("main"),
         max_tokens: 8192,
-        system: [
-          {
-            type: "text",
-            text: ENGINEER_VIEW_SYSTEM_PROMPT,
-            cache_control: ephemeralCacheControl,
-          },
-        ],
+        system: [{ type: "text", text: ENGINEER_VIEW_SYSTEM_PROMPT }],
         tools: [submitEngineerViewTool],
         tool_choice: { type: "tool", name: submitEngineerViewTool.name },
         messages: [{ role: "user", content: context }],

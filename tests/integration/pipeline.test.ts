@@ -4,7 +4,7 @@ import { generateOutput } from "@/lib/pipeline/finalize";
 import { LLMError, ValidationError } from "@/lib/errors";
 import { SessionSchema, type MCQAnswer, type PipelineStage } from "@/lib/schemas/mcq";
 import { FinalOutputSchema } from "@/lib/schemas/output";
-import { startMockAnthropic, type MockAnthropic } from "../mocks/mock-anthropic";
+import { startMockLlm, type MockLlm } from "../mocks/mock-llm";
 import { makeExtraction, makeParameters } from "../fixtures/llm";
 
 /**
@@ -25,11 +25,11 @@ const NO_GITHUB_QUERY = {
   variants: [],
 };
 
-let mock: MockAnthropic;
+let mock: MockLlm;
 
 beforeAll(async () => {
-  mock = await startMockAnthropic();
-  process.env.ANTHROPIC_BASE_URL = mock.url;
+  mock = await startMockLlm();
+  process.env.GEMINI_BASE_URL = mock.url;
 });
 
 afterAll(async () => {

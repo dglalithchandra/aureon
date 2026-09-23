@@ -1,5 +1,5 @@
 /**
- * Smoke test for runExtraction. Reads ANTHROPIC_API_KEY from .env.local.
+ * Smoke test for runExtraction. Reads GEMINI_API_KEY from .env.local.
  *
  * Usage:
  *   npx tsx scripts/test-extract.ts            # rich SaaS sample (default)

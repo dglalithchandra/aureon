@@ -1,16 +1,24 @@
 import "@/lib/server-only";
-import type Anthropic from "@anthropic-ai/sdk";
 import { getServerEnv } from "@/lib/env";
+import {
+  messageText,
+  systemText,
+  type LlmClient,
+  type LlmContentBlock,
+  type LlmRequest,
+  type LlmResponse,
+  type LlmStopReason,
+  type LlmTool,
+} from "@/lib/llm/types";
 
 /**
- * OpenRouter adapter that exposes a `messages.create` method shaped exactly
- * like Anthropic's SDK. Call sites in `lib/pipeline/*` and
- * `lib/github/extract-modules.ts` therefore work unchanged when the
- * provider is switched via `LLM_PROVIDER=openrouter`.
+ * OpenRouter adapter. It speaks the shape in lib/llm/types.ts, so
+ * `lib/pipeline/*` and `lib/github/extract-modules.ts` work unchanged when
+ * the provider is switched with LLM_PROVIDER=openrouter.
  *
- *   Anthropic forced tool-use  →  OpenAI function call (`tool_choice.function.name`)
- *   Anthropic system blocks    →  Concatenated string in OpenAI `role: "system"`
- *   OpenAI tool_call response  →  Synthetic Anthropic-shape `content: [{ type: "tool_use", ... }]`
+ *   forced tool use  →  OpenAI function call (`tool_choice.function.name`)
+ *   system blocks    →  one string in OpenAI `role: "system"`
+ *   tool_call reply  →  `content: [{ type: "tool_use", ... }]`
  *
  * Free OpenRouter models are flaky on forced tool use — Llama sometimes
  * returns the JSON in `message.content` instead of `tool_calls`. We try
@@ -57,32 +65,7 @@ interface OpenAiResponse {
  *  Conversion helpers
  * ────────────────────────────────────────────────────────────── */
 
-interface AnthropicSystemBlock {
-  type: "text";
-  text: string;
-  cache_control?: unknown;
-}
-
-function flattenSystem(
-  system: string | AnthropicSystemBlock[] | undefined,
-): string | null {
-  if (!system) return null;
-  if (typeof system === "string") return system;
-  return system.map((b) => b.text).join("\n\n");
-}
-
-function flattenUserContent(content: Anthropic.MessageParam["content"]): string {
-  if (typeof content === "string") return content;
-  return content
-    .map((block) => {
-      if (block.type === "text") return block.text;
-      // tool_use / tool_result / image — flatten to a labeled placeholder.
-      return `[${block.type}]`;
-    })
-    .join("\n\n");
-}
-
-function convertTools(tools: Anthropic.Tool[] | undefined): OpenAiTool[] {
+function convertTools(tools: LlmTool[] | undefined): OpenAiTool[] {
   if (!tools) return [];
   return tools.map((t) => ({
     type: "function",
@@ -94,16 +77,9 @@ function convertTools(tools: Anthropic.Tool[] | undefined): OpenAiTool[] {
   }));
 }
 
-function convertToolChoice(
-  choice: Anthropic.MessageCreateParams["tool_choice"],
-): unknown {
+function convertToolChoice(choice: LlmRequest["tool_choice"] | undefined): unknown {
   if (!choice) return undefined;
-  if (choice.type === "tool") {
-    return { type: "function", function: { name: choice.name } };
-  }
-  if (choice.type === "any") return "required";
-  if (choice.type === "auto") return "auto";
-  return undefined;
+  return { type: "function", function: { name: choice.name } };
 }
 
 /**
@@ -207,12 +183,10 @@ async function fetchWithRetry(
 }
 
 /* ──────────────────────────────────────────────────────────────
- *  Public API — Anthropic-shape `messages.create`
+ *  Public API — `messages.create`
  * ────────────────────────────────────────────────────────────── */
 
-async function messagesCreate(
-  params: Anthropic.MessageCreateParamsNonStreaming,
-): Promise<Anthropic.Message> {
+async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
   const env = getServerEnv();
   const apiKey = env.OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -221,14 +195,11 @@ async function messagesCreate(
   const model = env.OPENROUTER_MODEL ?? DEFAULT_MODEL;
 
   const messages: OpenAiMessage[] = [];
-  const sys = flattenSystem(params.system as string | AnthropicSystemBlock[] | undefined);
+  const sys = systemText(params.system);
   if (sys) messages.push({ role: "system", content: sys });
 
   for (const m of params.messages) {
-    messages.push({
-      role: m.role,
-      content: flattenUserContent(m.content),
-    });
+    messages.push({ role: m.role, content: messageText(m) });
   }
 
   const body = {
@@ -236,12 +207,11 @@ async function messagesCreate(
     max_tokens: params.max_tokens,
     temperature: 0.2,
     messages,
-    tools: convertTools(params.tools as Anthropic.Tool[] | undefined),
+    tools: convertTools(params.tools),
     tool_choice: convertToolChoice(params.tool_choice),
   };
 
-  // The raw fetch has no built-in retry (unlike the Anthropic SDK). Free
-  // OpenRouter routes drop connections often and rate-limit upstream, so we
+  // Free OpenRouter routes drop connections often and rate-limit upstream, so we
   // retry transient failures with exponential backoff + jitter. Only
   // non-retryable HTTP statuses (400/401/403/404) fail fast.
   const res = await fetchWithRetry(
@@ -271,11 +241,11 @@ async function messagesCreate(
     throw new Error("OpenRouter returned no choices");
   }
 
-  // Build the Anthropic-shape content blocks. We map every tool_call to a
+  // Build the content blocks. We map every tool_call to a
   // tool_use block; if the model ignored tool_choice and returned plain
   // content text, we attempt one JSON recovery before falling back to the
   // text being surfaced as a text block (caller will treat as a parse fail).
-  const content: Anthropic.ContentBlock[] = [];
+  const content: LlmContentBlock[] = [];
 
   if (message.tool_calls && message.tool_calls.length > 0) {
     for (const tc of message.tool_calls) {
@@ -290,7 +260,7 @@ async function messagesCreate(
         id: tc.id ?? cryptoRandomId(),
         name: tc.function.name,
         input,
-      } as Anthropic.ContentBlock);
+      });
     }
   } else {
     const recovered = recoverToolJson(message.content);
@@ -301,43 +271,31 @@ async function messagesCreate(
         id: cryptoRandomId(),
         name: expectedTool,
         input: recovered,
-      } as Anthropic.ContentBlock);
+      });
     } else if (message.content) {
-      content.push({
-        type: "text",
-        text: message.content,
-        citations: null,
-      } as Anthropic.ContentBlock);
+      content.push({ type: "text", text: message.content });
     }
   }
 
-  const usage: Anthropic.Usage = {
-    input_tokens: data.usage?.prompt_tokens ?? 0,
-    output_tokens: data.usage?.completion_tokens ?? 0,
-    cache_creation_input_tokens: 0,
-    cache_read_input_tokens: 0,
-    server_tool_use: null,
-    service_tier: null,
-  } as unknown as Anthropic.Usage;
-
   return {
     id: data.id ?? cryptoRandomId(),
-    type: "message",
-    role: "assistant",
     model,
     content,
     stop_reason: toStopReason(choice?.finish_reason),
-    stop_sequence: null,
-    usage,
-    container: null,
-  } as unknown as Anthropic.Message;
+    usage: {
+      input_tokens: data.usage?.prompt_tokens ?? 0,
+      output_tokens: data.usage?.completion_tokens ?? 0,
+      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: 0,
+    },
+  };
 }
 
 /**
- * OpenAI finish_reason → Anthropic stop_reason. "length" must become
- * "max_tokens" so callers can tell truncated output from invalid output.
+ * OpenAI finish_reason → our stop reason. "length" must become "max_tokens"
+ * so callers can tell truncated output from invalid output.
  */
-function toStopReason(finishReason: string | undefined): Anthropic.StopReason {
+function toStopReason(finishReason: string | undefined): LlmStopReason {
   if (finishReason === "tool_calls") return "tool_use";
   if (finishReason === "length") return "max_tokens";
   return "end_turn";
@@ -348,9 +306,6 @@ function cryptoRandomId(): string {
   return `or_${Math.random().toString(36).slice(2, 12)}`;
 }
 
-/* Adapter object that mirrors `new Anthropic({...})` surface used by the app. */
-export const openRouterClient = {
-  messages: {
-    create: messagesCreate,
-  },
+export const openRouterClient: LlmClient = {
+  messages: { create: messagesCreate },
 };

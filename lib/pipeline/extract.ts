@@ -1,5 +1,5 @@
 import "@/lib/server-only";
-import { ephemeralCacheControl, PromptModel } from "@/lib/llm/anthropic";
+import { promptModel } from "@/lib/llm/client";
 import { callToolWithRepair } from "@/lib/llm/structured";
 import {
   EXTRACTION_SYSTEM_PROMPT,
@@ -83,15 +83,9 @@ export async function runExtraction(
       toolName: submitExtractionTool.name,
       parse: (input) => ExtractionResultStrictSchema.safeParse(input),
       params: {
-        model: PromptModel.SONNET,
+        model: promptModel("main"),
         max_tokens: 4096,
-        system: [
-          {
-            type: "text",
-            text: EXTRACTION_SYSTEM_PROMPT,
-            cache_control: ephemeralCacheControl,
-          },
-        ],
+        system: [{ type: "text", text: EXTRACTION_SYSTEM_PROMPT }],
         tools: [submitExtractionTool],
         tool_choice: { type: "tool", name: submitExtractionTool.name },
         messages: [{ role: "user", content: userBlocks.join("\n\n") }],
@@ -101,7 +95,7 @@ export async function runExtraction(
     // The budget error must reach the route as a 503, not become an LLMError.
     if (err instanceof BudgetExceededError) throw err;
     const message = err instanceof Error ? err.message : "unknown error";
-    logger.error("extract.anthropic_failure", { message });
+    logger.error("extract.provider_failure", { message });
     throw new LLMError("Extraction model call failed");
   }
 

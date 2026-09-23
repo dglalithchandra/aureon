@@ -9,7 +9,7 @@
  *     both Next server and Node CLI — and is functionally equivalent.
  *
  * Always import this as the FIRST line of any module that must not be
- * bundled to the client (anything that touches Anthropic, GitHub, env, or
+ * bundled to the client (anything that touches the model provider, GitHub, env, or
  * Redis credentials).
  */
 if (typeof window !== "undefined") {

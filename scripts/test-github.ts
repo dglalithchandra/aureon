@@ -2,9 +2,9 @@
  * Smoke test for the GitHub enrichment layer.
  *
  *   npx tsx scripts/test-github.ts             # SaaS analytics sample
- *   npx tsx scripts/test-github.ts search-only # only test the GH search wiring (no Anthropic calls)
+ *   npx tsx scripts/test-github.ts search-only # only test the GH search wiring (no model calls)
  *
- * Requires ANTHROPIC_API_KEY for the full path. The search-only mode runs
+ * Requires GEMINI_API_KEY for the full path. The search-only mode runs
  * even without it (uses anonymous GitHub, 60 req/hr, fine for one run).
  */
 import { readFileSync } from "node:fs";

@@ -1,4 +1,4 @@
-import type Anthropic from "@anthropic-ai/sdk";
+import type { LlmTool } from "@/lib/llm/types";
 import { SCOPING, type ScopingConfig } from "@/lib/config/scoping";
 
 /**
@@ -7,11 +7,11 @@ import { SCOPING, type ScopingConfig } from "@/lib/config/scoping";
  * lib/schemas/extraction.ts; if you change one, change the other.
  *
  * We hand-write the JSON Schema (rather than auto-converting from Zod)
- * because Anthropic's tool input_schema accepts a small subset of JSON Schema
+ * because a provider's tool input_schema accepts a small subset of JSON Schema
  * and rejects refinements like superRefine. Keeping it explicit also lets us
  * write per-field descriptions that act as inline documentation for the model.
  */
-export const submitExtractionTool: Anthropic.Tool = {
+export const submitExtractionTool: LlmTool = {
   name: "submit_extraction",
   description:
     "Submit the structured extraction of a software project description. Always call this tool exactly once per response. Do not emit free-form text.",

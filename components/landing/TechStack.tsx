@@ -10,12 +10,13 @@ interface LogoProps {
   className?: string;
 }
 
-function AnthropicLogo({ className }: LogoProps): React.ReactElement {
+function GeminiLogo({ className }: LogoProps): React.ReactElement {
   return (
-    <svg viewBox="0 0 128 128" className={className} role="img" aria-label="Anthropic">
+    <svg viewBox="0 0 128 128" className={className} role="img" aria-label="Gemini">
+      {/* Four-pointed star: the shape the Gemini brand uses. */}
       <path
         fill="currentColor"
-        d="M28 96 56 32h16l28 64H82l-6-14H52l-6 14H28zm28-26h16l-8-19-8 19z"
+        d="M64 16c2 20 12 30 32 32-20 2-30 12-32 32-2-20-12-30-32-32 20-2 30-12 32-32z"
       />
     </svg>
   );
@@ -61,12 +62,12 @@ function NextLogo({ className }: LogoProps): React.ReactElement {
 }
 
 const ITEMS = [
-  { name: "Anthropic", Logo: AnthropicLogo },
+  { name: "Gemini", Logo: GeminiLogo },
   { name: "GitHub", Logo: GitHubLogo },
   { name: "Next.js", Logo: NextLogo },
 ] as const;
 
-const POWER_LINE = "Powered by Claude Sonnet 4.6";
+const POWER_LINE = "Powered by Google Gemini";
 
 export function TechStack(): React.ReactElement {
   const root = useRef<HTMLElement | null>(null);
@@ -100,7 +101,7 @@ export function TechStack(): React.ReactElement {
         });
       }
 
-      // ScrambleText reveal of "Powered by Claude Sonnet 4.6"
+      // ScrambleText reveal of the POWER_LINE
       const scram = root.current?.querySelector<HTMLElement>("[data-scramble]");
       if (scram && !reduce) {
         ScrollTrigger.create({

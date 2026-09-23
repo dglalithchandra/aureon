@@ -32,7 +32,7 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       # Tests need no secrets: tests/setup.ts pins dummy credentials and the
-      # LLM is served by tests/mocks/mock-anthropic.ts.
+      # LLM is served by tests/mocks/mock-llm.ts.
       - run: npm test -- --coverage
       # Exercises evals/run.ts end to end against the same mock server, so the
       # harness cannot rot between manual runs. No credentials, no spend.

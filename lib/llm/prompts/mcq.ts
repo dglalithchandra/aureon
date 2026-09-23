@@ -1,6 +1,6 @@
-import type Anthropic from "@anthropic-ai/sdk";
+import type { LlmTool } from "@/lib/llm/types";
 
-export const generateQuestionsTool: Anthropic.Tool = {
+export const generateQuestionsTool: LlmTool = {
   name: "generate_clarification_questions",
   description:
     "Emit 1-3 multiple-choice clarification questions targeting the highest-impact missing or thin parameters. Always call this tool exactly once.",

@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 90
     env:
       NEXT_TELEMETRY_DISABLED: "1"
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -38,8 +38,8 @@ jobs:
 
       - name: Check the key is present
         run: |
-          if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::error::Set the ANTHROPIC_API_KEY repository secret before running the evals."
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error::Set the GEMINI_API_KEY repository secret before running the evals."
             exit 1
           fi
 

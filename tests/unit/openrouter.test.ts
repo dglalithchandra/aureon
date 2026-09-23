@@ -43,8 +43,14 @@ function create() {
   return openRouterClient.messages.create({
     model: "ignored",
     max_tokens: 100,
-    messages: [{ role: "user", content: "hi" }],
-    tools: [{ name: "extract_modules", input_schema: { type: "object" } }],
+    messages: [{ role: "user" as const, content: "hi" }],
+    tools: [
+      {
+        name: "extract_modules",
+        description: "Module names from a README",
+        input_schema: { type: "object" },
+      },
+    ],
     tool_choice: { type: "tool", name: "extract_modules" },
   });
 }

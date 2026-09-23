@@ -106,7 +106,7 @@ export function renderMarkdown(report: EvalReport): string {
         `with a guess, not with ground truth.\n\n`
       : "";
   const mockWarning = report.mock
-    ? `> **Mock run.** The model was the in-process stand-in from tests/mocks/mock-anthropic.ts, ` +
+    ? `> **Mock run.** The model was the in-process stand-in from tests/mocks/mock-llm.ts, ` +
       `which answers every input with the same fixture. This run proves the harness works; ` +
       `its accuracy numbers mean nothing.\n\n`
     : "";

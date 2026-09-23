@@ -1,6 +1,6 @@
 import "@/lib/server-only";
-import type Anthropic from "@anthropic-ai/sdk";
-import { createLlmMessage } from "@/lib/llm/anthropic";
+import { createLlmMessage } from "@/lib/llm/client";
+import type { LlmRequest, LlmResponse, LlmToolUseBlock } from "@/lib/llm/types";
 import { logger } from "@/lib/logger";
 
 /**
@@ -22,12 +22,12 @@ type ParseResult<T> =
   | { success: false; error: { issues: Issue[] } };
 
 export type ToolCallOutcome<T> =
-  | { ok: true; data: T; response: Anthropic.Message; attempts: number }
-  | { ok: false; issues: string; response: Anthropic.Message; attempts: number };
+  | { ok: true; data: T; response: LlmResponse; attempts: number }
+  | { ok: false; issues: string; response: LlmResponse; attempts: number };
 
 export interface ToolCallOptions<T> {
   /** Must force the tool: tool_choice { type: "tool", name: toolName }. */
-  params: Anthropic.MessageCreateParamsNonStreaming;
+  params: LlmRequest;
   toolName: string;
   /** Validate the tool input, e.g. `(x) => Schema.safeParse(coerce(x))`. */
   parse: (input: unknown) => ParseResult<T>;
@@ -68,11 +68,11 @@ export async function callToolWithRepair<T>(
 }
 
 function validate<T>(
-  response: Anthropic.Message,
+  response: LlmResponse,
   opts: ToolCallOptions<T>,
 ): { ok: true; data: T } | { ok: false; issues: string } {
   const toolUse = response.content.find(
-    (b): b is Anthropic.ToolUseBlock => b.type === "tool_use" && b.name === opts.toolName,
+    (b): b is LlmToolUseBlock => b.type === "tool_use" && b.name === opts.toolName,
   );
   if (!toolUse) {
     return { ok: false, issues: `the response did not call ${opts.toolName}` };
