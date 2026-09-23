@@ -115,10 +115,18 @@ export const TestingStrategyRowSchema = z.object({
 export const RiskSeveritySchema = z.enum(["CRITICAL", "WARNING", "NOTE"]);
 export type RiskSeverity = z.infer<typeof RiskSeveritySchema>;
 
+/**
+ * One risk. `rule_id` names the rule in lib/scoring/risk.ts that fired;
+ * "model" marks one the finalize model added on top. The severity and the
+ * rule set are computed on the server (blueprint step 09) — the model may
+ * only rewrite the wording. Older documents default to "model".
+ */
 export const RiskSchema = z.object({
   severity: RiskSeveritySchema,
   description: z.string().min(1).max(400),
+  rule_id: z.string().min(1).max(40).default("model").catch("model"),
 });
+export type Risk = z.infer<typeof RiskSchema>;
 
 /**
  * A reference to a real repository. Built on the server from the round's
@@ -133,11 +141,35 @@ export const GitHubReferenceSchema = z.object({
 
 export type GitHubReference = z.infer<typeof GitHubReferenceSchema>;
 
+/** One module's contribution to the estimate, for "How we estimated this". */
+export const EffortBasisSchema = z.object({
+  name: z.string().min(1).max(80),
+  size: ModuleSizeSchema,
+  /** Points after the domain multiplier. */
+  points: z.number().int().min(0).max(500),
+});
+export type EffortBasis = z.infer<typeof EffortBasisSchema>;
+
+/**
+ * The estimate. Every number here is computed by lib/scoring/effort.ts
+ * (blueprint step 10), never taken from the model. The fields added after
+ * the first release default and `.catch`, so documents stored before the
+ * effort engine existed still load.
+ */
 export const EffortSummarySchema = z.object({
   total_sprints: z.number().int().min(1).max(60),
   team_size: z.number().int().min(1).max(30),
   confidence_band: z.string().min(1).max(60),
+  /** Σ module points after the domain multiplier. */
+  total_points: z.number().int().min(0).max(10_000).default(0).catch(0),
+  /** Story points per two-week sprint for this team size. */
+  velocity: z.number().int().min(1).max(200).default(26).catch(26),
+  domain_multiplier: z.number().min(0.5).max(3).default(1).catch(1),
+  /** False when the team size is the configured default, not a stated one. */
+  team_size_stated: z.boolean().default(false).catch(false),
+  basis: z.array(EffortBasisSchema).max(40).default([]).catch([]),
 });
+export type EffortSummary = z.infer<typeof EffortSummarySchema>;
 
 export const EngineerViewSchema = z.object({
   module_table: z.array(EngineerModuleRowSchema).min(1).max(40),

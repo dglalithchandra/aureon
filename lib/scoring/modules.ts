@@ -1,4 +1,5 @@
 import { SCOPING, stateMultiplier } from "@/lib/config/scoping";
+import { domainKey } from "@/lib/scoring/domain";
 import { canonicalModuleKey } from "@/lib/scoring/module-name";
 import type { ExtractionResult, ModuleCandidate } from "@/lib/schemas/extraction";
 import type { GitHubEnrichment, RepoLink } from "@/lib/schemas/github";
@@ -101,21 +102,8 @@ export function githubFreqFor(
 
 /** Standard modules for a domain label, or [] when the domain is unknown. */
 function standardModulesFor(domain: string): readonly string[] {
-  const compact = words(domain).join("");
-  for (const [key, modules] of Object.entries(SCOPING.domainModules)) {
-    if (compact.includes(key.replace(/[^a-z0-9]/g, ""))) return modules;
-  }
-  // "E-Commerce" → "ecommerce", "Mobile App" → "mobile", and so on.
-  if (compact.includes("commerce")) return SCOPING.domainModules.ecommerce ?? [];
-  if (compact.includes("internal")) return SCOPING.domainModules["internal-tools"] ?? [];
-  if (compact.includes("content")) return SCOPING.domainModules.cms ?? [];
-  if (compact.includes("education") || compact.includes("learning")) {
-    return SCOPING.domainModules.edtech ?? [];
-  }
-  if (compact.includes("health") || compact.includes("clinic")) {
-    return SCOPING.domainModules.healthcare ?? [];
-  }
-  return [];
+  const key = domainKey(domain);
+  return key === null ? [] : (SCOPING.domainModules[key] ?? []);
 }
 
 /** 1 for a standard module of this domain, 0.5 for a close synonym, else 0. */

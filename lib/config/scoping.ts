@@ -1,4 +1,4 @@
-import type { ParameterId, ParameterState } from "@/lib/schemas/extraction";
+import type { ModuleSize, ParameterId, ParameterState } from "@/lib/schemas/extraction";
 
 /**
  * Scoping configuration — the single source of truth for the 9 parameters,
@@ -76,6 +76,44 @@ export interface ScopingConfig {
   /** Above this a module is HIGH; at or below moduleLow it is LOW. */
   readonly moduleHigh: number;
   readonly moduleLow: number;
+  /* ── Effort estimation (blueprint step 10) ─────────────────── */
+  /** Story points a module of each size is worth before the multiplier. */
+  readonly modulePoints: Readonly<Record<ModuleSize, number>>;
+  /** Domain complexity multiplier, keyed like `domainModules`. */
+  readonly domainComplexity: Readonly<Record<string, number>>;
+  /** Multiplier for a domain that is not in the table. */
+  readonly defaultComplexity: number;
+  /**
+   * Story points a team delivers in a two-week sprint, by head count. The
+   * first band whose `maxTeam` covers the team wins; a team larger than the
+   * last band keeps that band's velocity (more people on one scope does not
+   * keep adding points).
+   */
+  readonly velocityBands: ReadonlyArray<{
+    readonly maxTeam: number;
+    readonly velocity: number;
+  }>;
+  /** Team size assumed when nobody said one. */
+  readonly defaultTeamSize: number;
+  /** Largest team the engineer view accepts, matching EffortSummarySchema. */
+  readonly maxTeamSize: number;
+  /**
+   * How wide the estimate is, by confidence score. The first band whose
+   * `minScore` the score reaches wins; `percent` is null when the estimate
+   * should not be relied on at all.
+   */
+  readonly estimateBands: ReadonlyArray<{
+    readonly minScore: number;
+    readonly label: string;
+    readonly percent: number | null;
+  }>;
+  /** Rows the sprint breakdown may hold, matching EngineerViewSchema. */
+  readonly maxSprintRows: number;
+  /* ── Risk detection (blueprint step 09) ────────────────────── */
+  /** More modules than this is a scope-explosion risk. */
+  readonly scopeExplosionModules: number;
+  /** Domains that always carry a compliance warning. */
+  readonly complianceDomains: readonly string[];
 }
 
 export const SCOPING: ScopingConfig = {
@@ -305,6 +343,31 @@ export const SCOPING: ScopingConfig = {
   moduleWeights: { paramSignal: 0.45, githubFreq: 0.35, templateMatch: 0.2 },
   moduleHigh: 0.8,
   moduleLow: 0.55,
+  modulePoints: { SMALL: 8, MEDIUM: 21, LARGE: 40 },
+  domainComplexity: {
+    fintech: 1.4,
+    healthcare: 1.35,
+    marketplace: 1.25,
+    saas: 1.1,
+    "internal-tools": 0.85,
+  },
+  defaultComplexity: 1,
+  velocityBands: [
+    { maxTeam: 1, velocity: 13 },
+    { maxTeam: 3, velocity: 26 },
+    { maxTeam: 6, velocity: 45 },
+    { maxTeam: 10, velocity: 60 },
+  ],
+  defaultTeamSize: 3,
+  maxTeamSize: 30,
+  estimateBands: [
+    { minScore: 80, label: "±20%", percent: 20 },
+    { minScore: 60, label: "±35%", percent: 35 },
+    { minScore: 0, label: "unreliable — clarify first", percent: null },
+  ],
+  maxSprintRows: 20,
+  scopeExplosionModules: 20,
+  complianceDomains: ["fintech", "healthcare"],
 };
 
 const WEIGHT_BY_ID = new Map<ParameterId, number>(

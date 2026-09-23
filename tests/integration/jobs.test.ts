@@ -239,7 +239,7 @@ describe("finalize jobs", () => {
       last_error: null,
     });
     expect(done?.final_output?.client.confidence_badge.score).toBe(55);
-    expect(done?.final_output?.engineer.effort_summary.confidence_band).toContain("high");
+    expect(done?.final_output?.engineer.effort_summary.confidence_band).toBe("±20%");
 
     const cached = await finalizeRoute(post(id));
     expect(cached.status).toBe(200);

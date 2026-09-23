@@ -190,7 +190,9 @@ export function makeEngineerView(): EngineerView {
     ],
     testing_strategy: [],
     security_per_module: { Auth: ["Rate-limit login"] },
-    risks: [{ severity: "NOTE", description: "Budget unknown." }],
+    // Deliberately wrong severity and an unknown id: the server keeps its own
+    // severities for computed rules (blueprint step 09).
+    risks: [{ severity: "NOTE", description: "Budget unknown.", rule_id: "model" }],
     // Deliberately invented: the server must replace these with the round's
     // real matches (GOAL-02).
     github_references: [
@@ -200,8 +202,18 @@ export function makeEngineerView(): EngineerView {
         why_relevant: "The model made this up",
       },
     ],
-    // Deliberately wrong: generateOutput must overwrite the band.
-    effort_summary: { total_sprints: 3, team_size: 2, confidence_band: "LLM guess" },
+    // Deliberately wrong: the effort engine (blueprint step 10) overwrites
+    // every one of these numbers.
+    effort_summary: {
+      total_sprints: 3,
+      team_size: 2,
+      confidence_band: "LLM guess",
+      total_points: 999,
+      velocity: 99,
+      domain_multiplier: 2.5,
+      team_size_stated: true,
+      basis: [],
+    },
   };
 }
 

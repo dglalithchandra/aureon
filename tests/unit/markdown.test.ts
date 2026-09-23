@@ -93,7 +93,9 @@ const engineer: EngineerView = {
     },
   ],
   security_per_module: { Auth: ["Rate limit login", "HttpOnly cookies"] },
-  risks: [{ severity: "WARNING", description: "Session secret rotation" }],
+  risks: [
+    { rule_id: "model", severity: "WARNING", description: "Session secret rotation" },
+  ],
   github_references: [
     {
       repo: "ok/repo",
@@ -102,7 +104,16 @@ const engineer: EngineerView = {
     },
     { repo: "bad", url: "javascript:alert(1)", why_relevant: "should be sanitized" },
   ],
-  effort_summary: { total_sprints: 6, team_size: 3, confidence_band: "±20%" },
+  effort_summary: {
+    total_sprints: 6,
+    team_size: 3,
+    confidence_band: "±20%",
+    total_points: 140,
+    velocity: 26,
+    domain_multiplier: 1.1,
+    team_size_stated: false,
+    basis: [{ name: "Auth", size: "MEDIUM", points: 23 }],
+  },
 };
 
 describe("clientToMarkdown", () => {

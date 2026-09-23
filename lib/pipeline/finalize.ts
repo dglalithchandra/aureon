@@ -17,8 +17,11 @@ import {
   type EngineerView,
   type FinalOutput,
   type GitHubReference,
+  type Risk,
 } from "@/lib/schemas/output";
 import { canonicalModuleKey } from "@/lib/scoring/module-name";
+import { estimateEffort, teamSizeFrom, type EffortEstimate } from "@/lib/scoring/effort";
+import { detectRisks, type DetectedRisk } from "@/lib/scoring/risk";
 import type { ModuleCandidate } from "@/lib/schemas/extraction";
 import type { Session } from "@/lib/schemas/mcq";
 import { BudgetExceededError, LLMError, ValidationError } from "@/lib/errors";
@@ -82,22 +85,67 @@ export async function generateClientView(session: Session): Promise<ClientView> 
  * never contradicts the badge.
  */
 export async function generateEngineerView(session: Session): Promise<EngineerView> {
-  const context = buildSharedContext(requireRounds(session));
+  requireRounds(session);
+  // Blueprint steps 09 and 10: both are computed here, handed to the model as
+  // facts, and written back over whatever it returned.
+  const estimate = computeEstimate(session);
+  const risks = detectRisks(latestRound(session).extraction);
+  const context = buildSharedContext(session, computedBlocks(estimate, risks));
   const t0 = Date.now();
   const engineer = await runEngineerView(context);
   logger.info("finalize.engineer.completed", {
     sessionId: session.id,
     durationMs: Date.now() - t0,
+    sprints: estimate.sprints,
+    totalPoints: estimate.totalPoints,
+    teamSize: estimate.teamSize,
+    risks: risks.length,
   });
-  const band = confidenceBand(session.current_confidence);
   return {
     ...engineer,
     module_table: engineer.module_table.map((row) => withEngineerRowScore(session, row)),
     // Real repos only, from the matches this session actually fetched
     // (GOAL-02). Whatever the model wrote here is dropped.
     github_references: buildGitHubReferences(session),
-    effort_summary: { ...engineer.effort_summary, confidence_band: band },
+    sprint_breakdown: mergeSprintPlan(estimate, engineer.sprint_breakdown),
+    risks: mergeRisks(risks, engineer.risks),
+    effort_summary: effortSummaryOf(estimate),
   };
+}
+
+/** The latest round; callers have already checked there is one. */
+function latestRound(session: Session) {
+  return session.rounds[session.rounds.length - 1]!;
+}
+
+/**
+ * The effort estimate for this session (blueprint step 10). The team size is
+ * whatever the user stated in the brief or in an answer, newest first,
+ * otherwise the configured default.
+ */
+export function computeEstimate(session: Session): EffortEstimate {
+  const extraction = latestRound(session).extraction;
+  const team = teamSizeFrom(statedTeamTexts(session));
+  return estimateEffort({
+    modules: extraction.modules,
+    domain: extraction.domain,
+    confidence: session.current_confidence,
+    teamSize: team.size,
+    teamSizeStated: team.stated,
+  });
+}
+
+/** The brief and every answer, oldest first, for the team-size read. */
+function statedTeamTexts(session: Session): string[] {
+  const texts = [session.raw_input];
+  for (const round of session.rounds) {
+    for (const answer of round.answers) {
+      texts.push(answer.selected_options.join(" "));
+      if (answer.custom_text) texts.push(answer.custom_text);
+    }
+    if (round.added_description) texts.push(round.added_description);
+  }
+  return texts;
 }
 
 function requireRounds(session: Session): Session {
@@ -107,10 +155,69 @@ function requireRounds(session: Session): Session {
   return session;
 }
 
-function confidenceBand(score: number): string {
-  if (score < 60) return "low — improve scope before relying on this estimate";
-  if (score < 80) return "±35% (medium confidence)";
-  return "±20% (high confidence)";
+/** The stored estimate: every field from the engine, none from the model. */
+function effortSummaryOf(estimate: EffortEstimate): EngineerView["effort_summary"] {
+  return {
+    total_sprints: estimate.sprints,
+    team_size: estimate.teamSize,
+    confidence_band: estimate.band.label,
+    total_points: estimate.totalPoints,
+    velocity: estimate.velocity,
+    domain_multiplier: estimate.multiplier,
+    team_size_stated: estimate.teamSizeStated,
+    basis: estimate.modules.map((m) => ({
+      name: m.name,
+      size: m.size,
+      points: m.points,
+    })),
+  };
+}
+
+/**
+ * The sprint rows: modules and points from the plan, the focus line from the
+ * model where it wrote one for that sprint. A model that returns eight
+ * sprints when the engine computed five cannot stretch the plan.
+ */
+function mergeSprintPlan(
+  estimate: EffortEstimate,
+  written: EngineerView["sprint_breakdown"],
+): EngineerView["sprint_breakdown"] {
+  return estimate.plan.map((row, i) => ({
+    sprint: row.sprint,
+    focus: written[i]?.focus?.trim() || defaultFocus(row.modules),
+    story_points: row.storyPoints,
+    modules: row.modules,
+  }));
+}
+
+function defaultFocus(modules: string[]): string {
+  if (modules.length === 0) return "Buffer and stabilisation";
+  return `Build ${modules.slice(0, 4).join(", ")}`;
+}
+
+/** At most this many risks the model raised on its own are kept. */
+const MAX_MODEL_RISKS = 3;
+
+/**
+ * The risk list: every rule that fired, with the severity the rule assigned
+ * and the model's wording only where it answered that rule id. Risks the
+ * model raised by itself are kept after them, tagged "model".
+ */
+function mergeRisks(detected: DetectedRisk[], written: Risk[]): Risk[] {
+  const byRule = new Map(
+    written.filter((r) => r.rule_id !== "model").map((r) => [r.rule_id, r]),
+  );
+  const rules: Risk[] = detected.map((risk) => ({
+    severity: risk.severity,
+    description: byRule.get(risk.rule_id)?.description?.trim() || risk.description,
+    rule_id: risk.rule_id,
+  }));
+  const ids = new Set(detected.map((r) => r.rule_id as string));
+  const extras: Risk[] = written
+    .filter((r) => !ids.has(r.rule_id))
+    .slice(0, MAX_MODEL_RISKS)
+    .map((r) => ({ ...r, rule_id: "model" }));
+  return [...rules, ...extras];
 }
 
 /**
@@ -277,10 +384,56 @@ async function runEngineerView(context: string): Promise<EngineerView> {
 }
 
 /* ──────────────────────────────────────────────────────────────
+ *  Computed blocks (blueprint steps 09 and 10)
+ * ────────────────────────────────────────────────────────────── */
+
+/**
+ * The estimate and the risks, written into the engineer's prompt as facts.
+ * The model is told plainly that they are already decided: it writes the
+ * sprint focus lines and may reword a risk, and every number is overwritten
+ * after the call regardless of what it sends.
+ */
+function computedBlocks(estimate: EffortEstimate, risks: DetectedRisk[]): string {
+  const lines: string[] = [];
+  lines.push("<computed_estimate>");
+  lines.push(
+    "Computed by the server. These numbers replace whatever you send, so do not argue with them.",
+  );
+  lines.push(`domain_multiplier: ${estimate.multiplier} (${estimate.domain})`);
+  lines.push(
+    `team_size: ${estimate.teamSize} (${estimate.teamSizeStated ? "stated by the client" : "assumed"})`,
+  );
+  lines.push(`velocity: ${estimate.velocity} story points per 2-week sprint`);
+  lines.push(`total_points: ${estimate.totalPoints}`);
+  lines.push(`total_sprints: ${estimate.sprints}`);
+  lines.push(`confidence_band: ${estimate.band.label}`);
+  lines.push("sprint_plan — write one focus line for each, in this order:");
+  for (const row of estimate.plan) {
+    const modules = row.modules.length > 0 ? row.modules.join(", ") : "carry-over work";
+    lines.push(`  ${row.sprint}: ${modules} — ${row.storyPoints} pts`);
+  }
+  lines.push("</computed_estimate>");
+
+  lines.push("\n<computed_risks>");
+  if (risks.length === 0) {
+    lines.push("No rule fired. You may add up to 3 risks of your own.");
+  } else {
+    lines.push(
+      'Return one risk per rule_id below, keeping its id and severity; rewrite the description to fit this project if you can say it better. You may add up to 3 risks of your own with rule_id "model".',
+    );
+    for (const risk of risks) {
+      lines.push(`  ${risk.rule_id} [${risk.severity}]: ${risk.description}`);
+    }
+  }
+  lines.push("</computed_risks>");
+  return lines.join("\n");
+}
+
+/* ──────────────────────────────────────────────────────────────
  *  Context builder
  * ────────────────────────────────────────────────────────────── */
 
-function buildSharedContext(session: Session): string {
+function buildSharedContext(session: Session, computed = ""): string {
   const lastRound = session.rounds[session.rounds.length - 1]!;
   const extraction = lastRound.extraction;
   const enrichment = lastRound.github_enrichment;
@@ -356,9 +509,11 @@ function buildSharedContext(session: Session): string {
     lines.push("</github_matches>");
   }
 
-  // The closing instruction is appended after any trimming, so it is never
-  // the part that gets cut.
-  return `${truncateText(lines.join("\n"), MAX_CONTEXT_CHARS)}\n\nProduce your output now. Call the appropriate tool exactly once.`;
+  // The closing instruction and the computed numbers are appended after any
+  // trimming, so they are never the part that gets cut.
+  const body = truncateText(lines.join("\n"), MAX_CONTEXT_CHARS);
+  const tail = computed ? `\n\n${computed}` : "";
+  return `${body}${tail}\n\nProduce your output now. Call the appropriate tool exactly once.`;
 }
 
 /**

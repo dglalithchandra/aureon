@@ -126,9 +126,8 @@ describe("scoping pipeline (mock LLM)", () => {
         cap_applied: 100,
       },
     });
-    expect(output.engineer.effort_summary.confidence_band).toBe(
-      "±35% (medium confidence)",
-    );
+    // The band comes from the computed score, not from the model (step 10).
+    expect(output.engineer.effort_summary.confidence_band).toBe("±35%");
     expect(mock.callsFor("submit_client_view")).toHaveLength(1);
     expect(mock.callsFor("submit_engineer_view")).toHaveLength(1);
     expect(mock.callsFor("submit_client_view")[0]?.userText).toContain(

@@ -90,10 +90,21 @@ export function engineerToMarkdown(view: EngineerView): string {
   const out: string[] = [];
   out.push("# Engineering Build Document");
   out.push("");
+  const effort = view.effort_summary;
   out.push(
-    `**Estimate:** ${view.effort_summary.total_sprints} sprints, ` +
-      `team of ${view.effort_summary.team_size} (${esc(view.effort_summary.confidence_band)})`,
+    `**Estimate:** ${effort.total_sprints} sprints, ` +
+      `team of ${effort.team_size}${effort.team_size_stated ? "" : " (assumed)"} ` +
+      `(${esc(effort.confidence_band)})`,
   );
+  if (effort.total_points > 0) {
+    // How it was calculated, so the number survives leaving the app.
+    out.push("");
+    out.push(
+      `**How we estimated this:** ${effort.total_points} story points ` +
+        `(module sizes x${effort.domain_multiplier} for the domain) at ` +
+        `${effort.velocity} points per 2-week sprint.`,
+    );
+  }
   out.push("");
 
   out.push("## Modules");

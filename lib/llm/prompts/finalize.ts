@@ -297,29 +297,35 @@ export const submitEngineerViewTool: Anthropic.Tool = {
       risks: {
         type: "array",
         maxItems: 40,
+        description:
+          "One entry per rule_id in <computed_risks>, plus at most 3 of your own with rule_id 'model'.",
         items: {
           type: "object",
-          required: ["severity", "description"],
+          required: ["severity", "description", "rule_id"],
           properties: {
             severity: {
               type: "string",
               enum: ["CRITICAL", "WARNING", "NOTE"],
             },
             description: { type: "string", maxLength: 400 },
+            rule_id: {
+              type: "string",
+              maxLength: 40,
+              description:
+                "The id from <computed_risks>, or 'model' for a risk you raised yourself.",
+            },
           },
         },
       },
       effort_summary: {
         type: "object",
+        description:
+          "Copy the numbers from <computed_estimate>. The server recomputes them either way.",
         required: ["total_sprints", "team_size", "confidence_band"],
         properties: {
           total_sprints: { type: "integer", minimum: 1, maximum: 60 },
           team_size: { type: "integer", minimum: 1, maximum: 30 },
-          confidence_band: {
-            type: "string",
-            maxLength: 60,
-            description: "Phrase like '±20%' or 'low — improve scope first'.",
-          },
+          confidence_band: { type: "string", maxLength: 60 },
         },
       },
     },
@@ -335,11 +341,11 @@ Rules:
   - api_endpoints in 'METHOD /path — purpose' format. Aim for 3-8 per module unless clearly single-page UI.
   - database_sketch fields use 'name TYPE [constraints]'. Relations as 'FK <field> -> <table>.<field>'.
   - permissions_matrix uses 'resource:action' scopes ('modules:read', 'billing:write').
-  - sprint_breakdown: each sprint focuses on a coherent vertical (auth + sessions, billing + webhooks, dashboard + queries). Use 2-week sprints. Story points target the team velocity table: solo=13, 2-3 people=26, 4-6=45.
+  - sprint_breakdown: one entry per line of the sprint_plan in <computed_estimate>, in that order. Write the 'focus' — what the team is actually doing that fortnight, in the vocabulary of this project. The sprint label, its modules and its story points are computed; whatever you put there is replaced.
   - third_party_checklist names the service + concrete prereq, not just 'Stripe'.
   - security_per_module is keyed by module name and lists the 2-5 concerns specific to that module (input validation, auth required, encryption at rest, rate limit, idempotency).
-  - risks: CRITICAL = could block ship; WARNING = needs decision soon; NOTE = good to know.
-  - effort_summary.confidence_band reflects the input's overall confidence: <60% = 'low — improve scope first', 60-80% = '±35%', >80% = '±20%'.
+  - risks: answer every rule_id in <computed_risks> with its given severity, rewording the description where you can make it concrete for this project. CRITICAL = could block ship; WARNING = needs decision soon; NOTE = good to know. You may add up to 3 risks of your own with rule_id 'model' — a severity you invent for those is kept, one you invent for a computed rule is not.
+  - effort_summary: the sprint count, team size and confidence band come from <computed_estimate>. They are computed from the module sizes, the domain multiplier and the team's velocity, and the server overwrites this object after your call. Do not invent a different number and do not explain the arithmetic in the focus text.
   - Do NOT list GitHub repositories. The server adds the real ones from the
     matches it verified; anything you write would be dropped.
 

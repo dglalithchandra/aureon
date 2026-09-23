@@ -15,6 +15,11 @@ import type {
   RiskSeverity,
 } from "@/lib/schemas/output";
 import { ModuleConfidenceChip } from "@/components/output/ModuleConfidence";
+import {
+  EffortSummaryPanel,
+  recomputeEstimate,
+  type RecomputedEstimate,
+} from "@/components/output/EffortSummary";
 import { cn } from "@/lib/utils";
 
 interface EngineerViewProps {
@@ -72,6 +77,17 @@ export function EngineerView({
 }: EngineerViewProps): React.ReactElement {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [openSecurity, setOpenSecurity] = useState<string | null>(null);
+  // Blueprint step 10: the reader can try a different team size and the
+  // estimate follows, because the numbers are computed, not written.
+  const [teamSize, setTeamSize] = useState(view.effort_summary.team_size);
+  const estimate = useMemo(
+    () => recomputeEstimate(view.effort_summary, teamSize),
+    [view.effort_summary, teamSize],
+  );
+  const sprintRows = useMemo(
+    () => mergeFocus(estimate, view.sprint_breakdown),
+    [estimate, view.sprint_breakdown],
+  );
 
   const sortedModules = useMemo(() => {
     return [...view.module_table].sort((a, b) => {
@@ -83,20 +99,12 @@ export function EngineerView({
   return (
     <div className="flex flex-col gap-12">
       <Section id="effort" title="Effort summary">
-        <div className="border-blueprint-line/20 inline-flex flex-col gap-3 rounded-2xl border bg-white/[0.025] px-6 py-5 backdrop-blur-md sm:flex-row sm:items-center sm:gap-8">
-          <BigStat label="Sprints" value={view.effort_summary.total_sprints} />
-          <Divider />
-          <BigStat label="Team size" value={view.effort_summary.team_size} />
-          <Divider />
-          <div className="flex flex-col">
-            <span className="text-blueprint-muted font-mono text-[10px] tracking-[0.18em] uppercase">
-              Confidence band
-            </span>
-            <span className="text-blueprint-text font-display text-lg font-bold">
-              {view.effort_summary.confidence_band}
-            </span>
-          </div>
-        </div>
+        <EffortSummaryPanel
+          summary={view.effort_summary}
+          estimate={estimate}
+          teamSize={teamSize}
+          onTeamSize={setTeamSize}
+        />
       </Section>
 
       <Section id="modules" title="Modules">
@@ -250,7 +258,7 @@ export function EngineerView({
 
       <Section id="sprints" title="Sprint breakdown">
         <ol className="flex flex-col gap-3">
-          {view.sprint_breakdown.map((s, i) => (
+          {sprintRows.map((s, i) => (
             <li
               key={`${s.sprint}-${i}`}
               className="border-blueprint-line/15 flex flex-col gap-2 rounded-xl border bg-white/[0.02] p-4 sm:flex-row sm:items-center sm:gap-6"
@@ -260,7 +268,7 @@ export function EngineerView({
               </span>
               <span className="text-blueprint-text flex-1 font-medium">{s.focus}</span>
               <span className="text-blueprint-muted shrink-0 font-mono text-xs">
-                {s.story_points} pts
+                {s.story_points} pt{s.story_points === 1 ? "" : "s"}
               </span>
               <span className="text-blueprint-muted shrink-0 text-xs">
                 {s.modules.join(", ")}
@@ -406,21 +414,32 @@ export function EngineerView({
   );
 }
 
-function BigStat({ label, value }: { label: string; value: number }): React.ReactElement {
-  return (
-    <div className="flex flex-col">
-      <span className="text-blueprint-muted font-mono text-[10px] tracking-[0.18em] uppercase">
-        {label}
-      </span>
-      <span className="text-blueprint-text font-display text-3xl font-bold tabular-nums">
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function Divider(): React.ReactElement {
-  return <span className="bg-blueprint-line/15 hidden h-10 w-px sm:block" />;
+/**
+ * The sprint rows for the team size on screen. The plan itself is computed
+ * (blueprint step 10); the model's focus line is kept only where that sprint
+ * still covers the same modules, so a re-plan can never mislabel a sprint.
+ */
+function mergeFocus(
+  estimate: RecomputedEstimate,
+  written: EngineerViewData["sprint_breakdown"],
+): EngineerViewData["sprint_breakdown"] {
+  return estimate.plan.map((row, i) => {
+    const original = written[i];
+    const sameModules =
+      original !== undefined &&
+      original.modules.length === row.modules.length &&
+      original.modules.every((m, j) => m === row.modules[j]);
+    return {
+      sprint: row.sprint,
+      focus: sameModules
+        ? original.focus
+        : row.modules.length > 0
+          ? row.modules.join(", ")
+          : "Carry-over work",
+      story_points: row.storyPoints,
+      modules: row.modules,
+    };
+  });
 }
 
 interface PersistentChecklistProps {
