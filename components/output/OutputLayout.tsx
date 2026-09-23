@@ -2,13 +2,26 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Check, Loader2, Pencil, RefreshCw, Save, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Loader2,
+  Pencil,
+  RefreshCw,
+  Save,
+  TriangleAlert,
+  X,
+} from "lucide-react";
 import { gsap, useGSAP, ScrollTrigger } from "@/lib/gsap-init";
 
 void ScrollTrigger;
-import { ApiError, patchFinalOutput } from "@/lib/api/client";
+import { ApiError, patchFinalOutput, renameProject } from "@/lib/api/client";
 import type { FinalOutput } from "@/lib/schemas/output";
+import { SCOPING } from "@/lib/config/scoping";
+import { useUnsavedChanges } from "@/lib/hooks/useUnsavedChanges";
+import { clearDraft, readDraft, sameOutput, writeDraft } from "@/lib/output/draft-store";
 import { ConfidenceBadge } from "@/components/output/ConfidenceBadge";
+import { ClarifyPanel } from "@/components/output/ClarifyPanel";
 import { ClientView } from "@/components/output/ClientView";
 import { EngineerView } from "@/components/output/EngineerView";
 import { ExportMenu } from "@/components/output/ExportMenu";
@@ -16,6 +29,14 @@ import { ShareDialog } from "@/components/output/ShareDialog";
 import { cn } from "@/lib/utils";
 
 type Tab = "client" | "engineer";
+
+/** How often unsaved edits are written to this browser (UX-02). */
+const AUTOSAVE_MS = 10_000;
+
+const LEAVE_WARNING =
+  "You have unsaved changes to this scope. Leave the page and lose them?";
+
+const WHEN = new Intl.DateTimeFormat("en-GB", { timeStyle: "short" });
 
 interface OutputLayoutProps {
   sessionId: string;
@@ -60,10 +81,18 @@ export function OutputLayout({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [clarifying, setClarifying] = useState<string | null>(null);
+  const [autosavedAt, setAutosavedAt] = useState<number | null>(null);
+  // A draft this browser kept from a previous visit, offered rather than
+  // applied: it may be someone else's tab, or an edit they abandoned. Read
+  // after mount, never during render — the server has no localStorage, and a
+  // banner that exists on one side only is a hydration mismatch.
+  const [recovered, setRecovered] = useState<ReturnType<typeof readDraft>>(null);
 
   const [title, setTitle] = useState(initialTitle);
   const [titleEditing, setTitleEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState(initialTitle);
+  const [titleError, setTitleError] = useState<string | null>(null);
 
   // GSAP-powered scroll-reveal for every output section + initial entrance.
   useGSAP(
@@ -101,6 +130,8 @@ export function OutputLayout({
     [draft, serverCopy],
   );
 
+  const { guardNavigation } = useUnsavedChanges(dirty, LEAVE_WARNING);
+
   // Esc cancels edit-mode if no changes are pending.
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
@@ -109,6 +140,34 @@ export function OutputLayout({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [editing, dirty]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      // After the commit, so this is not a setState during render.
+      await Promise.resolve();
+      if (cancelled) return;
+      const stored = readDraft(sessionId);
+      if (stored && !sameOutput(stored.output, initialOutput)) setRecovered(stored);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, initialOutput]);
+
+  // Autosave, to this browser only — see lib/output/draft-store.
+  const latest = useRef(draft);
+  useEffect(() => {
+    latest.current = draft;
+  }, [draft]);
+  useEffect(() => {
+    if (!dirty) return;
+    const timer = setInterval(() => {
+      writeDraft(sessionId, latest.current);
+      setAutosavedAt(Date.now());
+    }, AUTOSAVE_MS);
+    return () => clearInterval(timer);
+  }, [dirty, sessionId]);
 
   async function handleSave(): Promise<void> {
     setSaving(true);
@@ -119,6 +178,10 @@ export function OutputLayout({
       setServerCopy(next);
       setDraft(next);
       setEditing(false);
+      // The server now holds it, so the local copy is only noise.
+      clearDraft(sessionId);
+      setAutosavedAt(null);
+      setRecovered(null);
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : "Could not save edits.");
     } finally {
@@ -138,7 +201,31 @@ export function OutputLayout({
     setDraft(serverCopy);
     setEditing(false);
     setSaveError(null);
+    clearDraft(sessionId);
+    setAutosavedAt(null);
   }
+
+  async function handleRename(next: string): Promise<void> {
+    const wanted = next.trim();
+    setTitleEditing(false);
+    if (!wanted || wanted === title) return;
+    const previous = title;
+    setTitle(wanted); // Optimistic: the rename is a one-field write.
+    setTitleError(null);
+    try {
+      setTitle(await renameProject(sessionId, wanted));
+    } catch (err) {
+      setTitle(previous);
+      setTitleDraft(previous);
+      setTitleError(
+        err instanceof ApiError ? err.message : "Could not save the new title.",
+      );
+    }
+  }
+
+  // Blueprint step 12's threshold, applied to the document on screen: a
+  // scope generated with "Generate anyway" carries a score below it.
+  const lowConfidence = draft.client.confidence_badge.score < SCOPING.confidenceThreshold;
 
   return (
     <div ref={root} className="bg-blueprint-bg min-h-[100dvh]">
@@ -150,8 +237,9 @@ export function OutputLayout({
         {/* Row 1 — back · title (truncates) · confidence badge */}
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 pt-3 sm:px-6">
           <Link
-            href="/chat"
-            aria-label="Back to chat"
+            href="/projects"
+            aria-label="Back to your scopes"
+            onNavigate={guardNavigation}
             className="text-blueprint-muted hover:text-blueprint-text inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
           >
             <ArrowLeft size={16} />
@@ -163,11 +251,10 @@ export function OutputLayout({
                 value={titleDraft}
                 maxLength={120}
                 onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={() => void handleRename(titleDraft)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    const v = titleDraft.trim();
-                    if (v) setTitle(v);
-                    setTitleEditing(false);
+                    void handleRename(titleDraft);
                   } else if (e.key === "Escape") {
                     setTitleDraft(title);
                     setTitleEditing(false);
@@ -273,12 +360,73 @@ export function OutputLayout({
             Engineer View
           </TabButton>
         </div>
-        {saveError && (
+        {(saveError ?? titleError) && (
           <p className="border-red-500/30 bg-red-500/10 px-6 py-2 text-xs text-red-300">
-            {saveError}
+            {saveError ?? titleError}
+          </p>
+        )}
+        {dirty && (
+          <p
+            className="text-blueprint-muted px-6 py-1.5 text-[11px]"
+            aria-live="polite"
+            data-testid="unsaved-notice"
+          >
+            {autosavedAt
+              ? `Unsaved changes — kept in this browser at ${WHEN.format(autosavedAt)}.`
+              : "Unsaved changes."}
           </p>
         )}
       </header>
+
+      {lowConfidence && (
+        <div
+          role="status"
+          data-testid="low-confidence-banner"
+          className="mx-auto mt-6 flex max-w-7xl items-start gap-3 rounded-xl border border-amber-400/40 bg-amber-400/5 px-4 py-3 text-sm text-amber-300 sm:px-6"
+        >
+          <TriangleAlert size={16} className="mt-0.5 shrink-0" />
+          <p className="leading-relaxed">
+            <span className="font-semibold">Low confidence draft.</span> This scope was
+            generated before the questions were finished — confidence is{" "}
+            {draft.client.confidence_badge.score}/100, below the threshold of{" "}
+            {SCOPING.confidenceThreshold}. Treat the estimates as a starting point, and
+            answer the open items below to firm it up.
+          </p>
+        </div>
+      )}
+
+      {recovered && (
+        <div
+          role="status"
+          data-testid="recovered-draft"
+          className="mx-auto mt-6 flex max-w-7xl flex-wrap items-center gap-3 rounded-xl border border-[var(--color-blueprint-accent)]/40 bg-[var(--color-blueprint-accent)]/5 px-4 py-3 text-sm sm:px-6"
+        >
+          <span className="text-blueprint-text">
+            Unsaved edits from {WHEN.format(recovered.savedAt)} are still in this browser.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setDraft(recovered.output);
+              setEditing(true);
+              setRecovered(null);
+            }}
+            className="rounded-full border border-[var(--color-blueprint-accent)] px-3 py-1 text-xs font-medium text-[var(--color-blueprint-accent)]"
+          >
+            Restore them
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              clearDraft(sessionId);
+              setRecovered(null);
+            }}
+            className="text-blueprint-muted hover:text-blueprint-text border-blueprint-line/30 rounded-full border px-3 py-1 text-xs"
+          >
+            Discard
+          </button>
+        </div>
+      )}
 
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_220px]">
         <div id="output-print-target" className="min-w-0">
@@ -296,9 +444,15 @@ export function OutputLayout({
                   readOnly={!editing}
                   sessionId={sessionId}
                   onChange={(client) => setDraft((d) => ({ ...d, client }))}
+                  onClarify={(question) => setClarifying(question)}
                 />
               ) : (
-                <EngineerView view={draft.engineer} checklistKey={sessionId} />
+                <EngineerView
+                  view={draft.engineer}
+                  readOnly={!editing}
+                  onChange={(engineer) => setDraft((d) => ({ ...d, engineer }))}
+                  checklistKey={sessionId}
+                />
               )}
             </motion.div>
           </AnimatePresence>
@@ -332,6 +486,21 @@ export function OutputLayout({
         title={title}
         onClose={() => setShareOpen(false)}
       />
+
+      {clarifying !== null && (
+        <ClarifyPanel
+          sessionId={sessionId}
+          question={clarifying}
+          hasUnsavedEdits={dirty}
+          onClose={() => setClarifying(null)}
+          onApplied={(output) => {
+            setServerCopy(output);
+            setDraft(output);
+            setEditing(false);
+            clearDraft(sessionId);
+          }}
+        />
+      )}
     </div>
   );
 }

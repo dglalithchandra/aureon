@@ -120,6 +120,7 @@ Tests use [Vitest](https://vitest.dev) and never call a paid API or GitHub.
 npm test                    # run everything once
 npm run test:watch          # re-run on change
 npm test -- --coverage      # with a coverage report (coverage/)
+npm run test:e2e            # the browser tests (Playwright)
 ```
 
 - `tests/unit/` — pure logic: exit rules, question filtering, GitHub signal
@@ -127,6 +128,15 @@ npm test -- --coverage      # with a coverage report (coverage/)
 - `tests/integration/` — the full create → round → answers → final output
   pipeline against `tests/mocks/mock-llm.ts`, a local stand-in for the Gemini
   Interactions API (selected through `GEMINI_BASE_URL`).
+- `tests/e2e/` — the browser tests (Playwright, Chromium). They drive the real
+  app: edit every section of both views and reload, answer an open item and
+  check the new version, generate a scope before the questions are finished
+  and check the "Low confidence draft" banner, and exercise the
+  unsaved-changes guard, the 10-second local autosave and the rename.
+  `scripts/e2e-server.ts` starts `next dev` against the mock model and a
+  throwaway PGlite database in `.pglite-e2e/`, so a run needs no credentials
+  and spends nothing. First run: `npx playwright install chromium`. They are
+  not part of `npm test`.
 - `tests/setup.ts` replaces every credential with a dummy value and blocks all
   non-local network requests, so a missing mock fails instead of spending money.
 

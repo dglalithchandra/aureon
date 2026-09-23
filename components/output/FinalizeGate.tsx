@@ -91,23 +91,50 @@ export function FinalizeGate({
                 ? `${SCOPING.maxRounds} clarification rounds didn't lift confidence above the threshold of ${SCOPING.confidenceThreshold} (currently ${session.current_confidence}/100). Add a paragraph of detail in the chat — even one new sentence about goal or features can move the needle.`
                 : "Aureon needs a bit more information before it can generate the two-stage output. Head back to the chat to continue."}
           </p>
-          <Link
-            href={`/chat?s=${session.id}`}
-            className="mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-blueprint-accent)] px-5 py-2.5 text-sm font-medium text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/15"
-          >
-            <ArrowLeft size={14} />
-            Back to chat
-          </Link>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href={`/chat?s=${session.id}`}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-blueprint-accent)] px-5 py-2.5 text-sm font-medium text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/15"
+            >
+              <ArrowLeft size={14} />
+              Back to chat
+            </Link>
+            {/* UX-02: the draft is allowed, as long as it is labelled one. */}
+            {session.rounds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void handleGenerate(true)}
+                disabled={busy}
+                data-testid="generate-anyway"
+                className="text-blueprint-text border-blueprint-line/30 inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm hover:border-[var(--color-blueprint-accent)]/50 disabled:opacity-50"
+              >
+                {busy ? (
+                  <Loader2 className="animate-spin" size={14} />
+                ) : (
+                  <Sparkles size={14} />
+                )}
+                {busy ? "Generating…" : "Generate anyway"}
+              </button>
+            )}
+          </div>
+          <p className="text-blueprint-muted mt-3 text-xs">
+            A scope generated now is a low-confidence draft, and says so.
+          </p>
+          {error && (
+            <p className="mt-4 text-sm text-red-300" role="alert">
+              {error}
+            </p>
+          )}
         </div>
       </main>
     );
   }
 
-  async function handleGenerate(): Promise<void> {
+  async function handleGenerate(override = false): Promise<void> {
     setBusy(true);
     setError(null);
     try {
-      const result = await finalizeSession(session.id);
+      const result = await finalizeSession(session.id, { override });
       setSession(
         result.output
           ? { ...session, status: "finalized", final_output: result.output }
@@ -157,7 +184,7 @@ export function FinalizeGate({
                 {canRetry && (
                   <button
                     type="button"
-                    onClick={handleGenerate}
+                    onClick={() => void handleGenerate()}
                     className="inline-flex items-center gap-1.5 rounded-full border border-red-300/40 px-3 py-1 text-xs font-medium hover:bg-red-400/10"
                   >
                     <RefreshCw size={12} />
@@ -199,7 +226,7 @@ export function FinalizeGate({
         </p>
         <button
           type="button"
-          onClick={handleGenerate}
+          onClick={() => void handleGenerate()}
           disabled={busy}
           className="mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 px-5 py-2.5 text-sm font-medium text-[var(--color-blueprint-accent)] hover:bg-[var(--color-blueprint-accent)]/20 disabled:cursor-not-allowed disabled:opacity-60"
         >

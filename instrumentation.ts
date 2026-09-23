@@ -42,11 +42,13 @@ async function startLocalDatabase(): Promise<void> {
         import("@/lib/db/schema"),
       ]);
 
-    const client = new PGlite(".pglite");
+    // PGLITE_DIR keeps the browser-test database (scripts/e2e-server.ts)
+    // out of the one a developer is using.
+    const client = new PGlite(process.env.PGLITE_DIR ?? ".pglite");
     const db = drizzle(client, { schema });
     await migrate(db, { migrationsFolder: "./drizzle" });
     setDatabase(db as never);
-    logger.info("db.local_fallback", { path: ".pglite" });
+    logger.info("db.local_fallback", { path: process.env.PGLITE_DIR ?? ".pglite" });
   } catch (err) {
     logger.warn("db.local_fallback_failed", {
       message: err instanceof Error ? err.message : "unknown",

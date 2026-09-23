@@ -16,30 +16,33 @@ const SIZE_BADGE: Record<ClientModule["size"], string> = {
 interface ModuleCardProps {
   module: ClientModule;
   readOnly?: boolean;
+  /**
+   * Off for a card that is not inside a Reorder.Group — the candidate list,
+   * which is a separate section. framer-motion throws if a Reorder.Item has
+   * no group above it.
+   */
+  draggable?: boolean;
   onChange?(next: ClientModule): void;
 }
 
 export function ModuleCard({
   module,
   readOnly,
+  draggable = true,
   onChange,
 }: ModuleCardProps): React.ReactElement {
   const drag = useDragControls();
+  const reorderable = draggable && !readOnly;
 
-  return (
-    <Reorder.Item
-      value={module}
-      dragListener={false}
-      dragControls={drag}
-      whileHover={readOnly ? undefined : { y: -2, transition: { duration: 0.18 } }}
-      whileDrag={{ scale: 1.02 }}
-      className={cn(
-        "border-blueprint-line/20 relative flex flex-col gap-3 rounded-xl border bg-white/[0.025] p-5 backdrop-blur-md transition-shadow",
-        !readOnly && "hover:shadow-[0_0_24px_rgba(236,72,153,0.22)]",
-      )}
-    >
+  const className = cn(
+    "border-blueprint-line/20 relative flex flex-col gap-3 rounded-xl border bg-white/[0.025] p-5 backdrop-blur-md transition-shadow",
+    !readOnly && "hover:shadow-[0_0_24px_rgba(236,72,153,0.22)]",
+  );
+
+  const body = (
+    <>
       <header className="flex items-start gap-3">
-        {!readOnly && (
+        {reorderable && (
           <button
             type="button"
             aria-label="Reorder module"
@@ -61,14 +64,36 @@ export function ModuleCard({
           />
         </div>
         <ModuleConfidenceChip confidence={module.confidence} />
-        <span
-          className={cn(
-            "shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] tracking-[0.18em] uppercase",
-            SIZE_BADGE[module.size],
-          )}
-        >
-          {module.size.toLowerCase()}
-        </span>
+        {readOnly ? (
+          <span
+            className={cn(
+              "shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] tracking-[0.18em] uppercase",
+              SIZE_BADGE[module.size],
+            )}
+          >
+            {module.size.toLowerCase()}
+          </span>
+        ) : (
+          // Size drives the estimate (step 10), so correcting it here changes
+          // the sprint count on the next finalize.
+          <select
+            aria-label={`Size of ${module.name}`}
+            value={module.size}
+            onChange={(e) =>
+              onChange?.({ ...module, size: e.target.value as ClientModule["size"] })
+            }
+            className={cn(
+              "shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] tracking-[0.18em] uppercase",
+              SIZE_BADGE[module.size],
+            )}
+          >
+            {(["SMALL", "MEDIUM", "LARGE"] as const).map((size) => (
+              <option key={size} value={size} className="bg-blueprint-bg">
+                {size.toLowerCase()}
+              </option>
+            ))}
+          </select>
+        )}
       </header>
 
       <SectionEditor
@@ -82,6 +107,23 @@ export function ModuleCard({
       />
 
       <SeenInRepos seenIn={module.seen_in} validated={module.github_validated} />
+    </>
+  );
+
+  if (!reorderable) {
+    return <div className={className}>{body}</div>;
+  }
+
+  return (
+    <Reorder.Item
+      value={module}
+      dragListener={false}
+      dragControls={drag}
+      whileHover={{ y: -2, transition: { duration: 0.18 } }}
+      whileDrag={{ scale: 1.02 }}
+      className={className}
+    >
+      {body}
     </Reorder.Item>
   );
 }

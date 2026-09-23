@@ -149,11 +149,19 @@ export type FinalizeResult =
   | { output: FinalOutput }
   | { output: null; session: Session; inProgress: boolean };
 
-export async function finalizeSession(sessionId: string): Promise<FinalizeResult> {
+export async function finalizeSession(
+  sessionId: string,
+  /**
+   * "Generate anyway" (UX-02): write the scope from what is known, even
+   * though the session is not ready. The document then carries a low
+   * confidence score, and the output page says so.
+   */
+  options: { override?: boolean } = {},
+): Promise<FinalizeResult> {
   const res = await fetch(`/api/finalize`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionId }),
+    body: JSON.stringify({ sessionId, override: options.override ?? false }),
     credentials: "same-origin",
   });
   if (res.status === 200) {
@@ -161,6 +169,39 @@ export async function finalizeSession(sessionId: string): Promise<FinalizeResult
   }
   const { session, inProgress } = await readSessionAction(res);
   return { output: null, session, inProgress };
+}
+
+const RenameResponseSchema = z.object({ title: z.string() });
+
+/** Rename the project. Returns the title as stored (trimmed and capped). */
+export async function renameProject(projectId: string, title: string): Promise<string> {
+  const res = await fetch(`/api/projects/${projectId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+    credentials: "same-origin",
+  });
+  if (!res.ok) throw await readError(res);
+  return RenameResponseSchema.parse(await res.json()).title;
+}
+
+/**
+ * Answer one open item (UX-02). The session leaves "finalized" for a new
+ * round; follow it until it settles, then finalize again.
+ */
+export async function clarifySession(
+  sessionId: string,
+  question: string,
+  answer: string,
+): Promise<Session> {
+  const res = await fetch(`/api/session/${sessionId}/clarify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, answer }),
+    credentials: "same-origin",
+  });
+  if (!res.ok) throw await readError(res);
+  return (await readSessionAction(res)).session;
 }
 
 export async function patchFinalOutput(

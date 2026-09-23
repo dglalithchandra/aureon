@@ -5,6 +5,7 @@ import { Home, MessageSquarePlus } from "lucide-react";
 import { getSession } from "@/lib/storage/session";
 import { ownsSession } from "@/lib/security/session-cookie";
 import { deriveTitle } from "@/lib/utils";
+import { projectTitle } from "@/lib/projects/list";
 import { FinalizeGate } from "@/components/output/FinalizeGate";
 import { BlueprintGrid } from "@/components/landing/BlueprintGrid";
 
@@ -36,7 +37,8 @@ export default async function OutputPage({
     return <UnauthorizedView />;
   }
 
-  const initialTitle = deriveTitle(session.raw_input);
+  // The stored title wins: it is what a rename saved (UX-02).
+  const initialTitle = (await projectTitle(sessionId)) ?? deriveTitle(session.raw_input);
 
   return <FinalizeGate session={session} initialTitle={initialTitle} />;
 }

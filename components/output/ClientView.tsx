@@ -1,17 +1,18 @@
 "use client";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { useState } from "react";
-import { ChevronDown, MessageSquare } from "lucide-react";
-import Link from "next/link";
+import { useMemo, useState } from "react";
+import { ChevronDown, MessageSquare, Plus, Trash2 } from "lucide-react";
 import { ConfidenceBadge } from "@/components/output/ConfidenceBadge";
 import { ModuleConfidenceChip, SeenInRepos } from "@/components/output/ModuleConfidence";
 import { moduleLevel } from "@/lib/scoring/modules";
 import { ModuleCard } from "@/components/output/ModuleCard";
 import { SectionEditor } from "@/components/output/SectionEditor";
-import type {
-  ClientView as ClientViewData,
-  ClientModule,
-  Milestone,
+import { EditableList } from "@/components/output/EditableList";
+import {
+  moduleId,
+  type ClientView as ClientViewData,
+  type ClientModule,
+  type Milestone,
 } from "@/lib/schemas/output";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,8 @@ interface ClientViewProps {
   readOnly?: boolean;
   sessionId?: string;
   onChange?(next: ClientViewData): void;
+  /** Opens the clarification panel for one open item (UX-02). */
+  onClarify?(question: string): void;
 }
 
 function Section({
@@ -53,12 +56,27 @@ function Section({
 export function ClientView({
   view,
   readOnly,
-  sessionId,
   onChange,
+  onClarify,
 }: ClientViewProps): React.ReactElement {
   const update = (next: Partial<ClientViewData>): void => {
     if (onChange) onChange({ ...view, ...next });
   };
+
+  const updateMilestone = (index: number, patch: Partial<Milestone>): void => {
+    update({
+      milestones: view.milestones.map((ms, i) =>
+        i === index ? { ...ms, ...patch } : ms,
+      ),
+    });
+  };
+
+  // A key per milestone that survives an edit to its own fields, so a
+  // renamed phase does not remount the card (BUG-09's lesson, applied here).
+  const milestoneKeys = useMemo(
+    () => view.milestones.map((ms, i) => `${i}-${ms.phase}`),
+    [view.milestones],
+  );
 
   // LOW-confidence modules are offered for confirmation rather than stated
   // as fact (blueprint step 07).
@@ -85,8 +103,8 @@ export function ClientView({
       <Section id="modules" title="Modules">
         {readOnly ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {confirmed.map((m, i) => (
-              <ReadOnlyModuleCard key={`${m.name}-${i}`} module={m} />
+            {confirmed.map((m) => (
+              <ReadOnlyModuleCard key={moduleId(m)} module={m} />
             ))}
           </div>
         ) : (
@@ -96,9 +114,9 @@ export function ClientView({
             onReorder={(modules: ClientModule[]) => update({ modules })}
             className="grid grid-cols-1 gap-4 md:grid-cols-2"
           >
-            {confirmed.map((m, i) => (
+            {confirmed.map((m) => (
               <ModuleCard
-                key={`${m.name}-${i}`}
+                key={moduleId(m)}
                 module={m}
                 onChange={(next) => {
                   const updated = view.modules.map((x) => (x === m ? next : x));
@@ -117,13 +135,14 @@ export function ClientView({
             similar projects did not back them up. Keep the ones you want.
           </p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {candidates.map((m, i) =>
+            {candidates.map((m) =>
               readOnly ? (
-                <ReadOnlyModuleCard key={`${m.name}-${i}`} module={m} />
+                <ReadOnlyModuleCard key={moduleId(m)} module={m} />
               ) : (
                 <ModuleCard
-                  key={`${m.name}-${i}`}
+                  key={moduleId(m)}
                   module={m}
+                  draggable={false}
                   onChange={(next) => {
                     const updated = view.modules.map((x) => (x === m ? next : x));
                     update({ modules: updated });
@@ -140,61 +159,135 @@ export function ClientView({
           <ol className="flex min-w-max items-stretch gap-4">
             {view.milestones.map((ms: Milestone, i) => (
               <li
-                key={`${ms.phase}-${i}`}
+                key={milestoneKeys[i] ?? `${ms.phase}-${i}`}
                 className="border-blueprint-line/20 flex w-72 shrink-0 flex-col gap-3 rounded-xl border bg-white/[0.025] p-5 backdrop-blur-md"
               >
-                <span className="text-blueprint-accent font-mono text-[10px] tracking-[0.18em] uppercase">
-                  {ms.phase}
-                </span>
-                <h3 className="text-blueprint-text font-display text-lg font-semibold">
-                  {ms.name}
-                </h3>
-                <ul className="text-blueprint-muted flex flex-col gap-1.5 text-sm">
-                  {ms.deliverables.map((d, j) => (
-                    <li
-                      key={j}
-                      className="before:bg-blueprint-accent/60 relative pl-3 before:absolute before:top-2 before:left-0 before:h-1 before:w-1 before:rounded-full"
+                <div className="flex items-start justify-between gap-2">
+                  <SectionEditor
+                    ariaLabel={`Milestone phase ${i + 1}`}
+                    value={ms.phase}
+                    disabled={readOnly}
+                    maxLength={40}
+                    onConfirm={(phase) => updateMilestone(i, { phase })}
+                    className="text-blueprint-accent font-mono text-[10px] tracking-[0.18em] uppercase"
+                  />
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      aria-label={`Delete milestone ${ms.name}`}
+                      onClick={() =>
+                        update({ milestones: view.milestones.filter((_, j) => j !== i) })
+                      }
+                      className="text-blueprint-muted rounded-md p-1 hover:text-red-300"
                     >
-                      {d}
-                    </li>
-                  ))}
-                </ul>
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+                <SectionEditor
+                  ariaLabel={`Milestone name ${i + 1}`}
+                  value={ms.name}
+                  disabled={readOnly}
+                  maxLength={120}
+                  onConfirm={(name) => updateMilestone(i, { name })}
+                  className="text-blueprint-text font-display text-lg font-semibold"
+                />
+                <EditableList
+                  items={ms.deliverables}
+                  readOnly={readOnly}
+                  reorderable
+                  maxItems={12}
+                  maxLength={200}
+                  itemNoun="deliverable"
+                  addLabel="Add deliverable"
+                  empty="No deliverables listed."
+                  onChange={(deliverables) => updateMilestone(i, { deliverables })}
+                  rowClassName="text-blueprint-muted text-sm"
+                />
               </li>
             ))}
+            {!readOnly && view.milestones.length < 8 && (
+              <li className="flex w-72 shrink-0 items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() =>
+                    update({
+                      milestones: [
+                        ...view.milestones,
+                        {
+                          phase: `Phase ${view.milestones.length + 1}`,
+                          name: "New milestone",
+                          deliverables: ["First deliverable"],
+                        },
+                      ],
+                    })
+                  }
+                  className="text-blueprint-muted border-blueprint-line/30 hover:text-blueprint-text inline-flex items-center gap-1.5 rounded-xl border border-dashed px-4 py-3 text-xs"
+                >
+                  <Plus size={13} />
+                  Add milestone
+                </button>
+              </li>
+            )}
           </ol>
         </div>
       </Section>
 
-      <CollapsibleSection
-        id="assumptions"
-        title="What we assumed"
-        items={view.assumptions}
-        empty="No assumptions — every parameter was explicitly stated."
-      />
+      {readOnly ? (
+        <CollapsibleSection
+          id="assumptions"
+          title="What we assumed"
+          items={view.assumptions}
+          empty="No assumptions — every parameter was explicitly stated."
+        />
+      ) : (
+        <Section id="assumptions" title="What we assumed">
+          <EditableList
+            items={view.assumptions}
+            onChange={(assumptions) => update({ assumptions })}
+            itemNoun="assumption"
+            addLabel="Add assumption"
+            multiline
+            empty="No assumptions — every parameter was explicitly stated."
+          />
+        </Section>
+      )}
 
       <Section id="open-items" title="Open items">
-        {view.open_items.length === 0 ? (
-          <p className="text-blueprint-muted text-sm">Nothing outstanding.</p>
+        {readOnly ? (
+          view.open_items.length === 0 ? (
+            <p className="text-blueprint-muted text-sm">Nothing outstanding.</p>
+          ) : (
+            <ul className="flex flex-col gap-2.5">
+              {view.open_items.map((question, i) => (
+                <li
+                  key={`${question}-${i}`}
+                  className="border-blueprint-line/20 flex items-start justify-between gap-3 rounded-lg border bg-white/[0.02] p-4 backdrop-blur-md"
+                >
+                  <span className="text-blueprint-text/95 text-sm">{question}</span>
+                  {onClarify && (
+                    <button
+                      type="button"
+                      onClick={() => onClarify(question)}
+                      className="text-blueprint-accent inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--color-blueprint-accent)]/30 px-2.5 py-1 text-xs hover:bg-[var(--color-blueprint-accent)]/15"
+                    >
+                      <MessageSquare size={12} />
+                      Clarify
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )
         ) : (
-          <ul className="flex flex-col gap-2.5">
-            {view.open_items.map((q, i) => (
-              <li
-                key={i}
-                className="border-blueprint-line/20 flex items-start justify-between gap-3 rounded-lg border bg-white/[0.02] p-4 backdrop-blur-md"
-              >
-                <span className="text-blueprint-text/95 text-sm">{q}</span>
-                {!readOnly && sessionId && (
-                  <Link
-                    href={`/chat?s=${sessionId}`}
-                    className="text-blueprint-accent inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--color-blueprint-accent)]/30 px-2.5 py-1 text-xs hover:bg-[var(--color-blueprint-accent)]/15"
-                  >
-                    <MessageSquare size={12} />
-                    Clarify
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
+          <EditableList
+            items={view.open_items}
+            onChange={(open_items) => update({ open_items })}
+            itemNoun="open item"
+            addLabel="Add open item"
+            multiline
+            empty="Nothing outstanding."
+          />
         )}
       </Section>
     </div>

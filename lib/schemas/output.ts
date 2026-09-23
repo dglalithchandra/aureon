@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ModuleSizeSchema } from "@/lib/schemas/extraction";
 import { GitHubUrlSchema, RepoLinkSchema } from "@/lib/schemas/github";
+import { canonicalModuleKey } from "@/lib/scoring/module-name";
 
 /**
  * Two-stage output schemas. Both `client` and `engineer` are produced by
@@ -15,7 +16,34 @@ import { GitHubUrlSchema, RepoLinkSchema } from "@/lib/schemas/github";
  *  Client view
  * ────────────────────────────────────────────────────────────── */
 
+/**
+ * A stable id for a module, used as the React key when the list can be
+ * reordered (BUG-09: an index key made framer-motion's Reorder swap the
+ * wrong rows). Derived from the name when a stored document predates the
+ * field, so the same document always yields the same ids.
+ */
+export function moduleId(module: { id?: string | null; name: string }): string {
+  const existing = module.id?.trim();
+  if (existing) return existing;
+  const derived = canonicalModuleKey(module.name);
+  return derived || `module-${module.name.length}`;
+}
+
+/**
+ * An id for a module the reader just added by hand. Random, because a new
+ * module has no name yet that could be derived from.
+ */
+export function newModuleId(): string {
+  const random = globalThis.crypto?.randomUUID?.();
+  return (
+    random ??
+    `module-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  );
+}
+
 export const ClientModuleSchema = z.object({
+  /** Stable across saves; see moduleId. */
+  id: z.string().min(1).max(64).optional(),
   name: z.string().min(1).max(80),
   description: z.string().min(1).max(400),
   size: ModuleSizeSchema,
@@ -72,6 +100,8 @@ export type ClientView = z.infer<typeof ClientViewSchema>;
  * ────────────────────────────────────────────────────────────── */
 
 export const EngineerModuleRowSchema = z.object({
+  /** The same id as the client view's module of that name. */
+  id: z.string().min(1).max(64).optional(),
   name: z.string().min(1).max(80),
   /** Per-module confidence 0-1, filled in by the server (blueprint step 07). */
   confidence: z.number().min(0).max(1).nullable().default(null),
@@ -104,6 +134,7 @@ export const SprintSchema = z.object({
   story_points: z.number().int().min(0).max(200),
   modules: z.array(z.string().min(1).max(80)).max(20),
 });
+export type Sprint = z.infer<typeof SprintSchema>;
 
 export const TestingStrategyRowSchema = z.object({
   module: z.string().min(1).max(80),

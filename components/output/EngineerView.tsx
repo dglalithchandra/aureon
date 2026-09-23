@@ -7,14 +7,21 @@ import {
   ArrowUpAZ,
   ChevronDown,
   ExternalLink,
+  Plus,
   Shield,
+  Trash2,
 } from "lucide-react";
-import type {
-  EngineerView as EngineerViewData,
-  EngineerModuleRow,
-  RiskSeverity,
+import {
+  moduleId,
+  newModuleId,
+  type EngineerView as EngineerViewData,
+  type EngineerModuleRow,
+  type RiskSeverity,
+  type Sprint,
 } from "@/lib/schemas/output";
 import { ModuleConfidenceChip } from "@/components/output/ModuleConfidence";
+import { SectionEditor } from "@/components/output/SectionEditor";
+import { EditableList } from "@/components/output/EditableList";
 import {
   EffortSummaryPanel,
   recomputeEstimate,
@@ -25,6 +32,8 @@ import { cn } from "@/lib/utils";
 interface EngineerViewProps {
   view: EngineerViewData;
   readOnly?: boolean;
+  /** Present when the reader owns the scope and may correct it (UX-02). */
+  onChange?(next: EngineerViewData): void;
   /**
    * Local persistence for the third-party checklist. The server stores the
    * EngineerView verbatim — we don't add a new field — so this is browser-
@@ -73,8 +82,29 @@ function Section({
 
 export function EngineerView({
   view,
+  readOnly,
+  onChange,
   checklistKey,
 }: EngineerViewProps): React.ReactElement {
+  const editable = !readOnly && onChange !== undefined;
+  const update = (next: Partial<EngineerViewData>): void => {
+    if (onChange) onChange({ ...view, ...next });
+  };
+  const updateModule = (id: string, patch: Partial<EngineerModuleRow>): void => {
+    update({
+      module_table: view.module_table.map((row) =>
+        moduleId(row) === id ? { ...row, ...patch } : row,
+      ),
+    });
+  };
+  const updateSprint = (index: number, patch: Partial<Sprint>): void => {
+    update({
+      sprint_breakdown: view.sprint_breakdown.map((sprint, i) =>
+        i === index ? { ...sprint, ...patch } : sprint,
+      ),
+    });
+  };
+
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [openSecurity, setOpenSecurity] = useState<string | null>(null);
   // Blueprint step 10: the reader can try a different team size and the
@@ -131,70 +161,212 @@ export function EngineerView({
                 <th className="px-4 py-3 font-medium">Stack</th>
                 <th className="px-4 py-3 font-medium">Dependencies</th>
                 <th className="px-4 py-3 font-medium">Notes</th>
+                {editable && <th className="sr-only px-4 py-3 font-medium">Remove</th>}
               </tr>
             </thead>
             <tbody>
-              {sortedModules.map((m, i) => (
-                <tr
-                  key={`${m.name}-${i}`}
-                  className="border-blueprint-line/10 border-t align-top"
-                >
-                  <td className="text-blueprint-text px-4 py-3 font-medium">{m.name}</td>
-                  <td className="px-4 py-3 capitalize">{m.size.toLowerCase()}</td>
-                  <td className="px-4 py-3">
-                    <ModuleConfidenceChip confidence={m.confidence} />
-                  </td>
-                  <td className="text-blueprint-muted px-4 py-3 font-mono text-xs">
-                    {m.tech_stack.join(", ")}
-                  </td>
-                  <td className="text-blueprint-muted px-4 py-3 text-xs">
-                    {m.dependencies.length > 0 ? m.dependencies.join(", ") : "—"}
-                  </td>
-                  <td className="text-blueprint-muted px-4 py-3 text-xs">
-                    {m.notes || "—"}
-                  </td>
-                </tr>
-              ))}
+              {sortedModules.map((m) => {
+                const id = moduleId(m);
+                return (
+                  <tr key={id} className="border-blueprint-line/10 border-t align-top">
+                    <td className="text-blueprint-text px-4 py-3 font-medium">
+                      <SectionEditor
+                        value={m.name}
+                        disabled={!editable}
+                        maxLength={80}
+                        ariaLabel={`Module name, ${m.name}`}
+                        onConfirm={(name) => updateModule(id, { name })}
+                      />
+                    </td>
+                    <td className="px-4 py-3 capitalize">
+                      {editable ? (
+                        <select
+                          aria-label={`Size of ${m.name}`}
+                          value={m.size}
+                          onChange={(e) =>
+                            updateModule(id, {
+                              size: e.target.value as EngineerModuleRow["size"],
+                            })
+                          }
+                          className="border-blueprint-line/30 text-blueprint-text rounded-md border bg-white/[0.03] px-2 py-1 text-xs capitalize"
+                        >
+                          {(["SMALL", "MEDIUM", "LARGE"] as const).map((size) => (
+                            <option key={size} value={size} className="bg-blueprint-bg">
+                              {size.toLowerCase()}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        m.size.toLowerCase()
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <ModuleConfidenceChip confidence={m.confidence} />
+                    </td>
+                    <td className="text-blueprint-muted px-4 py-3 font-mono text-xs">
+                      {editable ? (
+                        <EditableList
+                          items={m.tech_stack}
+                          onChange={(tech_stack) => updateModule(id, { tech_stack })}
+                          addLabel="Add tech"
+                          itemNoun={`tech for ${m.name}`}
+                          maxLength={60}
+                          maxItems={12}
+                          className="min-w-44"
+                        />
+                      ) : (
+                        m.tech_stack.join(", ")
+                      )}
+                    </td>
+                    <td className="text-blueprint-muted px-4 py-3 text-xs">
+                      {editable ? (
+                        <EditableList
+                          items={m.dependencies}
+                          onChange={(dependencies) => updateModule(id, { dependencies })}
+                          addLabel="Add dependency"
+                          itemNoun={`dependency of ${m.name}`}
+                          maxLength={80}
+                          maxItems={20}
+                          className="min-w-44"
+                          empty="None"
+                        />
+                      ) : m.dependencies.length > 0 ? (
+                        m.dependencies.join(", ")
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="text-blueprint-muted px-4 py-3 text-xs">
+                      <SectionEditor
+                        value={m.notes}
+                        disabled={!editable}
+                        multiline
+                        allowEmpty
+                        maxLength={400}
+                        ariaLabel={`Notes on ${m.name}`}
+                        onConfirm={(notes) => updateModule(id, { notes })}
+                      />
+                    </td>
+                    {editable && (
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          aria-label={`Delete module ${m.name}`}
+                          disabled={view.module_table.length <= 1}
+                          onClick={() =>
+                            update({
+                              module_table: view.module_table.filter(
+                                (row) => moduleId(row) !== id,
+                              ),
+                            })
+                          }
+                          className="text-blueprint-muted rounded-md p-1 hover:text-red-300 disabled:opacity-30"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
+        {editable && view.module_table.length < 40 && (
+          <button
+            type="button"
+            onClick={() =>
+              update({
+                module_table: [
+                  ...view.module_table,
+                  {
+                    id: newModuleId(),
+                    name: "New module",
+                    confidence: null,
+                    tech_stack: ["To decide"],
+                    size: "MEDIUM",
+                    dependencies: [],
+                    api_endpoints: [],
+                    notes: "",
+                  },
+                ],
+              })
+            }
+            className="text-blueprint-muted border-blueprint-line/30 hover:text-blueprint-text mt-3 inline-flex w-fit items-center gap-1.5 rounded-lg border border-dashed px-3 py-1.5 text-xs"
+          >
+            <Plus size={12} />
+            Add module row
+          </button>
+        )}
+
         <div className="mt-6 flex flex-col gap-4">
           {view.module_table
-            .filter((m) => m.api_endpoints.length > 0)
-            .map((m, i) => (
+            // Read-only, only the modules that have endpoints are worth a card;
+            // editing needs one per module, so endpoints can be added.
+            .filter((m) => editable || m.api_endpoints.length > 0)
+            .map((m) => (
               <div
-                key={`${m.name}-api-${i}`}
+                key={`${moduleId(m)}-api`}
                 className="border-blueprint-line/15 rounded-lg border bg-white/[0.02] p-4"
               >
                 <h4 className="text-blueprint-text mb-2 font-mono text-xs tracking-wide">
                   {m.name}
                 </h4>
-                <pre className="text-blueprint-muted overflow-x-auto font-mono text-[12px] leading-relaxed whitespace-pre-wrap">
-                  {m.api_endpoints.join("\n")}
-                </pre>
+                {editable ? (
+                  <EditableList
+                    items={m.api_endpoints}
+                    onChange={(api_endpoints) =>
+                      updateModule(moduleId(m), { api_endpoints })
+                    }
+                    addLabel="Add endpoint"
+                    itemNoun={`endpoint of ${m.name}`}
+                    maxLength={160}
+                    maxItems={40}
+                    rowClassName="font-mono text-xs"
+                    empty="No endpoints yet."
+                  />
+                ) : (
+                  <pre className="text-blueprint-muted overflow-x-auto font-mono text-[12px] leading-relaxed whitespace-pre-wrap">
+                    {m.api_endpoints.join("\n")}
+                  </pre>
+                )}
               </div>
             ))}
         </div>
       </Section>
 
       <Section id="build-order" title="Build order">
-        <ol className="border-blueprint-line/15 flex flex-col rounded-xl border bg-white/[0.02] p-2 backdrop-blur-md">
-          {view.build_order.map((name, i) => (
-            <li
-              key={`${name}-${i}`}
-              className="text-blueprint-text flex items-center gap-3 px-3 py-2"
-            >
-              <span className="text-blueprint-muted w-6 shrink-0 font-mono text-xs">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <span className="font-medium">{name}</span>
-              {i < view.build_order.length - 1 && (
-                <ArrowDown className="text-blueprint-line/40 ml-auto" size={12} />
-              )}
-            </li>
-          ))}
-        </ol>
+        {editable ? (
+          // Order is the whole point of this list, so it is the one that drags.
+          <EditableList
+            items={view.build_order}
+            onChange={(build_order) => update({ build_order })}
+            addLabel="Add step"
+            itemNoun="build step"
+            maxLength={80}
+            maxItems={40}
+            reorderable
+            className="border-blueprint-line/15 rounded-xl border bg-white/[0.02] p-3 backdrop-blur-md"
+          />
+        ) : (
+          <ol className="border-blueprint-line/15 flex flex-col rounded-xl border bg-white/[0.02] p-2 backdrop-blur-md">
+            {view.build_order.map((name, i) => (
+              <li
+                key={`${name}-${i}`}
+                className="text-blueprint-text flex items-center gap-3 px-3 py-2"
+              >
+                <span className="text-blueprint-muted w-6 shrink-0 font-mono text-xs">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="font-medium">{name}</span>
+                {i < view.build_order.length - 1 && (
+                  <ArrowDown className="text-blueprint-line/40 ml-auto" size={12} />
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
       </Section>
 
       {view.database_sketch.length > 0 && (
@@ -257,25 +429,113 @@ export function EngineerView({
       )}
 
       <Section id="sprints" title="Sprint breakdown">
-        <ol className="flex flex-col gap-3">
-          {sprintRows.map((s, i) => (
-            <li
-              key={`${s.sprint}-${i}`}
-              className="border-blueprint-line/15 flex flex-col gap-2 rounded-xl border bg-white/[0.02] p-4 sm:flex-row sm:items-center sm:gap-6"
-            >
-              <span className="text-blueprint-accent w-24 shrink-0 font-mono text-xs tracking-[0.16em] uppercase">
-                {s.sprint}
-              </span>
-              <span className="text-blueprint-text flex-1 font-medium">{s.focus}</span>
-              <span className="text-blueprint-muted shrink-0 font-mono text-xs">
-                {s.story_points} pt{s.story_points === 1 ? "" : "s"}
-              </span>
-              <span className="text-blueprint-muted shrink-0 text-xs">
-                {s.modules.join(", ")}
-              </span>
-            </li>
-          ))}
-        </ol>
+        {editable ? (
+          <>
+            <ol className="flex flex-col gap-3">
+              {view.sprint_breakdown.map((sprint, i) => (
+                <li
+                  key={`sprint-${i}`}
+                  className="border-blueprint-line/15 flex flex-col gap-3 rounded-xl border bg-white/[0.02] p-4"
+                >
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="w-32 shrink-0">
+                      <SectionEditor
+                        value={sprint.sprint}
+                        maxLength={40}
+                        ariaLabel={`Name of ${sprint.sprint}`}
+                        onConfirm={(name) => updateSprint(i, { sprint: name })}
+                        className="text-blueprint-accent font-mono text-xs tracking-[0.16em] uppercase"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <SectionEditor
+                        value={sprint.focus}
+                        maxLength={200}
+                        ariaLabel={`Focus of ${sprint.sprint}`}
+                        onConfirm={(focus) => updateSprint(i, { focus })}
+                        className="text-blueprint-text font-medium"
+                      />
+                    </div>
+                    <span className="text-blueprint-muted shrink-0 font-mono text-xs">
+                      {sprint.story_points} pt{sprint.story_points === 1 ? "" : "s"}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`Delete ${sprint.sprint}`}
+                      disabled={view.sprint_breakdown.length <= 1}
+                      onClick={() =>
+                        update({
+                          sprint_breakdown: view.sprint_breakdown.filter(
+                            (_, j) => j !== i,
+                          ),
+                        })
+                      }
+                      className="text-blueprint-muted shrink-0 rounded-md p-1 hover:text-red-300 disabled:opacity-30"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                  <EditableList
+                    items={sprint.modules}
+                    onChange={(modules) => updateSprint(i, { modules })}
+                    addLabel="Add module"
+                    itemNoun={`module in ${sprint.sprint}`}
+                    maxLength={80}
+                    maxItems={20}
+                    empty="No modules in this sprint."
+                  />
+                </li>
+              ))}
+            </ol>
+            {view.sprint_breakdown.length < 20 && (
+              <button
+                type="button"
+                onClick={() =>
+                  update({
+                    sprint_breakdown: [
+                      ...view.sprint_breakdown,
+                      {
+                        sprint: `Sprint ${view.sprint_breakdown.length + 1}`,
+                        focus: "To be decided",
+                        story_points: 0,
+                        modules: [],
+                      },
+                    ],
+                  })
+                }
+                className="text-blueprint-muted border-blueprint-line/30 hover:text-blueprint-text mt-3 inline-flex w-fit items-center gap-1.5 rounded-lg border border-dashed px-3 py-1.5 text-xs"
+              >
+                <Plus size={12} />
+                Add sprint
+              </button>
+            )}
+            <p className="text-blueprint-muted mt-3 text-xs leading-relaxed">
+              Story points are computed from module sizes and the team size, so they are
+              not editable here and the plan is re-cut the next time the scope is
+              generated.
+            </p>
+          </>
+        ) : (
+          <ol className="flex flex-col gap-3">
+            {sprintRows.map((s, i) => (
+              <li
+                key={`${s.sprint}-${i}`}
+                className="border-blueprint-line/15 flex flex-col gap-2 rounded-xl border bg-white/[0.02] p-4 sm:flex-row sm:items-center sm:gap-6"
+              >
+                <span className="text-blueprint-accent w-24 shrink-0 font-mono text-xs tracking-[0.16em] uppercase">
+                  {s.sprint}
+                </span>
+                <span className="text-blueprint-text flex-1 font-medium">{s.focus}</span>
+                <span className="text-blueprint-muted shrink-0 font-mono text-xs">
+                  {s.story_points} pt{s.story_points === 1 ? "" : "s"}
+                </span>
+                <span className="text-blueprint-muted shrink-0 text-xs">
+                  {s.modules.join(", ")}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
       </Section>
 
       {view.testing_strategy.length > 0 && (

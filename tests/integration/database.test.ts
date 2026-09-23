@@ -22,6 +22,7 @@ import {
   resolveShareToken,
   revokeShareLink,
 } from "@/lib/storage/share";
+import { projectTitle, renameProject } from "@/lib/projects/list";
 import { truncateAll } from "../helpers/db";
 import {
   makeClientView,
@@ -167,6 +168,30 @@ describe("titles", () => {
     const title = deriveTitle("x".repeat(200));
     expect(title).toHaveLength(78);
     expect(title.endsWith("…")).toBe(true);
+  });
+
+  // UX-02: the title typed on the output page is a stored field, not a
+  // label derived from the brief every time the page renders.
+  it("keeps a rename, and a later write of the session does not undo it", async () => {
+    const session = finalized();
+    await putSession(session);
+
+    const stored = await renameProject(session.id, "  Craft   marketplace MVP  ");
+    expect(stored).toBe("Craft marketplace MVP");
+    expect(await projectTitle(session.id)).toBe("Craft marketplace MVP");
+
+    await putSession({ ...session, updated_at: Date.now() });
+    expect(await projectTitle(session.id)).toBe("Craft marketplace MVP");
+  });
+
+  it("tidies a title the same way the derived one is tidied", async () => {
+    const session = finalized();
+    await putSession(session);
+    expect(await renameProject(session.id, "y".repeat(200))).toHaveLength(78);
+  });
+
+  it("has no title for a project that does not exist", async () => {
+    expect(await projectTitle("00000000-0000-4000-8000-00000000dead")).toBeNull();
   });
 });
 

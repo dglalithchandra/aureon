@@ -13,6 +13,10 @@ interface SectionEditorProps {
   onConfirm(next: string): void;
   /** Optional disabled state — disables the pencil affordance. */
   disabled?: boolean;
+  /** Stand-in shown when the value is empty, so the field stays clickable. */
+  placeholder?: string;
+  /** Fields that may legitimately be blank, such as a module's notes. */
+  allowEmpty?: boolean;
   ariaLabel: string;
 }
 
@@ -37,6 +41,8 @@ function SectionEditorInner({
   inputClassName,
   onConfirm,
   disabled,
+  placeholder = "—",
+  allowEmpty = false,
   ariaLabel,
 }: SectionEditorProps): React.ReactElement {
   const [editing, setEditing] = useState(false);
@@ -51,7 +57,7 @@ function SectionEditorInner({
 
   function handleConfirm(): void {
     const trimmed = draft.trim();
-    if (!trimmed) {
+    if (!trimmed && !allowEmpty) {
       setEditing(false);
       setDraft(value);
       return;
@@ -136,7 +142,7 @@ function SectionEditorInner({
           className,
         )}
       >
-        {value}
+        {value || <span className="text-blueprint-muted">{placeholder}</span>}
       </div>
     );
   }
@@ -159,7 +165,7 @@ function SectionEditorInner({
           multiline && "whitespace-pre-wrap",
         )}
       >
-        {value}
+        {value || <span className="text-blueprint-muted">{placeholder}</span>}
       </button>
       <button
         type="button"

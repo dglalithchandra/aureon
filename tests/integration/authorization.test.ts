@@ -7,10 +7,14 @@ import {
 import { POST as runRoute } from "@/app/api/session/[id]/run/route";
 import { POST as answerRoute } from "@/app/api/session/[id]/answer/route";
 import { POST as describeRoute } from "@/app/api/session/[id]/describe/route";
+import { POST as clarifyRoute } from "@/app/api/session/[id]/clarify/route";
 import { POST as finalizeRoute } from "@/app/api/finalize/route";
 import { POST as shareRoute } from "@/app/api/share/route";
 import { GET as listProjectsRoute } from "@/app/api/projects/route";
-import { DELETE as deleteProjectRoute } from "@/app/api/projects/[id]/route";
+import {
+  DELETE as deleteProjectRoute,
+  PATCH as renameProjectRoute,
+} from "@/app/api/projects/[id]/route";
 import { POST as duplicateRoute } from "@/app/api/projects/[id]/duplicate/route";
 import { getDatabase } from "@/lib/db/client";
 import {
@@ -171,6 +175,24 @@ const ROUTES: Record<string, (cookie: string) => Promise<NextResponse>> = {
       }),
       params,
     ),
+  "POST /api/session/:id/clarify": (cookie) =>
+    clarifyRoute(
+      req(`/api/session/${PROJECT_ID}/clarify`, {
+        method: "POST",
+        cookie,
+        body: JSON.stringify({ question: "Budget?", answer: "40,000 dollars." }),
+      }),
+      params,
+    ),
+  "PATCH /api/projects/:id": (cookie) =>
+    renameProjectRoute(
+      req(`/api/projects/${PROJECT_ID}`, {
+        method: "PATCH",
+        cookie,
+        body: JSON.stringify({ title: "Renamed by the matrix" }),
+      }),
+      params,
+    ),
   "POST /api/finalize": (cookie) =>
     finalizeRoute(
       req("/api/finalize", {
@@ -207,6 +229,8 @@ const WRITE_ROUTES = [
   "POST /api/session/:id/run",
   "POST /api/session/:id/answer",
   "POST /api/session/:id/describe",
+  "POST /api/session/:id/clarify",
+  "PATCH /api/projects/:id",
   "POST /api/finalize",
   "POST /api/share",
 ] as const;

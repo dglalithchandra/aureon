@@ -377,6 +377,60 @@ export function applyDescription(session: Session, text: string): Session {
   };
 }
 
+/**
+ * An answer to one open item, typed on the output page (UX-02).
+ *
+ * It is recorded like the description of BUG-05 — as text on the latest
+ * round — so the next round re-extracts from the brief, every answer so far
+ * and this clarification, and the pipeline decides for itself what changed.
+ * The finished document stays in place until the regenerated one replaces
+ * it, so the page has something to show while the round runs.
+ */
+export function applyClarification(
+  session: Session,
+  question: string,
+  answer: string,
+): Session {
+  if (session.status !== "finalized" && session.status !== "ready") {
+    throw new ValidationError(`Cannot clarify a session in status ${session.status}`);
+  }
+  if (session.rounds.length >= SCOPING.maxTotalRounds) {
+    throw new ValidationError(
+      `This session has used all ${SCOPING.maxTotalRounds} rounds. Start a new scope.`,
+    );
+  }
+  const currentRound = session.rounds[session.rounds.length - 1];
+  if (!currentRound) {
+    throw new ValidationError("Session has no current round");
+  }
+
+  const text = answer.trim();
+  if (!text) {
+    throw new ValidationError("Answer the open item in a sentence or two");
+  }
+  const asked = question.trim();
+  const note = asked ? `${asked}\n${text}` : text;
+  requireWithinBudget(sumUserBytes(session, []) + utf8Bytes(note));
+
+  const updatedRounds = [...session.rounds];
+  updatedRounds[updatedRounds.length - 1] = {
+    ...currentRound,
+    added_description: currentRound.added_description
+      ? `${currentRound.added_description}\n\n${note}`
+      : note,
+  };
+
+  return {
+    ...session,
+    rounds: updatedRounds,
+    enriched_input: enrichedInput(session, updatedRounds),
+    status: "analyzing",
+    pipeline_stage: "extracting",
+    last_error: null,
+    updated_at: Date.now(),
+  };
+}
+
 async function setPipelineStage(
   session: Session,
   pipelineStage: PipelineStage,

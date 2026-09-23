@@ -160,3 +160,9 @@ export const SubmitAnswersRequestSchema = z.object({
 export const DescribeRequestSchema = z.object({
   text: z.string().trim().min(1).pipe(userText),
 });
+
+/** An answer to one open item, typed on the output page (UX-02). */
+export const ClarifyRequestSchema = z.object({
+  question: z.string().trim().max(400).default(""),
+  answer: z.string().trim().min(1).pipe(userText),
+});

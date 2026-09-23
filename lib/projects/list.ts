@@ -200,8 +200,25 @@ export async function deleteProject(id: string, viewer: Viewer): Promise<boolean
   return true;
 }
 
-/** Rename a project (the list's only edit). */
-export async function renameProject(id: string, title: string): Promise<void> {
+/** The stored title, or null when there is no such project. */
+export async function projectTitle(id: string): Promise<string | null> {
+  const [row] = await getDatabase()
+    .select({ title: projects.title })
+    .from(projects)
+    .where(eq(projects.id, id))
+    .limit(1);
+  return row?.title ?? null;
+}
+
+/**
+ * Rename a project. Returns the title as stored, which is the given one
+ * tidied by `deriveTitle` (trimmed, collapsed, capped at 80 characters).
+ */
+export async function renameProject(id: string, title: string): Promise<string> {
   const clean = deriveTitle(title);
-  await getDatabase().update(projects).set({ title: clean }).where(eq(projects.id, id));
+  await getDatabase()
+    .update(projects)
+    .set({ title: clean, updatedAt: new Date() })
+    .where(eq(projects.id, id));
+  return clean;
 }

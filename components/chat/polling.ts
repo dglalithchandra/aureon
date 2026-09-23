@@ -57,3 +57,24 @@ export const JOB_STALLED_MS = 340_000;
 export function isJobStalled(updatedAt: number, now: number): boolean {
   return now - updatedAt > JOB_STALLED_MS;
 }
+
+/**
+ * "Generate anyway" (UX-02): once a round has been through the pipeline
+ * there is enough to write a scope, even with questions outstanding. The
+ * document says so — its confidence score is the one the answers would have
+ * raised, and the output page shows a "Low confidence draft" banner.
+ *
+ * Before the first round there is nothing to write from, and a session that
+ * is already ready or finalized has the ordinary button instead.
+ */
+export function canGenerateAnyway(session: {
+  status: string;
+  rounds: readonly unknown[];
+}): boolean {
+  if (session.rounds.length < 1) return false;
+  return (
+    session.status === "awaiting_answers" ||
+    session.status === "blocker" ||
+    session.status === "needs_input"
+  );
+}

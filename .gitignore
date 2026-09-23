@@ -45,3 +45,10 @@ next-env.d.ts
 
 # Local development database (PGlite fallback when DATABASE_URL is unset)
 .pglite/
+.pglite-e2e/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/.playwright/

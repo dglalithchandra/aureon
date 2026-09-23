@@ -9,6 +9,7 @@ import {
   createSession,
   describeSession,
   fetchSession,
+  finalizeSession,
   isUuid,
   runSession,
   submitAnswers,
@@ -26,6 +27,7 @@ import {
 } from "@/components/chat/messageDerivation";
 import { sessionErrorNotice } from "@/components/chat/sessionError";
 import {
+  canGenerateAnyway,
   isBusyStatus,
   isFatalPollStatus,
   isJobStalled,
@@ -507,6 +509,13 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
           />
         )}
 
+        {session && canGenerateAnyway(session) && (
+          <GenerateAnyway
+            sessionId={session.id}
+            confidence={session.current_confidence}
+          />
+        )}
+
         <InputBar
           ref={inputRef}
           locked={inputLocked}
@@ -526,6 +535,53 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
           }}
         />
       </main>
+    </div>
+  );
+}
+
+function GenerateAnyway({
+  sessionId,
+  confidence,
+}: {
+  sessionId: string;
+  confidence: number;
+}): React.ReactElement {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function go(): Promise<void> {
+    setBusy(true);
+    setError(null);
+    try {
+      await finalizeSession(sessionId, { override: true });
+      router.push(`/output/${sessionId}`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not generate the scope.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="border-blueprint-line/15 flex flex-wrap items-center gap-3 border-t px-4 py-3 sm:px-6">
+      <p className="text-blueprint-muted min-w-0 flex-1 text-xs leading-relaxed">
+        Answering the questions raises confidence, currently {confidence}/100. You can
+        also take what is known so far as a draft.
+      </p>
+      <button
+        type="button"
+        onClick={go}
+        disabled={busy}
+        data-testid="generate-anyway"
+        className="text-blueprint-text border-blueprint-line/30 shrink-0 rounded-full border px-3 py-1.5 text-xs hover:border-[var(--color-blueprint-accent)]/50 disabled:opacity-50"
+      >
+        {busy ? "Generating…" : "Generate anyway"}
+      </button>
+      {error && (
+        <p role="alert" className="w-full text-xs text-red-300">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
