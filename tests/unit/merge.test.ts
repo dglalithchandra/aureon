@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canonicalModuleKey, mergeGitHubSignals } from "@/lib/pipeline/merge";
+import { mergeGitHubSignals } from "@/lib/pipeline/merge";
+import { canonicalModuleKey } from "@/lib/scoring/module-name";
 import type { ModuleCandidate } from "@/lib/schemas/extraction";
 import type { GitHubEnrichment } from "@/lib/schemas/github";
 import { makeExtraction } from "../fixtures/llm";
@@ -30,6 +31,8 @@ function mod(name: string): ModuleCandidate {
     size: "SMALL",
     source_signal: "Mentioned in brief",
     github_validated: false,
+    module_confidence: null,
+    seen_in: [],
   };
 }
 

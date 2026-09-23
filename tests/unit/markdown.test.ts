@@ -15,12 +15,16 @@ const client: ClientView = {
       description: "User accounts and sign-in (with pipe | character)",
       size: "MEDIUM",
       github_validated: true,
+      confidence: 0.9,
+      seen_in: [{ repo: "acme/shop", url: "https://github.com/acme/shop" }],
     },
     {
       name: "Dashboard",
       description: "Revenue and product metrics",
       size: "LARGE",
       github_validated: false,
+      confidence: 0.4,
+      seen_in: [],
     },
   ],
   milestones: [
@@ -53,6 +57,7 @@ const engineer: EngineerView = {
   module_table: [
     {
       name: "Auth",
+      confidence: 0.9,
       tech_stack: ["NextAuth.js", "PostgreSQL"],
       size: "MEDIUM",
       dependencies: [],

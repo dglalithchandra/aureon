@@ -11,9 +11,28 @@ export const RepoSlugSchema = z
   .max(140)
   .regex(/^[\w.-]+\/[\w.-]+$/, "Invalid repo slug");
 
+/**
+ * A repository page on github.com and nothing else (SEC-05). z.string().url()
+ * happily accepts "javascript:alert(1)" and "data:text/html,…", and these
+ * URLs end up as links in a document we publish.
+ */
+export const GITHUB_REPO_URL_RE = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/?$/;
+
+export const GitHubUrlSchema = z
+  .string()
+  .max(300)
+  .regex(GITHUB_REPO_URL_RE, "Must be a https://github.com/owner/repo URL");
+
+/** A repo the scope can point at: where it is, and what it is called. */
+export const RepoLinkSchema = z.object({
+  repo: RepoSlugSchema,
+  url: GitHubUrlSchema,
+});
+export type RepoLink = z.infer<typeof RepoLinkSchema>;
+
 export const RepoSearchResultSchema = z.object({
   repo: RepoSlugSchema,
-  url: z.string().url(),
+  url: GitHubUrlSchema,
   description: z.string().max(800),
   stars: z.number().int().min(0),
   /** Owner-curated topics from the search result, used for BM25 ranking. */
@@ -25,7 +44,7 @@ export type RepoSearchResult = z.infer<typeof RepoSearchResultSchema>;
 
 export const GitHubMatchSchema = z.object({
   repo: RepoSlugSchema,
-  url: z.string().url(),
+  url: GitHubUrlSchema,
   description: z.string().max(800),
   stars: z.number().int().min(0),
   similarity: z.number().min(0).max(1),

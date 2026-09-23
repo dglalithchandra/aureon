@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RepoLinkSchema } from "@/lib/schemas/github";
 
 /**
  * Extraction schemas — the structured shape the LLM must return.
@@ -48,6 +49,14 @@ export const ModuleCandidateSchema = z.object({
   size: ModuleSizeSchema,
   source_signal: z.string().min(1).max(300),
   github_validated: z.boolean().default(false),
+  /**
+   * How sure the pipeline is about this module, 0-1 (blueprint step 07).
+   * Computed by lib/scoring/modules.ts, never by the model; null until a
+   * round has scored it.
+   */
+  module_confidence: z.number().min(0).max(1).nullable().default(null),
+  /** The matched repos whose README or folders named this module. */
+  seen_in: z.array(RepoLinkSchema).max(8).default([]),
 });
 export type ModuleCandidate = z.infer<typeof ModuleCandidateSchema>;
 

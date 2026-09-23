@@ -27,6 +27,7 @@ const TOC: Record<Tab, ReadonlyArray<{ id: string; label: string }>> = {
   client: [
     { id: "summary", label: "Summary" },
     { id: "modules", label: "Modules" },
+    { id: "candidates", label: "Candidates" },
     { id: "milestones", label: "Milestones" },
     { id: "assumptions", label: "Assumptions" },
     { id: "open-items", label: "Open items" },

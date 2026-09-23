@@ -14,6 +14,7 @@ import type {
   EngineerModuleRow,
   RiskSeverity,
 } from "@/lib/schemas/output";
+import { ModuleConfidenceChip } from "@/components/output/ModuleConfidence";
 import { cn } from "@/lib/utils";
 
 interface EngineerViewProps {
@@ -118,6 +119,7 @@ export function EngineerView({
                     )}
                   </button>
                 </th>
+                <th className="px-4 py-3 font-medium">Confidence</th>
                 <th className="px-4 py-3 font-medium">Stack</th>
                 <th className="px-4 py-3 font-medium">Dependencies</th>
                 <th className="px-4 py-3 font-medium">Notes</th>
@@ -131,6 +133,9 @@ export function EngineerView({
                 >
                   <td className="text-blueprint-text px-4 py-3 font-medium">{m.name}</td>
                   <td className="px-4 py-3 capitalize">{m.size.toLowerCase()}</td>
+                  <td className="px-4 py-3">
+                    <ModuleConfidenceChip confidence={m.confidence} />
+                  </td>
                   <td className="text-blueprint-muted px-4 py-3 font-mono text-xs">
                     {m.tech_stack.join(", ")}
                   </td>
@@ -364,8 +369,13 @@ export function EngineerView({
         </Section>
       )}
 
-      {view.github_references.length > 0 && (
-        <Section id="github" title="GitHub references">
+      <Section id="github" title="GitHub references">
+        {view.github_references.length === 0 ? (
+          <p className="text-blueprint-muted text-sm">
+            No similar public projects found. Nothing here is invented: these come from
+            the repositories this scope was matched against.
+          </p>
+        ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {view.github_references.map((r, i) => (
               <a
@@ -390,8 +400,8 @@ export function EngineerView({
               </a>
             ))}
           </div>
-        </Section>
-      )}
+        )}
+      </Section>
     </div>
   );
 }

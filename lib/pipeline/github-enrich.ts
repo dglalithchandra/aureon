@@ -12,7 +12,7 @@ import { extractModulesFromReadme } from "@/lib/github/extract-modules";
 import { bm25Rank } from "@/lib/github/bm25";
 import { gitHubRequestsSent, withGitHubBudget } from "@/lib/github/client";
 import { cacheGet, cacheSet, hashKey } from "@/lib/storage/cache";
-import { canonicalModuleKey } from "@/lib/pipeline/merge";
+import { canonicalModuleKey } from "@/lib/scoring/module-name";
 import {
   GitHubEnrichmentSchema,
   type ExtractModulesToolOutput,

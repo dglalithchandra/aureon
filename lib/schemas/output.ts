@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ModuleSizeSchema } from "@/lib/schemas/extraction";
+import { GitHubUrlSchema, RepoLinkSchema } from "@/lib/schemas/github";
 
 /**
  * Two-stage output schemas. Both `client` and `engineer` are produced by
@@ -19,6 +20,10 @@ export const ClientModuleSchema = z.object({
   description: z.string().min(1).max(400),
   size: ModuleSizeSchema,
   github_validated: z.boolean(),
+  /** Per-module confidence 0-1, filled in by the server (blueprint step 07). */
+  confidence: z.number().min(0).max(1).nullable().default(null),
+  /** Matched repos that named this module, for "Seen in N similar projects". */
+  seen_in: z.array(RepoLinkSchema).max(8).default([]),
 });
 export type ClientModule = z.infer<typeof ClientModuleSchema>;
 
@@ -68,6 +73,8 @@ export type ClientView = z.infer<typeof ClientViewSchema>;
 
 export const EngineerModuleRowSchema = z.object({
   name: z.string().min(1).max(80),
+  /** Per-module confidence 0-1, filled in by the server (blueprint step 07). */
+  confidence: z.number().min(0).max(1).nullable().default(null),
   tech_stack: z.array(z.string().min(1).max(60)).min(1).max(12),
   size: ModuleSizeSchema,
   dependencies: z.array(z.string().min(1).max(80)).max(20),
@@ -113,11 +120,18 @@ export const RiskSchema = z.object({
   description: z.string().min(1).max(400),
 });
 
+/**
+ * A reference to a real repository. Built on the server from the round's
+ * GitHub matches (GOAL-02) — the model used to write these, and invented
+ * repos and "javascript:" URLs got through (SEC-05).
+ */
 export const GitHubReferenceSchema = z.object({
   repo: z.string().min(1).max(140),
-  url: z.string().url(),
+  url: GitHubUrlSchema,
   why_relevant: z.string().min(1).max(300),
 });
+
+export type GitHubReference = z.infer<typeof GitHubReferenceSchema>;
 
 export const EffortSummarySchema = z.object({
   total_sprints: z.number().int().min(1).max(60),
@@ -138,7 +152,9 @@ export const EngineerViewSchema = z.object({
     z.array(z.string().min(1).max(200)).max(20),
   ),
   risks: z.array(RiskSchema).max(40),
-  github_references: z.array(GitHubReferenceSchema).max(10),
+  // The model no longer sends these; the server fills them in. Older
+  // documents that stored something unusable fall back to an empty list.
+  github_references: z.array(GitHubReferenceSchema).max(5).default([]).catch([]),
   effort_summary: EffortSummarySchema,
 });
 export type EngineerView = z.infer<typeof EngineerViewSchema>;

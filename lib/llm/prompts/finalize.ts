@@ -133,7 +133,6 @@ export const submitEngineerViewTool: Anthropic.Tool = {
       "testing_strategy",
       "security_per_module",
       "risks",
-      "github_references",
       "effort_summary",
     ],
     properties: {
@@ -310,19 +309,6 @@ export const submitEngineerViewTool: Anthropic.Tool = {
           },
         },
       },
-      github_references: {
-        type: "array",
-        maxItems: 10,
-        items: {
-          type: "object",
-          required: ["repo", "url", "why_relevant"],
-          properties: {
-            repo: { type: "string", maxLength: 140 },
-            url: { type: "string", maxLength: 240 },
-            why_relevant: { type: "string", maxLength: 300 },
-          },
-        },
-      },
       effort_summary: {
         type: "object",
         required: ["total_sprints", "team_size", "confidence_band"],
@@ -354,6 +340,7 @@ Rules:
   - security_per_module is keyed by module name and lists the 2-5 concerns specific to that module (input validation, auth required, encryption at rest, rate limit, idempotency).
   - risks: CRITICAL = could block ship; WARNING = needs decision soon; NOTE = good to know.
   - effort_summary.confidence_band reflects the input's overall confidence: <60% = 'low — improve scope first', 60-80% = '±35%', >80% = '±20%'.
-  - github_references list the 3-5 most relevant repos from the enrichment matches if any.
+  - Do NOT list GitHub repositories. The server adds the real ones from the
+    matches it verified; anything you write would be dropped.
 
 Always call submit_engineer_view exactly once. No free-form text.`;

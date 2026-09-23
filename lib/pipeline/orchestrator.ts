@@ -16,6 +16,7 @@ import { AppError, BudgetExceededError, LLMError, ValidationError } from "@/lib/
 import { logger } from "@/lib/logger";
 import { SCOPING } from "@/lib/config/scoping";
 import { computeConfidence } from "@/lib/scoring/confidence";
+import { scoreModules } from "@/lib/scoring/modules";
 import { budgetExceededMessage, utf8Bytes, withinBudget } from "@/lib/text/budget";
 import { promptSafe } from "@/lib/text/prompt-safe";
 
@@ -194,11 +195,14 @@ async function executeRound(
     }
   }
 
-  // 3) Merge GitHub signals into the extraction.
+  // 3) Merge GitHub signals into the extraction, then score every module
+  //    (blueprint step 07) so the views can show what is solid and what is
+  //    only a candidate.
   await enterStage("scoring");
-  const extraction = enrichment
+  const merged = enrichment
     ? mergeGitHubSignals(extractionRaw, enrichment)
     : extractionRaw;
+  const extraction = scoreModules(merged, enrichment);
 
   // 4) Decide next status. BLOCKER short-circuits everything else.
   let questions: MCQQuestion[] = [];

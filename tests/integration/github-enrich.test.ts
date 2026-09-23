@@ -123,6 +123,8 @@ const extraction = makeExtraction({
       size: "MEDIUM",
       source_signal: "Mentioned: payouts",
       github_validated: false,
+      module_confidence: null,
+      seen_in: [],
     },
     {
       name: "Product Catalog",
@@ -130,6 +132,8 @@ const extraction = makeExtraction({
       size: "MEDIUM",
       source_signal: "Mentioned: catalog",
       github_validated: false,
+      module_confidence: null,
+      seen_in: [],
     },
   ],
 });

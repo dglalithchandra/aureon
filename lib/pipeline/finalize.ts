@@ -10,11 +10,16 @@ import {
 import {
   ClientViewSchema,
   EngineerViewSchema,
+  type ClientModule,
   type ClientView,
   type ConfidenceBadge,
+  type EngineerModuleRow,
   type EngineerView,
   type FinalOutput,
+  type GitHubReference,
 } from "@/lib/schemas/output";
+import { canonicalModuleKey } from "@/lib/scoring/module-name";
+import type { ModuleCandidate } from "@/lib/schemas/extraction";
 import type { Session } from "@/lib/schemas/mcq";
 import { BudgetExceededError, LLMError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -64,7 +69,11 @@ export async function generateClientView(session: Session): Promise<ClientView> 
     sessionId: session.id,
     durationMs: Date.now() - t0,
   });
-  return { ...client, confidence_badge: computeConfidenceBadge(session) };
+  return {
+    ...client,
+    modules: client.modules.map((m) => withClientModuleScore(session, m)),
+    confidence_badge: computeConfidenceBadge(session),
+  };
 }
 
 /**
@@ -83,6 +92,10 @@ export async function generateEngineerView(session: Session): Promise<EngineerVi
   const band = confidenceBand(session.current_confidence);
   return {
     ...engineer,
+    module_table: engineer.module_table.map((row) => withEngineerRowScore(session, row)),
+    // Real repos only, from the matches this session actually fetched
+    // (GOAL-02). Whatever the model wrote here is dropped.
+    github_references: buildGitHubReferences(session),
     effort_summary: { ...engineer.effort_summary, confidence_band: band },
   };
 }
@@ -116,6 +129,56 @@ function computeConfidenceBadge(session: Session): ConfidenceBadge {
       github_bonus: scored.githubBonus,
       cap_applied: scored.cap,
     },
+  };
+}
+
+/** How many repositories the engineer document points at. */
+const MAX_REFERENCES = 5;
+
+/**
+ * The GitHub references for the document: the round's own matches, the most
+ * similar first. Empty when the round found none — the view then says so
+ * rather than showing anything invented (GOAL-02).
+ */
+function buildGitHubReferences(session: Session): GitHubReference[] {
+  const matches = session.rounds[session.rounds.length - 1]?.github_enrichment?.matches;
+  if (!matches || matches.length === 0) return [];
+  return [...matches]
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, MAX_REFERENCES)
+    .map((m) => ({
+      repo: m.repo,
+      url: m.url,
+      why_relevant:
+        m.why_relevant.trim() ||
+        `Similar project (similarity ${m.similarity.toFixed(2)})`,
+    }));
+}
+
+/** The scored module of the latest round that matches this name, if any. */
+function scoredModule(session: Session, name: string): ModuleCandidate | undefined {
+  const modules = session.rounds[session.rounds.length - 1]?.extraction.modules ?? [];
+  const key = canonicalModuleKey(name);
+  return modules.find((m) => canonicalModuleKey(m.name) === key);
+}
+
+/** The client's module card, with the confidence the pipeline computed. */
+function withClientModuleScore(session: Session, module: ClientModule): ClientModule {
+  const scored = scoredModule(session, module.name);
+  return {
+    ...module,
+    confidence: scored?.module_confidence ?? null,
+    seen_in: scored?.seen_in ?? [],
+  };
+}
+
+function withEngineerRowScore(
+  session: Session,
+  row: EngineerModuleRow,
+): EngineerModuleRow {
+  return {
+    ...row,
+    confidence: scoredModule(session, row.name)?.module_confidence ?? null,
   };
 }
 

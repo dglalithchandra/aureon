@@ -203,15 +203,16 @@ export function engineerToMarkdown(view: EngineerView): string {
     out.push("");
   }
 
-  if (view.github_references.length > 0) {
-    out.push("## GitHub references");
-    out.push("");
-    for (const r of view.github_references) {
-      const safeUrl = sanitizeUrl(r.url);
-      out.push(`- [${esc(r.repo)}](${safeUrl}) — ${esc(r.why_relevant)}`);
-    }
-    out.push("");
+  out.push("## GitHub references");
+  out.push("");
+  if (view.github_references.length === 0) {
+    out.push("No similar public projects found.");
   }
+  for (const r of view.github_references) {
+    const safeUrl = sanitizeUrl(r.url);
+    out.push(`- [${esc(r.repo)}](${safeUrl}) — ${esc(r.why_relevant)}`);
+  }
+  out.push("");
 
   return out.join("\n").trimEnd() + "\n";
 }

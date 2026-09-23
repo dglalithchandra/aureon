@@ -1,7 +1,8 @@
 "use client";
 import { Reorder, useDragControls } from "framer-motion";
-import { GripVertical, BadgeCheck } from "lucide-react";
+import { GripVertical } from "lucide-react";
 import { SectionEditor } from "@/components/output/SectionEditor";
+import { ModuleConfidenceChip, SeenInRepos } from "@/components/output/ModuleConfidence";
 import type { ClientModule } from "@/lib/schemas/output";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +60,7 @@ export function ModuleCard({
             className="text-blueprint-text font-display text-lg font-bold"
           />
         </div>
+        <ModuleConfidenceChip confidence={module.confidence} />
         <span
           className={cn(
             "shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] tracking-[0.18em] uppercase",
@@ -79,12 +81,7 @@ export function ModuleCard({
         className="text-blueprint-muted text-sm"
       />
 
-      {module.github_validated && (
-        <div className="text-blueprint-muted inline-flex items-center gap-1.5 text-[11px]">
-          <BadgeCheck size={13} className="text-[var(--color-blueprint-accent)]" />
-          Validated against similar open-source projects
-        </div>
-      )}
+      <SeenInRepos seenIn={module.seen_in} validated={module.github_validated} />
     </Reorder.Item>
   );
 }

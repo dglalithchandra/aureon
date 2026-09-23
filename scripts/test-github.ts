@@ -95,6 +95,8 @@ const SAMPLE_EXTRACTION: ExtractionResult = {
       size: "MEDIUM",
       source_signal: "standard for SaaS",
       github_validated: false,
+      module_confidence: null,
+      seen_in: [],
     },
     {
       name: "Dashboard",
@@ -102,6 +104,8 @@ const SAMPLE_EXTRACTION: ExtractionResult = {
       size: "MEDIUM",
       source_signal: "explicit feature",
       github_validated: false,
+      module_confidence: null,
+      seen_in: [],
     },
     {
       name: "Billing",
@@ -109,6 +113,8 @@ const SAMPLE_EXTRACTION: ExtractionResult = {
       size: "LARGE",
       source_signal: "Stripe billing",
       github_validated: false,
+      module_confidence: null,
+      seen_in: [],
     },
     {
       name: "Team Management",
@@ -116,6 +122,8 @@ const SAMPLE_EXTRACTION: ExtractionResult = {
       size: "MEDIUM",
       source_signal: "team invitations",
       github_validated: false,
+      module_confidence: null,
+      seen_in: [],
     },
     {
       name: "CSV Export",
@@ -123,6 +131,8 @@ const SAMPLE_EXTRACTION: ExtractionResult = {
       size: "SMALL",
       source_signal: "CSV export",
       github_validated: false,
+      module_confidence: null,
+      seen_in: [],
     },
     {
       name: "Shopify Integration",
@@ -130,6 +140,8 @@ const SAMPLE_EXTRACTION: ExtractionResult = {
       size: "MEDIUM",
       source_signal: "Shopify",
       github_validated: false,
+      module_confidence: null,
+      seen_in: [],
     },
   ],
   assumptions: ["Multi-tenant"],

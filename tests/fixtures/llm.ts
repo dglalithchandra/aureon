@@ -4,7 +4,11 @@ import type {
   ParameterId,
   ParameterStateSchema,
 } from "@/lib/schemas/extraction";
-import type { ExtractModulesToolOutput } from "@/lib/schemas/github";
+import type {
+  ExtractModulesToolOutput,
+  GitHubEnrichment,
+  GitHubMatch,
+} from "@/lib/schemas/github";
 import type {
   QuestionGenToolOutputSchema,
   Session,
@@ -88,6 +92,8 @@ export function makeExtraction(
         size: "MEDIUM",
         source_signal: "Mentioned: login",
         github_validated: false,
+        module_confidence: null,
+        seen_in: [],
       },
       {
         name: "Admin",
@@ -95,6 +101,8 @@ export function makeExtraction(
         size: "SMALL",
         source_signal: "Mentioned: admin roles",
         github_validated: false,
+        module_confidence: null,
+        seen_in: [],
       },
       {
         name: "Users",
@@ -102,6 +110,8 @@ export function makeExtraction(
         size: "SMALL",
         source_signal: "Mentioned: user accounts",
         github_validated: false,
+        module_confidence: null,
+        seen_in: [],
       },
     ],
     assumptions: ["Single organisation, no multi-tenancy."],
@@ -137,6 +147,8 @@ export function makeClientView(): ClientView {
         description: "Staff sign-in.",
         size: "MEDIUM",
         github_validated: false,
+        confidence: null,
+        seen_in: [],
       },
     ],
     milestones: [{ phase: "Month 1", name: "Foundation", deliverables: ["Sign-in"] }],
@@ -161,6 +173,7 @@ export function makeEngineerView(): EngineerView {
     module_table: [
       {
         name: "Auth",
+        confidence: null,
         tech_stack: ["Next.js"],
         size: "MEDIUM",
         dependencies: [],
@@ -178,9 +191,44 @@ export function makeEngineerView(): EngineerView {
     testing_strategy: [],
     security_per_module: { Auth: ["Rate-limit login"] },
     risks: [{ severity: "NOTE", description: "Budget unknown." }],
-    github_references: [],
+    // Deliberately invented: the server must replace these with the round's
+    // real matches (GOAL-02).
+    github_references: [
+      {
+        repo: "made-up/nonexistent-repo",
+        url: "https://github.com/made-up/nonexistent-repo",
+        why_relevant: "The model made this up",
+      },
+    ],
     // Deliberately wrong: generateOutput must overwrite the band.
     effort_summary: { total_sprints: 3, team_size: 2, confidence_band: "LLM guess" },
+  };
+}
+
+/** A GitHub match as the enrichment stores it. */
+export function makeMatch(overrides: Partial<GitHubMatch> = {}): GitHubMatch {
+  const repo = overrides.repo ?? "acme/shop-core";
+  return {
+    repo,
+    url: `https://github.com/${repo}`,
+    description: "Marketplace with seller payouts",
+    stars: 900,
+    similarity: 0.7,
+    modules_found: ["Auth", "Payouts"],
+    folders_found: ["Billing"],
+    why_relevant: "Same payout flow",
+    ...overrides,
+  };
+}
+
+/** An enrichment containing the given matches. */
+export function makeEnrichment(matches: GitHubMatch[] = [makeMatch()]): GitHubEnrichment {
+  return {
+    matches,
+    module_frequency: {},
+    module_repos: {},
+    query_used: "q",
+    variants: [],
   };
 }
 

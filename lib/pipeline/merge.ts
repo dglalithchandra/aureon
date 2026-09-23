@@ -5,6 +5,7 @@ import type {
   ModuleSize,
 } from "@/lib/schemas/extraction";
 import { ReadmeModuleNameSchema, type GitHubEnrichment } from "@/lib/schemas/github";
+import { canonicalModuleKey } from "@/lib/scoring/module-name";
 
 /**
  * Merge GitHub enrichment signals into the extraction.
@@ -72,6 +73,8 @@ export function mergeGitHubSignals(
   for (const [, info] of sortedNew) {
     if (updatedModules.length >= 40) break;
     updatedModules.push({
+      module_confidence: null,
+      seen_in: [],
       name: info.name,
       description: `Common ${info.name} module observed in similar open-source projects.`,
       size: defaultSizeForName(info.name),
@@ -95,14 +98,4 @@ const SIZE_HINTS: Array<{ pattern: RegExp; size: ModuleSize }> = [
 function defaultSizeForName(name: string): ModuleSize {
   for (const h of SIZE_HINTS) if (h.pattern.test(name)) return h.size;
   return "SMALL";
-}
-
-/**
- * Canonical key for module-name comparison. Lowercase, strip non-alphanum,
- * strip common plural "s" suffix so "Notification" and "Notifications" merge.
- * Also used by github-enrich to aggregate module frequency.
- */
-export function canonicalModuleKey(name: string): string {
-  const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "");
-  return base.endsWith("s") && base.length > 3 ? base.slice(0, -1) : base;
 }

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { ChevronDown, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { ConfidenceBadge } from "@/components/output/ConfidenceBadge";
+import { ModuleConfidenceChip, SeenInRepos } from "@/components/output/ModuleConfidence";
+import { moduleLevel } from "@/lib/scoring/modules";
 import { ModuleCard } from "@/components/output/ModuleCard";
 import { SectionEditor } from "@/components/output/SectionEditor";
 import type {
@@ -58,6 +60,11 @@ export function ClientView({
     if (onChange) onChange({ ...view, ...next });
   };
 
+  // LOW-confidence modules are offered for confirmation rather than stated
+  // as fact (blueprint step 07).
+  const confirmed = view.modules.filter((m) => moduleLevel(m.confidence) !== "LOW");
+  const candidates = view.modules.filter((m) => moduleLevel(m.confidence) === "LOW");
+
   return (
     <div className="flex flex-col gap-12">
       <Section id="summary" title="Summary">
@@ -78,7 +85,7 @@ export function ClientView({
       <Section id="modules" title="Modules">
         {readOnly ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {view.modules.map((m, i) => (
+            {confirmed.map((m, i) => (
               <ReadOnlyModuleCard key={`${m.name}-${i}`} module={m} />
             ))}
           </div>
@@ -89,7 +96,7 @@ export function ClientView({
             onReorder={(modules: ClientModule[]) => update({ modules })}
             className="grid grid-cols-1 gap-4 md:grid-cols-2"
           >
-            {view.modules.map((m, i) => (
+            {confirmed.map((m, i) => (
               <ModuleCard
                 key={`${m.name}-${i}`}
                 module={m}
@@ -102,6 +109,31 @@ export function ClientView({
           </Reorder.Group>
         )}
       </Section>
+
+      {candidates.length > 0 && (
+        <Section id="candidates" title="Candidate modules — please confirm">
+          <p className="text-blueprint-muted mb-4 max-w-2xl text-sm">
+            Aureon is less sure about these: little in your brief pointed at them, and
+            similar projects did not back them up. Keep the ones you want.
+          </p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {candidates.map((m, i) =>
+              readOnly ? (
+                <ReadOnlyModuleCard key={`${m.name}-${i}`} module={m} />
+              ) : (
+                <ModuleCard
+                  key={`${m.name}-${i}`}
+                  module={m}
+                  onChange={(next) => {
+                    const updated = view.modules.map((x) => (x === m ? next : x));
+                    update({ modules: updated });
+                  }}
+                />
+              ),
+            )}
+          </div>
+        </Section>
+      )}
 
       <Section id="milestones" title="Milestones">
         <div className="-mx-6 overflow-x-auto px-6 pb-2">
@@ -231,11 +263,15 @@ function ReadOnlyModuleCard({ module }: { module: ClientModule }): React.ReactEl
         <h3 className="text-blueprint-text font-display text-lg font-bold">
           {module.name}
         </h3>
-        <span className="border-blueprint-line/30 text-blueprint-muted shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] tracking-[0.18em] uppercase">
-          {module.size.toLowerCase()}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <ModuleConfidenceChip confidence={module.confidence} />
+          <span className="border-blueprint-line/30 text-blueprint-muted rounded-full border px-2 py-0.5 font-mono text-[10px] tracking-[0.18em] uppercase">
+            {module.size.toLowerCase()}
+          </span>
+        </div>
       </div>
       <p className="text-blueprint-muted text-sm leading-relaxed">{module.description}</p>
+      <SeenInRepos seenIn={module.seen_in} validated={module.github_validated} />
     </div>
   );
 }

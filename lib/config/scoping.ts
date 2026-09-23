@@ -59,6 +59,23 @@ export interface ScopingConfig {
   };
   /** Most the GitHub corroboration bonus can add to the score. */
   readonly githubBonusMax: number;
+  /**
+   * Modules that are standard for each of the blueprint's 9 domains
+   * (blueprint step 07). A module on its domain's list is expected; one that
+   * is merely a synonym of an entry counts for half.
+   */
+  readonly domainModules: Readonly<Record<string, readonly string[]>>;
+  /** Names that mean the same module, for the half-credit match. */
+  readonly moduleSynonyms: Readonly<Record<string, readonly string[]>>;
+  /** How the per-module confidence is blended. They sum to 1. */
+  readonly moduleWeights: {
+    readonly paramSignal: number;
+    readonly githubFreq: number;
+    readonly templateMatch: number;
+  };
+  /** Above this a module is HIGH; at or below moduleLow it is LOW. */
+  readonly moduleHigh: number;
+  readonly moduleLow: number;
 }
 
 export const SCOPING: ScopingConfig = {
@@ -153,6 +170,141 @@ export const SCOPING: ScopingConfig = {
   },
   scoreWeights: { coverage: 0.5, quality: 0.3, consistency: 0.2 },
   githubBonusMax: 5,
+  domainModules: {
+    saas: [
+      "Auth",
+      "Billing",
+      "Dashboard",
+      "Team Management",
+      "Settings",
+      "Notifications",
+      "Admin Panel",
+      "Onboarding",
+      "API Keys",
+    ],
+    ecommerce: [
+      "Auth",
+      "Catalog",
+      "Cart",
+      "Checkout",
+      "Payments",
+      "Orders",
+      "Inventory",
+      "Shipping",
+      "Reviews",
+      "Admin Panel",
+    ],
+    marketplace: [
+      "Auth",
+      "Listings",
+      "Search",
+      "Checkout",
+      "Payments",
+      "Payouts",
+      "Reviews",
+      "Messaging",
+      "Disputes",
+      "Admin Panel",
+    ],
+    fintech: [
+      "Auth",
+      "KYC",
+      "Accounts",
+      "Payments",
+      "Transactions",
+      "Ledger",
+      "Statements",
+      "Compliance",
+      "Notifications",
+      "Admin Panel",
+    ],
+    edtech: [
+      "Auth",
+      "Courses",
+      "Lessons",
+      "Quizzes",
+      "Progress Tracking",
+      "Enrollment",
+      "Payments",
+      "Certificates",
+      "Admin Panel",
+    ],
+    healthcare: [
+      "Auth",
+      "Patient Records",
+      "Appointments",
+      "Scheduling",
+      "Messaging",
+      "Billing",
+      "Consent",
+      "Audit Log",
+      "Admin Panel",
+    ],
+    mobile: [
+      "Auth",
+      "Onboarding",
+      "Profile",
+      "Push Notifications",
+      "Offline Sync",
+      "Settings",
+      "Feed",
+      "Search",
+    ],
+    "internal-tools": [
+      "Auth",
+      "RBAC",
+      "Dashboard",
+      "Records",
+      "Search",
+      "Reporting",
+      "Audit Log",
+      "Settings",
+      "Admin Panel",
+    ],
+    cms: [
+      "Auth",
+      "Content Editor",
+      "Media Library",
+      "Publishing",
+      "Taxonomy",
+      "Search",
+      "Comments",
+      "Analytics",
+      "Admin Panel",
+    ],
+  },
+  moduleSynonyms: {
+    Auth: [
+      "Authentication",
+      "Sign-in",
+      "Login",
+      "Accounts",
+      "User Accounts",
+      "SSO",
+      "Identity",
+    ],
+    Billing: ["Payments", "Subscriptions", "Invoicing", "Checkout"],
+    Dashboard: ["Analytics", "Reporting", "Reports", "Insights"],
+    Notifications: ["Alerts", "Email", "SMS", "Push Notifications", "Messaging"],
+    "Admin Panel": ["Admin", "Back Office", "Management Console", "Settings"],
+    Catalog: ["Products", "Listings", "Inventory"],
+    Search: ["Discovery", "Filters", "Browse"],
+    "Team Management": [
+      "Teams",
+      "Members",
+      "Invitations",
+      "RBAC",
+      "Permissions",
+      "Roles",
+    ],
+    "Progress Tracking": ["Progress", "Tracking", "Completion"],
+    "Patient Records": ["Records", "EHR", "Charts"],
+    Appointments: ["Scheduling", "Bookings", "Calendar"],
+    Payouts: ["Disbursements", "Transfers", "Settlements"],
+  },
+  moduleWeights: { paramSignal: 0.45, githubFreq: 0.35, templateMatch: 0.2 },
+  moduleHigh: 0.8,
+  moduleLow: 0.55,
 };
 
 const WEIGHT_BY_ID = new Map<ParameterId, number>(
