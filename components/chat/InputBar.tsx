@@ -9,7 +9,8 @@ import {
   type KeyboardEvent,
 } from "react";
 import Link from "next/link";
-import { ArrowUp, Loader2, Sparkles } from "lucide-react";
+import { ArrowUp, Loader2, Paperclip, Sparkles } from "lucide-react";
+import { importFile, ApiError, type ImportedDocument } from "@/lib/api/client";
 import { gsap, useGSAP } from "@/lib/gsap-init";
 import { cn } from "@/lib/utils";
 import { USER_CONTENT_BUDGET_BYTES } from "@/lib/text/budget";
@@ -44,7 +45,11 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
   ref,
 ) {
   const [value, setValue] = useState("");
+  const [imported, setImported] = useState<ImportedDocument | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement | null>(null);
 
   useImperativeHandle(ref, () => ({
@@ -126,7 +131,31 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
     if (!canSubmit) return;
     onSubmit(trimmed);
     setValue("");
+    setImported(null);
   };
+
+  /**
+   * The file never becomes the brief by itself: its text lands in the box
+   * above, where it can be read, corrected and cut to size before anything
+   * is created. The server keeps no copy of the file.
+   */
+  async function handleFile(file: File | undefined): Promise<void> {
+    if (!file) return;
+    setImporting(true);
+    setImportError(null);
+    try {
+      const result = await importFile(file);
+      setValue(result.text);
+      setImported(result);
+      requestAnimationFrame(() => taRef.current?.focus());
+    } catch (err) {
+      setImported(null);
+      setImportError(err instanceof ApiError ? err.message : "Could not read that file.");
+    } finally {
+      setImporting(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
 
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -177,6 +206,27 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
             locked && "opacity-60",
           )}
         >
+          <input
+            ref={fileRef}
+            type="file"
+            className="sr-only"
+            accept=".txt,.md,.markdown,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={(e) => void handleFile(e.target.files?.[0])}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={locked || importing}
+            aria-label="Attach a requirements file"
+            title="Attach .txt, .md, .pdf or .docx (max 5 MB)"
+            className="text-blueprint-muted hover:text-blueprint-text mb-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {importing ? (
+              <Loader2 className="animate-spin" size={16} />
+            ) : (
+              <Paperclip size={16} />
+            )}
+          </button>
           <textarea
             ref={taRef}
             value={value}
@@ -238,10 +288,40 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
             Input exceeds 50KB limit. Trim before submitting.
           </p>
         )}
+        {importing && (
+          <p className="text-blueprint-muted mt-1.5 text-[11px]" aria-live="polite">
+            Reading the file…
+          </p>
+        )}
+        {importError && (
+          <p role="alert" className="mt-1.5 text-[11px] text-red-300">
+            {importError}
+          </p>
+        )}
+        {imported && !importError && (
+          <p
+            className={cn(
+              "mt-1.5 text-[11px] leading-relaxed",
+              imported.overBudget ? "text-amber-300" : "text-blueprint-muted",
+            )}
+            aria-live="polite"
+            data-testid="import-notice"
+          >
+            Read {imported.fileName}
+            {imported.pages ? ` (${imported.pages} pages)` : ""} —{" "}
+            {imported.bytes.toLocaleString()} bytes of text.{" "}
+            {imported.overBudget
+              ? `That is over the ${imported.limitBytes.toLocaleString()}-byte limit${
+                  imported.truncated ? " and the rest was cut" : ""
+                }: trim it before submitting.`
+              : "Check it, edit anything wrong, then submit."}
+          </p>
+        )}
         {/* PRIV-01: the warning belongs where the pasting happens. */}
         <p className="text-blueprint-muted mt-1.5 text-[11px] leading-relaxed">
-          Requirements only, please — no passwords, keys, card numbers or personal
-          details.{" "}
+          Paste the requirements, or attach a .txt, .md, .pdf or .docx file — no
+          passwords, keys, card numbers or personal details. Files are read and discarded,
+          never stored.{" "}
           <Link
             href="/privacy"
             className="underline decoration-dotted underline-offset-2 hover:text-[var(--color-blueprint-accent)]"

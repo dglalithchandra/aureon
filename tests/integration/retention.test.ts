@@ -226,6 +226,84 @@ describe("changing the setting", () => {
     );
   }
 
+  /** The branding an export puts on a document (name and logo). */
+  function patchSettings(
+    workspaceId: string,
+    cookie: string,
+    body: Record<string, unknown>,
+  ): Promise<Response> {
+    return workspaceRoute(
+      new NextRequest(`http://localhost/api/workspaces/${workspaceId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", cookie },
+        body: JSON.stringify(body),
+      }),
+      { params: Promise.resolve({ id: workspaceId }) },
+    );
+  }
+
+  async function ownedWorkspace(): Promise<{ id: string; cookie: string }> {
+    const owner = await account("brand-owner@example.com");
+    const [workspace] = await getDatabase()
+      .insert(workspaces)
+      .values({ name: "Acme" })
+      .returning({ id: workspaces.id });
+    await getDatabase()
+      .insert(workspaceMembers)
+      .values({ workspaceId: workspace!.id, userId: owner.userId, role: "owner" });
+    return { id: workspace!.id, cookie: owner.cookie };
+  }
+
+  it("stores the name and the logo an export puts on a document", async () => {
+    const workspace = await ownedWorkspace();
+    const res = await patchSettings(workspace.id, workspace.cookie, {
+      name: "Acme Studio",
+      logoUrl: "https://cdn.example.com/acme.png",
+    });
+
+    expect(res.status).toBe(200);
+    const [row] = await getDatabase()
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.id, workspace.id));
+    expect(row?.name).toBe("Acme Studio");
+    expect(row?.logoUrl).toBe("https://cdn.example.com/acme.png");
+    // The retention setting was not in the body, so it is untouched.
+    expect(row?.rawInputRetentionDays).toBe(DEFAULT_RAW_INPUT_RETENTION_DAYS);
+  });
+
+  it("clears the logo with an empty string", async () => {
+    const workspace = await ownedWorkspace();
+    await patchSettings(workspace.id, workspace.cookie, {
+      logoUrl: "https://cdn.example.com/acme.png",
+    });
+    await patchSettings(workspace.id, workspace.cookie, { logoUrl: "" });
+
+    const [row] = await getDatabase()
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.id, workspace.id));
+    expect(row?.logoUrl).toBeNull();
+  });
+
+  it("refuses a logo that is neither https nor a data URI", async () => {
+    const workspace = await ownedWorkspace();
+    for (const logoUrl of [
+      "http://cdn.example.com/acme.png",
+      "javascript:alert(1)",
+      "data:text/html;base64,PHNjcmlwdD4=",
+    ]) {
+      expect(
+        (await patchSettings(workspace.id, workspace.cookie, { logoUrl })).status,
+      ).toBe(400);
+    }
+  });
+
+  it("refuses a body that changes nothing", async () => {
+    const workspace = await ownedWorkspace();
+    expect((await patchSettings(workspace.id, workspace.cookie, {})).status).toBe(400);
+  });
+
   it("is owner only", async () => {
     const owner = await account("owner@example.com");
     const editor = await account("editor@example.com");

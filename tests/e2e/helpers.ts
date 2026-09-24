@@ -49,6 +49,18 @@ export async function resetModel(): Promise<void> {
 }
 
 /**
+ * Wait until the chat is interactive, not merely painted: a file input can
+ * only work once React is listening, and `setInputFiles` fires its change
+ * event exactly once.
+ */
+export async function waitForChatReady(page: Page): Promise<void> {
+  const box = page.getByLabel("Project requirements input");
+  await box.fill("ready?");
+  await expect(page.getByRole("button", { name: "Submit" })).toBeEnabled();
+  await box.fill("");
+}
+
+/**
  * From an empty chat to a finished scope, the short way: round 1 ends with
  * questions outstanding, and "Generate anyway" takes the draft from there.
  * Returns the project id.

@@ -26,11 +26,13 @@ describe("checkRateLimit (in-memory fallback)", () => {
 });
 
 describe("RATE_LIMITS", () => {
-  it("sizes the poll, api and LLM-route buckets", () => {
+  it("sizes every bucket, and adding one is a deliberate act", () => {
     expect(RATE_LIMITS).toEqual({
       poll: { limit: 120, windowSeconds: 60 },
       api: { limit: 30, windowSeconds: 60 },
       llmRoute: { limit: 6, windowSeconds: 60 },
+      // Parsing an uploaded PDF or DOCX is CPU work on someone else's bytes.
+      upload: { limit: 10, windowSeconds: 60 },
     });
   });
 });

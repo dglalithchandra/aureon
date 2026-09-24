@@ -185,6 +185,36 @@ export async function renameProject(projectId: string, title: string): Promise<s
   return RenameResponseSchema.parse(await res.json()).title;
 }
 
+const ImportResponseSchema = z.object({
+  text: z.string(),
+  kind: z.enum(["txt", "md", "pdf", "docx"]),
+  pages: z.number().int().nullable(),
+  bytes: z.number().int(),
+  truncated: z.boolean(),
+  overBudget: z.boolean(),
+  limitBytes: z.number().int(),
+  fileName: z.string(),
+});
+
+export type ImportedDocument = z.infer<typeof ImportResponseSchema>;
+
+/**
+ * Read a requirements file and get its text back. The file is not stored:
+ * the text goes into the input box, and what the user submits from there is
+ * what becomes the brief.
+ */
+export async function importFile(file: File): Promise<ImportedDocument> {
+  const form = new FormData();
+  form.set("file", file);
+  const res = await fetch("/api/import", {
+    method: "POST",
+    body: form,
+    credentials: "same-origin",
+  });
+  if (!res.ok) throw await readError(res);
+  return ImportResponseSchema.parse(await res.json());
+}
+
 /**
  * Delete a project for good: its rounds, versions, approvals and share
  * links go with it, and any link someone holds stops resolving (PRIV-01).

@@ -22,6 +22,12 @@ import {
 import { ModuleConfidenceChip } from "@/components/output/ModuleConfidence";
 import { SectionEditor } from "@/components/output/SectionEditor";
 import { EditableList } from "@/components/output/EditableList";
+import { CopyButton } from "@/components/output/CopyButton";
+import {
+  engineerEstimateLines,
+  engineerSections,
+  sectionToMarkdown,
+} from "@/lib/export/markdown";
 import {
   EffortSummaryPanel,
   recomputeEstimate,
@@ -58,10 +64,13 @@ function Section({
   id,
   title,
   children,
+  copy,
 }: {
   id: string;
   title: string;
   children: React.ReactNode;
+  /** Markdown for this section alone, built on click (CopyButton). */
+  copy?: () => string;
 }): React.ReactElement {
   return (
     <motion.section
@@ -72,9 +81,12 @@ function Section({
       transition={{ duration: 0.5, ease: "easeOut" }}
       className="scroll-mt-28"
     >
-      <h2 className="text-blueprint-text font-display mb-5 text-2xl font-bold sm:text-3xl">
-        {title}
-      </h2>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h2 className="text-blueprint-text font-display text-2xl font-bold sm:text-3xl">
+          {title}
+        </h2>
+        {copy && <CopyButton text={copy} label={title} />}
+      </div>
       {children}
     </motion.section>
   );
@@ -105,6 +117,13 @@ export function EngineerView({
     });
   };
 
+  // Markdown for one section, built when the reader asks for it, from the
+  // export's own builders.
+  const markdownFor = (id: string) => (): string => {
+    const section = engineerSections(view).find((s) => s.id === id);
+    return section ? sectionToMarkdown(section) : "";
+  };
+
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [openSecurity, setOpenSecurity] = useState<string | null>(null);
   // Blueprint step 10: the reader can try a different team size and the
@@ -128,7 +147,17 @@ export function EngineerView({
 
   return (
     <div className="flex flex-col gap-12">
-      <Section id="effort" title="Effort summary">
+      <Section
+        id="effort"
+        title="Effort summary"
+        copy={() =>
+          sectionToMarkdown({
+            id: "effort",
+            title: "Effort summary",
+            lines: engineerEstimateLines(view),
+          })
+        }
+      >
         <EffortSummaryPanel
           summary={view.effort_summary}
           estimate={estimate}
@@ -137,7 +166,7 @@ export function EngineerView({
         />
       </Section>
 
-      <Section id="modules" title="Modules">
+      <Section id="modules" title="Modules" copy={markdownFor("modules")}>
         <div className="border-blueprint-line/15 overflow-x-auto rounded-xl border bg-white/[0.02] backdrop-blur-md">
           <table className="w-full text-left text-sm">
             <thead className="text-blueprint-muted bg-blueprint-line/5 sticky top-0 font-mono text-[10px] tracking-[0.18em] uppercase">
@@ -336,7 +365,7 @@ export function EngineerView({
         </div>
       </Section>
 
-      <Section id="build-order" title="Build order">
+      <Section id="build-order" title="Build order" copy={markdownFor("build-order")}>
         {editable ? (
           // Order is the whole point of this list, so it is the one that drags.
           <EditableList
@@ -370,7 +399,7 @@ export function EngineerView({
       </Section>
 
       {view.database_sketch.length > 0 && (
-        <Section id="database" title="Database sketch">
+        <Section id="database" title="Database sketch" copy={markdownFor("database")}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {view.database_sketch.map((t, i) => (
               <div
@@ -396,7 +425,7 @@ export function EngineerView({
         </Section>
       )}
 
-      <Section id="auth" title="Auth & RBAC">
+      <Section id="auth" title="Auth & RBAC" copy={markdownFor("auth")}>
         <div className="border-blueprint-line/15 overflow-x-auto rounded-xl border bg-white/[0.02]">
           <table className="w-full text-left text-sm">
             <thead className="text-blueprint-muted bg-blueprint-line/5 font-mono text-[10px] tracking-[0.18em] uppercase">
@@ -420,7 +449,11 @@ export function EngineerView({
       </Section>
 
       {view.third_party_checklist.length > 0 && (
-        <Section id="third-party" title="Third-party checklist">
+        <Section
+          id="third-party"
+          title="Third-party checklist"
+          copy={markdownFor("third-party")}
+        >
           <PersistentChecklist
             items={view.third_party_checklist}
             storageKey={checklistKey ? `scopeai:checklist:${checklistKey}` : null}
@@ -428,7 +461,7 @@ export function EngineerView({
         </Section>
       )}
 
-      <Section id="sprints" title="Sprint breakdown">
+      <Section id="sprints" title="Sprint breakdown" copy={markdownFor("sprints")}>
         {editable ? (
           <>
             <ol className="flex flex-col gap-3">
@@ -539,7 +572,7 @@ export function EngineerView({
       </Section>
 
       {view.testing_strategy.length > 0 && (
-        <Section id="testing" title="Testing strategy">
+        <Section id="testing" title="Testing strategy" copy={markdownFor("testing")}>
           <div className="border-blueprint-line/15 overflow-x-auto rounded-xl border bg-white/[0.02]">
             <table className="w-full text-left text-sm">
               <thead className="text-blueprint-muted bg-blueprint-line/5 font-mono text-[10px] tracking-[0.18em] uppercase">
@@ -573,7 +606,7 @@ export function EngineerView({
       )}
 
       {Object.keys(view.security_per_module).length > 0 && (
-        <Section id="security" title="Security per module">
+        <Section id="security" title="Security per module" copy={markdownFor("security")}>
           <div className="border-blueprint-line/15 flex flex-col rounded-xl border bg-white/[0.02] backdrop-blur-md">
             {Object.entries(view.security_per_module).map(([mod, items], i) => (
               <div key={mod} className={cn(i > 0 && "border-blueprint-line/10 border-t")}>
@@ -617,7 +650,7 @@ export function EngineerView({
       )}
 
       {view.risks.length > 0 && (
-        <Section id="risks" title="Risks">
+        <Section id="risks" title="Risks" copy={markdownFor("risks")}>
           <ul className="flex flex-col gap-2.5">
             {view.risks.map((r, i) => (
               <li
@@ -637,7 +670,7 @@ export function EngineerView({
         </Section>
       )}
 
-      <Section id="github" title="GitHub references">
+      <Section id="github" title="GitHub references" copy={markdownFor("github")}>
         {view.github_references.length === 0 ? (
           <p className="text-blueprint-muted text-sm">
             No similar public projects found. Nothing here is invented: these come from

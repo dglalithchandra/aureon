@@ -18,6 +18,11 @@ export const RATE_LIMITS = {
   api: { limit: 30, windowSeconds: 60 },
   /** Extra per-route limit on each LLM route: run, answer, finalize. */
   llmRoute: { limit: 6, windowSeconds: 60 },
+  /**
+   * File import: parsing a PDF or a DOCX is CPU work on bytes someone else
+   * chose, so it gets a smaller bucket than the rest of the API.
+   */
+  upload: { limit: 10, windowSeconds: 60 },
 } as const;
 
 const limiters = new Map<string, Ratelimit>();

@@ -15,6 +15,13 @@
       "when": 1790185463044,
       "tag": "0001_approvals_and_versions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790241621294,
+      "tag": "0002_striped_lily_hollister",
+      "breakpoints": true
     }
   ]
 }

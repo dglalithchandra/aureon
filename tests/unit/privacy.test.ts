@@ -54,7 +54,7 @@ describe("the privacy notice", () => {
 
   it("tells people not to paste secrets, where they paste", () => {
     expect(PRIVACY).toMatch(/don&apos;t paste|don't paste/i);
-    expect(INPUT_BAR).toMatch(/no passwords, keys/i);
+    expect(INPUT_BAR).toMatch(/no\s+passwords,\s+keys/i);
     expect(INPUT_BAR).toContain('href="/privacy"');
   });
 });

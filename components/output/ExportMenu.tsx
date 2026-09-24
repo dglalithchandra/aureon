@@ -1,13 +1,27 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, FileText, Link2, Printer } from "lucide-react";
+import {
+  Download,
+  FileSpreadsheet,
+  FileText,
+  FileType2,
+  Link2,
+  Printer,
+} from "lucide-react";
 import { clientToMarkdown, engineerToMarkdown } from "@/lib/export/markdown";
 import { sanitizeClonedColors } from "@/lib/export/oklab-to-rgb";
 import type { FinalOutput } from "@/lib/schemas/output";
 
 interface ExportMenuProps {
   output: FinalOutput;
+  /**
+   * The project, when the reader is looking at their own. The Word and CSV
+   * exports are built on the server — they need the workspace branding, the
+   * version number and the approval state — so they appear only here, not
+   * on a share link, where the reader has a token and no project access.
+   */
+  projectId?: string;
   /** Either 'client' or 'engineer'; used for naming and active-tab PDF. */
   activeTab: "client" | "engineer";
   /** ID of the DOM element to print as PDF (the currently active tab). */
@@ -20,6 +34,7 @@ interface ExportMenuProps {
 
 export function ExportMenu({
   output,
+  projectId,
   activeTab,
   printTargetId,
   onShare,
@@ -54,6 +69,22 @@ export function ExportMenu({
     a.remove();
     URL.revokeObjectURL(url);
     setOpen(false);
+  }
+
+  /**
+   * The server builds these, so the browser only has to ask for them. A
+   * plain navigation would lose the download when the response is an error
+   * page, so the link is followed in a hidden anchor either way.
+   */
+  function serverExport(format: string): void {
+    if (!projectId) return;
+    setOpen(false);
+    const a = document.createElement("a");
+    a.href = `/api/projects/${projectId}/export?format=${format}`;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   async function exportPdf(): Promise<void> {
@@ -124,6 +155,26 @@ export function ExportMenu({
               <Printer size={14} />
               {pdfBusy ? "Generating PDF…" : "Export PDF"}
             </MenuItem>
+            {projectId && (
+              <>
+                <MenuItem
+                  onClick={() =>
+                    serverExport(activeTab === "client" ? "docx-client" : "docx-engineer")
+                  }
+                >
+                  <FileType2 size={14} />
+                  Download Word (.docx)
+                </MenuItem>
+                <MenuItem onClick={() => serverExport("jira-csv")}>
+                  <FileSpreadsheet size={14} />
+                  Jira CSV (issues)
+                </MenuItem>
+                <MenuItem onClick={() => serverExport("linear-csv")}>
+                  <FileSpreadsheet size={14} />
+                  Linear CSV (issues)
+                </MenuItem>
+              </>
+            )}
             {onShare && (
               <MenuItem
                 onClick={() => {

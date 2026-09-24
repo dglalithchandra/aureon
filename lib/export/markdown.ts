@@ -28,204 +28,274 @@ function fence(lang: string, content: string): string {
  *  Client view
  * ────────────────────────────────────────────────────────────── */
 
-export function clientToMarkdown(view: ClientView): string {
-  const out: string[] = [];
-  out.push("# Project Scope — Client View");
-  out.push("");
-  out.push(
+/**
+ * One part of a document, named by the same id the page gives its section,
+ * so "copy this section" and the export can never drift apart.
+ */
+export interface MarkdownSection {
+  id: string;
+  title: string;
+  lines: string[];
+}
+
+export function moduleTableLines(modules: ClientView["modules"]): string[] {
+  const out = [
+    "| # | Module | Size | Validated | Description |",
+    "|---|--------|------|-----------|-------------|",
+  ];
+  modules.forEach((m, i) => {
+    out.push(
+      `| ${i + 1} | ${tcell(m.name)} | ${m.size} | ${m.github_validated ? "✓" : "—"} | ${tcell(m.description)} |`,
+    );
+  });
+  return out;
+}
+
+export function clientSections(view: ClientView): MarkdownSection[] {
+  const sections: MarkdownSection[] = [
+    {
+      id: "summary",
+      title: "Summary",
+      lines: [esc(view.project_summary)],
+    },
+    { id: "modules", title: "Modules", lines: moduleTableLines(view.modules) },
+    {
+      id: "milestones",
+      title: "Milestones",
+      lines: view.milestones.flatMap((ms) => [
+        `### ${esc(ms.phase)} — ${esc(ms.name)}`,
+        ...ms.deliverables.map((d) => `- ${esc(d)}`),
+        "",
+      ]),
+    },
+  ];
+
+  if (view.assumptions.length > 0) {
+    sections.push({
+      id: "assumptions",
+      title: "What we assumed",
+      lines: view.assumptions.map((a) => `- ${esc(a)}`),
+    });
+  }
+  if (view.open_items.length > 0) {
+    sections.push({
+      id: "open-items",
+      title: "Open items",
+      lines: view.open_items.map((q) => `- ${esc(q)}`),
+    });
+  }
+  return sections;
+}
+
+/** The heading block every client document starts with. */
+function clientPreamble(view: ClientView): string[] {
+  return [
+    "# Project Scope — Client View",
+    "",
     `**Confidence:** ${view.confidence_badge.score}/100 ` +
       `(coverage ${view.confidence_badge.breakdown.coverage}, ` +
       `AI clarity read ${view.confidence_badge.breakdown.ai_clarity}, ` +
       `consistency ${view.confidence_badge.breakdown.consistency}, ` +
       `GitHub bonus +${view.confidence_badge.breakdown.github_bonus}, ` +
       `cap ${view.confidence_badge.breakdown.cap_applied})`,
-  );
-  out.push("");
-  out.push("## Summary");
-  out.push("");
-  out.push(esc(view.project_summary));
-  out.push("");
+    "",
+  ];
+}
 
-  out.push("## Modules");
-  out.push("");
-  out.push("| # | Module | Size | Validated | Description |");
-  out.push("|---|--------|------|-----------|-------------|");
-  view.modules.forEach((m, i) => {
-    out.push(
-      `| ${i + 1} | ${tcell(m.name)} | ${m.size} | ${m.github_validated ? "✓" : "—"} | ${tcell(m.description)} |`,
-    );
-  });
-  out.push("");
+function withoutTrailingBlanks(lines: readonly string[]): string[] {
+  const out = [...lines];
+  while (out.length > 0 && out[out.length - 1] === "") out.pop();
+  return out;
+}
 
-  out.push("## Milestones");
-  out.push("");
-  for (const ms of view.milestones) {
-    out.push(`### ${esc(ms.phase)} — ${esc(ms.name)}`);
-    for (const d of ms.deliverables) out.push(`- ${esc(d)}`);
-    out.push("");
+/** One section as it appears in the document, heading included. */
+export function sectionToMarkdown(section: MarkdownSection): string {
+  return [`## ${section.title}`, "", ...withoutTrailingBlanks(section.lines)]
+    .join("\n")
+    .trimEnd();
+}
+
+function compose(preamble: string[], sections: MarkdownSection[]): string {
+  const out = [...preamble];
+  for (const section of sections) {
+    out.push(`## ${section.title}`, "", ...withoutTrailingBlanks(section.lines), "");
   }
-
-  if (view.assumptions.length > 0) {
-    out.push("## What we assumed");
-    out.push("");
-    for (const a of view.assumptions) out.push(`- ${esc(a)}`);
-    out.push("");
-  }
-
-  if (view.open_items.length > 0) {
-    out.push("## Open items");
-    out.push("");
-    for (const q of view.open_items) out.push(`- ${esc(q)}`);
-    out.push("");
-  }
-
   return out.join("\n").trimEnd() + "\n";
+}
+
+export function clientToMarkdown(view: ClientView): string {
+  return compose(clientPreamble(view), clientSections(view));
 }
 
 /* ──────────────────────────────────────────────────────────────
  *  Engineer view
  * ────────────────────────────────────────────────────────────── */
 
-export function engineerToMarkdown(view: EngineerView): string {
-  const out: string[] = [];
-  out.push("# Engineering Build Document");
-  out.push("");
+export function engineerSections(view: EngineerView): MarkdownSection[] {
+  const sections: MarkdownSection[] = [];
+
+  sections.push({
+    id: "modules",
+    title: "Modules",
+    lines: [
+      "| Module | Size | Stack | Dependencies | Notes |",
+      "|--------|------|-------|--------------|-------|",
+      ...view.module_table.map(
+        (m) =>
+          `| ${tcell(m.name)} | ${m.size} | ${tcell(m.tech_stack.join(", "))} | ${tcell(m.dependencies.join(", ") || "—")} | ${tcell(m.notes)} |`,
+      ),
+      "",
+      "### API surface (per module)",
+      "",
+      ...view.module_table
+        .filter((m) => m.api_endpoints.length > 0)
+        .flatMap((m) => [
+          `**${esc(m.name)}**`,
+          "",
+          fence("http", m.api_endpoints.join("\n")),
+          "",
+        ]),
+    ],
+  });
+
+  sections.push({
+    id: "build-order",
+    title: "Build order",
+    lines: view.build_order.map((name, i) => `${i + 1}. ${esc(name)}`),
+  });
+
+  if (view.database_sketch.length > 0) {
+    sections.push({
+      id: "database",
+      title: "Database sketch",
+      lines: view.database_sketch.flatMap((t) => [
+        `### \`${esc(t.table)}\``,
+        "",
+        fence("sql", t.fields.join("\n")),
+        ...(t.relations.length > 0
+          ? ["", "Relations:", ...t.relations.map((r) => `- ${esc(r)}`)]
+          : []),
+        "",
+      ]),
+    });
+  }
+
+  sections.push({
+    id: "auth",
+    title: "Auth & RBAC",
+    lines: [
+      `Roles: ${view.auth_model.roles.map(esc).join(", ")}`,
+      "",
+      "| Role | Permissions |",
+      "|------|-------------|",
+      ...view.auth_model.roles.map(
+        (role) =>
+          `| ${tcell(role)} | ${tcell((view.auth_model.permissions_matrix[role] ?? []).join(", ") || "—")} |`,
+      ),
+    ],
+  });
+
+  if (view.third_party_checklist.length > 0) {
+    sections.push({
+      id: "third-party",
+      title: "Third-party checklist",
+      lines: view.third_party_checklist.map((item) => `- [ ] ${esc(item)}`),
+    });
+  }
+
+  sections.push({
+    id: "sprints",
+    title: "Sprint breakdown",
+    lines: [
+      "| Sprint | Focus | Points | Modules |",
+      "|--------|-------|--------|---------|",
+      ...view.sprint_breakdown.map(
+        (s) =>
+          `| ${tcell(s.sprint)} | ${tcell(s.focus)} | ${s.story_points} | ${tcell(s.modules.join(", "))} |`,
+      ),
+    ],
+  });
+
+  if (view.testing_strategy.length > 0) {
+    sections.push({
+      id: "testing",
+      title: "Testing strategy",
+      lines: [
+        "| Module | Unit | Integration | E2E |",
+        "|--------|------|-------------|-----|",
+        ...view.testing_strategy.map(
+          (t) =>
+            `| ${tcell(t.module)} | ${tcell(t.unit)} | ${tcell(t.integration)} | ${tcell(t.e2e)} |`,
+        ),
+      ],
+    });
+  }
+
+  const securityKeys = Object.keys(view.security_per_module);
+  if (securityKeys.length > 0) {
+    sections.push({
+      id: "security",
+      title: "Security per module",
+      lines: securityKeys.flatMap((mod) => [
+        `### ${esc(mod)}`,
+        ...(view.security_per_module[mod] ?? []).map((concern) => `- ${esc(concern)}`),
+        "",
+      ]),
+    });
+  }
+
+  if (view.risks.length > 0) {
+    sections.push({
+      id: "risks",
+      title: "Risks",
+      lines: view.risks.map((r) => `- **${r.severity}** — ${esc(r.description)}`),
+    });
+  }
+
+  sections.push({
+    id: "github",
+    title: "GitHub references",
+    lines:
+      view.github_references.length === 0
+        ? ["No similar public projects found."]
+        : view.github_references.map(
+            (r) => `- [${esc(r.repo)}](${sanitizeUrl(r.url)}) — ${esc(r.why_relevant)}`,
+          ),
+  });
+
+  return sections;
+}
+
+/**
+ * The estimate, as the document states it (step 10). Exported so the page's
+ * own effort section can be copied on its own.
+ */
+export function engineerEstimateLines(view: EngineerView): string[] {
   const effort = view.effort_summary;
-  out.push(
+  const out = [
     `**Estimate:** ${effort.total_sprints} sprints, ` +
       `team of ${effort.team_size}${effort.team_size_stated ? "" : " (assumed)"} ` +
       `(${esc(effort.confidence_band)})`,
-  );
+  ];
   if (effort.total_points > 0) {
     // How it was calculated, so the number survives leaving the app.
-    out.push("");
     out.push(
+      "",
       `**How we estimated this:** ${effort.total_points} story points ` +
         `(module sizes x${effort.domain_multiplier} for the domain) at ` +
         `${effort.velocity} points per 2-week sprint.`,
     );
   }
-  out.push("");
+  return out;
+}
 
-  out.push("## Modules");
-  out.push("");
-  out.push("| Module | Size | Stack | Dependencies | Notes |");
-  out.push("|--------|------|-------|--------------|-------|");
-  for (const m of view.module_table) {
-    out.push(
-      `| ${tcell(m.name)} | ${m.size} | ${tcell(m.tech_stack.join(", "))} | ${tcell(m.dependencies.join(", ") || "—")} | ${tcell(m.notes)} |`,
-    );
-  }
-  out.push("");
+/** The heading block every engineer document starts with. */
+function engineerPreamble(view: EngineerView): string[] {
+  return ["# Engineering Build Document", "", ...engineerEstimateLines(view), ""];
+}
 
-  out.push("### API surface (per module)");
-  out.push("");
-  for (const m of view.module_table) {
-    if (m.api_endpoints.length === 0) continue;
-    out.push(`**${esc(m.name)}**`);
-    out.push("");
-    out.push(fence("http", m.api_endpoints.join("\n")));
-    out.push("");
-  }
-
-  out.push("## Build order");
-  out.push("");
-  view.build_order.forEach((name, i) => out.push(`${i + 1}. ${esc(name)}`));
-  out.push("");
-
-  if (view.database_sketch.length > 0) {
-    out.push("## Database sketch");
-    out.push("");
-    for (const t of view.database_sketch) {
-      out.push(`### \`${esc(t.table)}\``);
-      out.push("");
-      out.push(fence("sql", t.fields.join("\n")));
-      if (t.relations.length > 0) {
-        out.push("");
-        out.push("Relations:");
-        for (const r of t.relations) out.push(`- ${esc(r)}`);
-      }
-      out.push("");
-    }
-  }
-
-  out.push("## Auth & RBAC");
-  out.push("");
-  out.push(`Roles: ${view.auth_model.roles.map(esc).join(", ")}`);
-  out.push("");
-  out.push("| Role | Permissions |");
-  out.push("|------|-------------|");
-  for (const role of view.auth_model.roles) {
-    const perms = view.auth_model.permissions_matrix[role] ?? [];
-    out.push(`| ${tcell(role)} | ${tcell(perms.join(", ") || "—")} |`);
-  }
-  out.push("");
-
-  if (view.third_party_checklist.length > 0) {
-    out.push("## Third-party checklist");
-    out.push("");
-    for (const item of view.third_party_checklist) out.push(`- [ ] ${esc(item)}`);
-    out.push("");
-  }
-
-  out.push("## Sprint breakdown");
-  out.push("");
-  out.push("| Sprint | Focus | Points | Modules |");
-  out.push("|--------|-------|--------|---------|");
-  for (const s of view.sprint_breakdown) {
-    out.push(
-      `| ${tcell(s.sprint)} | ${tcell(s.focus)} | ${s.story_points} | ${tcell(s.modules.join(", "))} |`,
-    );
-  }
-  out.push("");
-
-  if (view.testing_strategy.length > 0) {
-    out.push("## Testing strategy");
-    out.push("");
-    out.push("| Module | Unit | Integration | E2E |");
-    out.push("|--------|------|-------------|-----|");
-    for (const t of view.testing_strategy) {
-      out.push(
-        `| ${tcell(t.module)} | ${tcell(t.unit)} | ${tcell(t.integration)} | ${tcell(t.e2e)} |`,
-      );
-    }
-    out.push("");
-  }
-
-  const securityKeys = Object.keys(view.security_per_module);
-  if (securityKeys.length > 0) {
-    out.push("## Security per module");
-    out.push("");
-    for (const mod of securityKeys) {
-      out.push(`### ${esc(mod)}`);
-      for (const concern of view.security_per_module[mod] ?? []) {
-        out.push(`- ${esc(concern)}`);
-      }
-      out.push("");
-    }
-  }
-
-  if (view.risks.length > 0) {
-    out.push("## Risks");
-    out.push("");
-    for (const r of view.risks) {
-      out.push(`- **${r.severity}** — ${esc(r.description)}`);
-    }
-    out.push("");
-  }
-
-  out.push("## GitHub references");
-  out.push("");
-  if (view.github_references.length === 0) {
-    out.push("No similar public projects found.");
-  }
-  for (const r of view.github_references) {
-    const safeUrl = sanitizeUrl(r.url);
-    out.push(`- [${esc(r.repo)}](${safeUrl}) — ${esc(r.why_relevant)}`);
-  }
-  out.push("");
-
-  return out.join("\n").trimEnd() + "\n";
+export function engineerToMarkdown(view: EngineerView): string {
+  return compose(engineerPreamble(view), engineerSections(view));
 }
 
 /* ──────────────────────────────────────────────────────────────

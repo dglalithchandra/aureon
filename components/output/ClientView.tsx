@@ -8,6 +8,12 @@ import { moduleLevel } from "@/lib/scoring/modules";
 import { ModuleCard } from "@/components/output/ModuleCard";
 import { SectionEditor } from "@/components/output/SectionEditor";
 import { EditableList } from "@/components/output/EditableList";
+import { CopyButton } from "@/components/output/CopyButton";
+import {
+  clientSections,
+  moduleTableLines,
+  sectionToMarkdown,
+} from "@/lib/export/markdown";
 import {
   moduleId,
   type ClientView as ClientViewData,
@@ -30,11 +36,14 @@ function Section({
   title,
   children,
   className,
+  copy,
 }: {
   id: string;
   title: string;
   children: React.ReactNode;
   className?: string;
+  /** Markdown for this section alone, built on click (CopyButton). */
+  copy?: () => string;
 }): React.ReactElement {
   return (
     <motion.section
@@ -45,9 +54,12 @@ function Section({
       transition={{ duration: 0.5, ease: "easeOut" }}
       className={cn("scroll-mt-28", className)}
     >
-      <h2 className="text-blueprint-text font-display mb-5 text-2xl font-bold sm:text-3xl">
-        {title}
-      </h2>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h2 className="text-blueprint-text font-display text-2xl font-bold sm:text-3xl">
+          {title}
+        </h2>
+        {copy && <CopyButton text={copy} label={title} />}
+      </div>
       {children}
     </motion.section>
   );
@@ -71,6 +83,19 @@ export function ClientView({
     });
   };
 
+  // Markdown for one section, built when the reader asks for it. The
+  // builders are the export's own, so a copied section reads like the file.
+  const markdownFor = (id: string) => (): string => {
+    const section = clientSections(view).find((s) => s.id === id);
+    return section ? sectionToMarkdown(section) : "";
+  };
+  const candidatesMarkdown = (): string =>
+    sectionToMarkdown({
+      id: "candidates",
+      title: "Candidate modules — please confirm",
+      lines: moduleTableLines(candidates),
+    });
+
   // A key per milestone that survives an edit to its own fields, so a
   // renamed phase does not remount the card (BUG-09's lesson, applied here).
   const milestoneKeys = useMemo(
@@ -85,7 +110,7 @@ export function ClientView({
 
   return (
     <div className="flex flex-col gap-12">
-      <Section id="summary" title="Summary">
+      <Section id="summary" title="Summary" copy={markdownFor("summary")}>
         <header className="mb-4 flex flex-wrap items-center gap-3">
           <ConfidenceBadge badge={view.confidence_badge} size="lg" />
         </header>
@@ -100,7 +125,7 @@ export function ClientView({
         />
       </Section>
 
-      <Section id="modules" title="Modules">
+      <Section id="modules" title="Modules" copy={markdownFor("modules")}>
         {readOnly ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {confirmed.map((m) => (
@@ -129,7 +154,11 @@ export function ClientView({
       </Section>
 
       {candidates.length > 0 && (
-        <Section id="candidates" title="Candidate modules — please confirm">
+        <Section
+          id="candidates"
+          title="Candidate modules — please confirm"
+          copy={candidatesMarkdown}
+        >
           <p className="text-blueprint-muted mb-4 max-w-2xl text-sm">
             Aureon is less sure about these: little in your brief pointed at them, and
             similar projects did not back them up. Keep the ones you want.
@@ -154,7 +183,7 @@ export function ClientView({
         </Section>
       )}
 
-      <Section id="milestones" title="Milestones">
+      <Section id="milestones" title="Milestones" copy={markdownFor("milestones")}>
         <div className="-mx-6 overflow-x-auto px-6 pb-2">
           <ol className="flex min-w-max items-stretch gap-4">
             {view.milestones.map((ms: Milestone, i) => (
@@ -239,9 +268,14 @@ export function ClientView({
           title="What we assumed"
           items={view.assumptions}
           empty="No assumptions — every parameter was explicitly stated."
+          copy={markdownFor("assumptions")}
         />
       ) : (
-        <Section id="assumptions" title="What we assumed">
+        <Section
+          id="assumptions"
+          title="What we assumed"
+          copy={markdownFor("assumptions")}
+        >
           <EditableList
             items={view.assumptions}
             onChange={(assumptions) => update({ assumptions })}
@@ -253,7 +287,7 @@ export function ClientView({
         </Section>
       )}
 
-      <Section id="open-items" title="Open items">
+      <Section id="open-items" title="Open items" copy={markdownFor("open-items")}>
         {readOnly ? (
           view.open_items.length === 0 ? (
             <p className="text-blueprint-muted text-sm">Nothing outstanding.</p>
@@ -299,15 +333,17 @@ function CollapsibleSection({
   title,
   items,
   empty,
+  copy,
 }: {
   id: string;
   title: string;
   items: string[];
   empty: string;
+  copy?: () => string;
 }): React.ReactElement {
   const [open, setOpen] = useState(items.length <= 6);
   return (
-    <Section id={id} title={title}>
+    <Section id={id} title={title} copy={copy}>
       {items.length === 0 ? (
         <p className="text-blueprint-muted text-sm">{empty}</p>
       ) : (

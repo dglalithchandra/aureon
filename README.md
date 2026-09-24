@@ -93,24 +93,26 @@ instance that started it.
 
 ## ✅ What is built, and what is not
 
-| Area                                                                   | State | Notes                                                                           |
-| ---------------------------------------------------------------------- | :---: | ------------------------------------------------------------------------------- |
-| Requirement extraction, P-01…P-09 states, evidence and gaps            |  ✅   | One model call per round, validated by Zod                                      |
-| Deterministic confidence score, caps and exit rules                    |  ✅   | Computed on the server from the parameter states; the model never grades itself |
-| Clarification rounds (MCQ, blocker questions, added description)       |  ✅   | Up to 3 clarification rounds, then it stops asking                              |
-| GitHub retrieval: multi-query search, RRF, BM25, README module mining  |  ✅   | Anonymous or with a token; no vector index                                      |
-| Per-module confidence and candidate modules                            |  ✅   |                                                                                 |
-| Risk and effort engines (points, velocity, sprints, bands)             |  ✅   | Deterministic; the model only writes the wording                                |
-| Client and engineer documents, fully editable, Markdown and PDF export |  ✅   |                                                                                 |
-| Accounts, workspaces, projects list, retention                         |  ✅   | Needs `DATABASE_URL`; Auth.js with Google and magic links                       |
-| Share links, approval gate, version history and scope diff             |  ✅   |                                                                                 |
-| Background jobs, SSE progress, per-session locks, rate limits          |  ✅   | QStash in production, `after()` locally                                         |
-| Evaluation harness over 30 labelled briefs                             |  🟡   | The harness runs; the labels are drafts and no real report exists yet           |
-| Accessibility                                                          |  🟡   | Keyboard and screen-reader basics are in place; no full audit yet               |
-| Vector search / embeddings                                             |  ⬜   | Not built. The retrieval is lexical                                             |
-| Jira, Linear or Notion export                                          |  ⬜   | Not built                                                                       |
-| Team collaboration in one document (live cursors, comments)            |  ⬜   | Not built. Sharing is a link, and approval is a decision on a version           |
-| Self-serve billing                                                     |  ⬜   | Not built                                                                       |
+| Area                                                                  | State | Notes                                                                              |
+| --------------------------------------------------------------------- | :---: | ---------------------------------------------------------------------------------- |
+| Requirement extraction, P-01…P-09 states, evidence and gaps           |  ✅   | One model call per round, validated by Zod                                         |
+| Deterministic confidence score, caps and exit rules                   |  ✅   | Computed on the server from the parameter states; the model never grades itself    |
+| Clarification rounds (MCQ, blocker questions, added description)      |  ✅   | Up to 3 clarification rounds, then it stops asking                                 |
+| GitHub retrieval: multi-query search, RRF, BM25, README module mining |  ✅   | Anonymous or with a token; no vector index                                         |
+| Per-module confidence and candidate modules                           |  ✅   |                                                                                    |
+| Risk and effort engines (points, velocity, sprints, bands)            |  ✅   | Deterministic; the model only writes the wording                                   |
+| Client and engineer documents, fully editable                         |  ✅   | Every section also copies as Markdown                                              |
+| Exports: Markdown, PDF, Word, Jira CSV, Linear CSV                    |  ✅   | Word carries the workspace branding, version and approval state                    |
+| Requirements import from .txt, .md, .pdf and .docx                    |  ✅   | Read on the server, shown for correction, never stored                             |
+| Accounts, workspaces, projects list, retention                        |  ✅   | Needs `DATABASE_URL`; Auth.js with Google and magic links                          |
+| Share links, approval gate, version history and scope diff            |  ✅   |                                                                                    |
+| Background jobs, SSE progress, per-session locks, rate limits         |  ✅   | QStash in production, `after()` locally                                            |
+| Evaluation harness over 30 labelled briefs                            |  🟡   | The harness runs; the labels are drafts and no real report exists yet              |
+| Accessibility                                                         |  🟡   | Keyboard and screen-reader basics are in place; no full audit yet                  |
+| Vector search / embeddings                                            |  ⬜   | Not built. The retrieval is lexical                                                |
+| Two-way Jira, Linear or Notion integration                            |  ⬜   | Not built. The CSV exports are one-way: they create issues, and nothing syncs back |
+| Team collaboration in one document (live cursors, comments)           |  ⬜   | Not built. Sharing is a link, and approval is a decision on a version              |
+| Self-serve billing                                                    |  ⬜   | Not built                                                                          |
 
 ---
 

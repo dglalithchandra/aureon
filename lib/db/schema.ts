@@ -101,6 +101,13 @@ export const workspaces = pgTable("workspaces", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   /**
+   * The mark that goes on an exported document: an https URL or a
+   * `data:image/png;base64,…` URI. Set by a workspace owner, so it is not
+   * arbitrary user input; the export fetches an https logo with a timeout,
+   * a size cap and a content-type check before embedding it.
+   */
+  logoUrl: text("logo_url"),
+  /**
    * Raw client input older than this many days is blanked by the retention
    * job. 0 disables the deletion. The generated documents stay either way.
    */

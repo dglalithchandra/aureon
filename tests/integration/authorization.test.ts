@@ -16,6 +16,7 @@ import {
   PATCH as renameProjectRoute,
 } from "@/app/api/projects/[id]/route";
 import { POST as duplicateRoute } from "@/app/api/projects/[id]/duplicate/route";
+import { GET as exportRoute } from "@/app/api/projects/[id]/export/route";
 import { getDatabase } from "@/lib/db/client";
 import {
   authSessions,
@@ -209,6 +210,11 @@ const ROUTES: Record<string, (cookie: string) => Promise<NextResponse>> = {
         body: JSON.stringify({ sessionId: PROJECT_ID }),
       }),
     ),
+  "GET /api/projects/:id/export": (cookie) =>
+    exportRoute(
+      req(`/api/projects/${PROJECT_ID}/export?format=jira-csv`, { cookie }),
+      params,
+    ),
   "POST /api/projects/:id/duplicate": (cookie) =>
     duplicateRoute(
       req(`/api/projects/${PROJECT_ID}/duplicate`, { method: "POST", cookie }),
@@ -222,7 +228,11 @@ const ROUTES: Record<string, (cookie: string) => Promise<NextResponse>> = {
 };
 
 /** Every route that needs at least read access. */
-const READ_ROUTES = ["GET /api/session/:id", "POST /api/projects/:id/duplicate"] as const;
+const READ_ROUTES = [
+  "GET /api/session/:id",
+  "GET /api/projects/:id/export",
+  "POST /api/projects/:id/duplicate",
+] as const;
 /** Every route that changes the project. */
 const WRITE_ROUTES = [
   "PATCH /api/session/:id",

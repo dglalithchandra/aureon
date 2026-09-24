@@ -378,6 +378,7 @@ export function OutputLayout({
             </button>
             <ExportMenu
               output={draft}
+              projectId={sessionId}
               activeTab={tab}
               printTargetId="output-print-target"
               onShare={() => setShareOpen(true)}
