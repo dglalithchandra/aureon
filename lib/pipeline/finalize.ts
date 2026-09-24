@@ -67,7 +67,7 @@ export async function generateOutput(session: Session): Promise<FinalOutput> {
 export async function generateClientView(session: Session): Promise<ClientView> {
   const context = buildSharedContext(requireRounds(session));
   const t0 = Date.now();
-  const client = await runClientView(context);
+  const client = await runClientView(context, session.id);
   logger.info("finalize.client.completed", {
     sessionId: session.id,
     durationMs: Date.now() - t0,
@@ -92,7 +92,7 @@ export async function generateEngineerView(session: Session): Promise<EngineerVi
   const risks = detectRisks(latestRound(session).extraction);
   const context = buildSharedContext(session, computedBlocks(estimate, risks));
   const t0 = Date.now();
-  const engineer = await runEngineerView(context);
+  const engineer = await runEngineerView(context, session.id);
   logger.info("finalize.engineer.completed", {
     sessionId: session.id,
     durationMs: Date.now() - t0,
@@ -293,7 +293,7 @@ function withEngineerRowScore(
  *  Internal: per-view runners
  * ────────────────────────────────────────────────────────────── */
 
-async function runClientView(context: string): Promise<ClientView> {
+async function runClientView(context: string, sessionId: string): Promise<ClientView> {
   let outcome;
   try {
     outcome = await callToolWithRepair({
@@ -313,6 +313,7 @@ async function runClientView(context: string): Promise<ClientView> {
     // The budget error must reach the route as a 503, not become an LLMError.
     if (err instanceof BudgetExceededError) throw err;
     logger.error("finalize.client.failure", {
+      sessionId,
       message: err instanceof Error ? err.message : "unknown",
     });
     throw new LLMError("Client view generation failed");
@@ -326,13 +327,19 @@ async function runClientView(context: string): Promise<ClientView> {
   });
 
   if (!outcome.ok) {
-    logger.error("finalize.client.invalid_output", { issues: outcome.issues });
+    logger.error("finalize.client.invalid_output", {
+      sessionId,
+      issues: outcome.issues,
+    });
     throw new LLMError(`Client view failed validation: ${outcome.issues}`);
   }
   return outcome.data;
 }
 
-async function runEngineerView(context: string): Promise<EngineerView> {
+async function runEngineerView(
+  context: string,
+  sessionId: string,
+): Promise<EngineerView> {
   let outcome;
   try {
     outcome = await callToolWithRepair({
@@ -352,6 +359,7 @@ async function runEngineerView(context: string): Promise<EngineerView> {
     // The budget error must reach the route as a 503, not become an LLMError.
     if (err instanceof BudgetExceededError) throw err;
     logger.error("finalize.engineer.failure", {
+      sessionId,
       message: err instanceof Error ? err.message : "unknown",
     });
     throw new LLMError("Engineer view generation failed");
@@ -365,7 +373,10 @@ async function runEngineerView(context: string): Promise<EngineerView> {
   });
 
   if (!outcome.ok) {
-    logger.error("finalize.engineer.invalid_output", { issues: outcome.issues });
+    logger.error("finalize.engineer.invalid_output", {
+      sessionId,
+      issues: outcome.issues,
+    });
     throw new LLMError(`Engineer view failed validation: ${outcome.issues}`);
   }
   return outcome.data;

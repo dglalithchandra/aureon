@@ -1,12 +1,17 @@
 import Link from "next/link";
+import { connection } from "next/server";
 
 export const metadata = {
   title: "Check your email — Aureon",
   robots: { index: false },
 };
 
-/** Where Auth.js sends the browser after a magic link goes out. */
-export default function CheckEmailPage(): React.ReactElement {
+/**
+ * Where Auth.js sends the browser after a magic link goes out. Rendered per
+ * request so its scripts can carry the CSP nonce (SEC-03).
+ */
+export default async function CheckEmailPage(): Promise<React.ReactElement> {
+  await connection();
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-4 px-4 py-16">
       <h1 className="text-blueprint-text font-display text-3xl font-bold">

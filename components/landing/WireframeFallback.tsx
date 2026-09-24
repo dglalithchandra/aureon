@@ -1,6 +1,7 @@
 "use client";
 import { useRef } from "react";
-import { gsap, useGSAP, DrawSVGPlugin } from "@/lib/gsap-init";
+import { gsap, useGSAP } from "@/lib/gsap-init";
+import { DrawSVGPlugin } from "@/lib/gsap-svg";
 
 void DrawSVGPlugin;
 

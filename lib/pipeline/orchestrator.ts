@@ -160,6 +160,7 @@ async function executeRound(
   //    separate blocks: the answers are written first and never truncated
   //    away, however long the brief is (BUG-06).
   const extractionRaw = await runExtraction({
+    sessionId: session.id,
     rawText: working.raw_input,
     priorContext: priorContext(working.rounds),
   });
@@ -182,7 +183,11 @@ async function executeRound(
   if (shouldRunEnrichment) {
     await enterStage("github");
     try {
-      enrichment = await enrichWithGitHub(extractionRaw, working.enriched_input);
+      enrichment = await enrichWithGitHub(
+        extractionRaw,
+        working.enriched_input,
+        session.id,
+      );
     } catch (err) {
       // An exhausted AI budget is fatal for the round, not a GitHub hiccup.
       if (err instanceof BudgetExceededError) throw err;
@@ -231,6 +236,7 @@ async function executeRound(
       extraction,
       askedBefore,
       roundNumber,
+      sessionId: session.id,
     });
     nextStatus = questions.length > 0 ? "awaiting_answers" : "ready";
   }

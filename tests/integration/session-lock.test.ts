@@ -184,6 +184,7 @@ describe("lock TTL", () => {
       "app/api/session/[id]/run/route.ts",
       "app/api/session/[id]/answer/route.ts",
       "app/api/session/[id]/describe/route.ts",
+      "app/api/session/[id]/clarify/route.ts",
       "app/api/finalize/route.ts",
     ]) {
       expect(vercel.functions[route]?.maxDuration).toBe(JOB_MAX_DURATION_SECONDS);

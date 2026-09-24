@@ -32,7 +32,7 @@ export async function GET(req: NextRequest, { params }: RouteParams): Promise<Re
     const owned = await loadAccessibleSession(req, id, "read");
     if (owned instanceof NextResponse) return owned;
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 
   return new Response(sessionEventStream(id, { signal: req.signal }), {

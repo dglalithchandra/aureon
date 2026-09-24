@@ -7,7 +7,8 @@ import {
   MessagesSquare,
   FileCheck2,
 } from "lucide-react";
-import { gsap, useGSAP, ScrollTrigger, Observer, SplitText } from "@/lib/gsap-init";
+import { gsap, useGSAP, ScrollTrigger, Observer } from "@/lib/gsap-init";
+import { SplitText } from "@/lib/gsap-text";
 import { BlueprintGrid } from "@/components/landing/BlueprintGrid";
 
 void ScrollTrigger;

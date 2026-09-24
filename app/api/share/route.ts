@@ -87,7 +87,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       reused: existing !== null,
     });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }
 
@@ -116,6 +116,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       })),
     });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }

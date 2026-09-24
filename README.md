@@ -25,7 +25,9 @@ clarified before development starts.
 ## ✨ Key Features
 
 - 🧠 **Requirement Intelligence** — identifies PRESENT, PARTIAL and MISSING requirements
-- 🔎 **Hybrid Retrieval** — Vector Search + BM25 + Reciprocal Rank Fusion
+- 🔎 **Hybrid Retrieval** — several GitHub queries per round, merged with
+  Reciprocal Rank Fusion and re-ranked with BM25 over the results' text.
+  There is no vector index and no embedding model.
 - 🎯 **Smart Questioning** — asks targeted questions instead of generic follow-ups
 - 📊 **Scope Confidence** — a score the server computes from the parameter
   states (coverage, the AI's clarity read, how far those two agree, and a
@@ -35,7 +37,80 @@ clarified before development starts.
 - 👤 **Client View** — simple, non-technical project scope
 - 👨‍💻 **Engineer View** — technical modules, constraints and effort indicators
 - ⚠️ **Missing Items Panel** — clearly shows unresolved requirements
-- 🔄 **Scope Diff** — shows what changed after clarification rounds
+- 🔄 **Scope Diff** — every generation and every saved edit is an immutable
+  version; any two can be compared at `/projects/[id]/versions`
+
+---
+
+## 🏁 Getting started
+
+Node 20.9 or newer (the CI matrix runs 20, 22 and 24) and npm.
+
+```bash
+git clone <this repo> && cd scopeai
+npm install
+cp .env.example .env.local
+npm run dev                    # http://localhost:3000
+```
+
+`npm run dev` works with an **empty** `.env.local`, with two limits: no
+database means the app starts a file-backed Postgres in `.pglite/`, and no
+model key means every round fails at the first call. For a working local
+setup, one key is enough:
+
+```bash
+# .env.local
+GEMINI_API_KEY=...             # free, no card: https://aistudio.google.com/apikey
+```
+
+Everything else is optional in development and has a documented fallback:
+without `DATABASE_URL` the app uses PGlite, without Upstash it rate-limits in
+memory, without `QSTASH_TOKEN` jobs run in-process after the response, without
+`GITHUB_TOKEN` the GitHub search is anonymous (60 requests an hour), and
+without `AUTH_SECRET` plus a sign-in method the app is anonymous-only (one
+scope per browser). `.env.example` documents every variable, where to get it
+and what happens when it is missing.
+
+| Command                                 | What it does                                                                  |
+| --------------------------------------- | ----------------------------------------------------------------------------- |
+| `npm run dev`                           | Development server                                                            |
+| `npm run build` / `npm start`           | Production build and server                                                   |
+| `npm test`                              | Unit and integration tests (no network, no spend)                             |
+| `npm run test:e2e`                      | Browser tests (Playwright; first run needs `npx playwright install chromium`) |
+| `npm run typecheck` / `lint` / `format` | Strict TypeScript, ESLint, Prettier                                           |
+| `npm run db:migrate`                    | Apply the SQL migrations in `drizzle/`                                        |
+| `npm run evals:mock`                    | The evaluation harness against the mock model                                 |
+| `npm run audit`                         | `npm audit` over production dependencies, high and above                      |
+
+**In production** four things are required and the server refuses to start
+without them: `DATABASE_URL`, `SESSION_SECRET`, the model key for the chosen
+provider, and Upstash (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`)
+unless `ALLOW_MEMORY_STORE=1` says this is a single long-running instance.
+QStash is strongly recommended: without it a job dies with the function
+instance that started it.
+
+---
+
+## ✅ What is built, and what is not
+
+| Area                                                                   | State | Notes                                                                           |
+| ---------------------------------------------------------------------- | :---: | ------------------------------------------------------------------------------- |
+| Requirement extraction, P-01…P-09 states, evidence and gaps            |  ✅   | One model call per round, validated by Zod                                      |
+| Deterministic confidence score, caps and exit rules                    |  ✅   | Computed on the server from the parameter states; the model never grades itself |
+| Clarification rounds (MCQ, blocker questions, added description)       |  ✅   | Up to 3 clarification rounds, then it stops asking                              |
+| GitHub retrieval: multi-query search, RRF, BM25, README module mining  |  ✅   | Anonymous or with a token; no vector index                                      |
+| Per-module confidence and candidate modules                            |  ✅   |                                                                                 |
+| Risk and effort engines (points, velocity, sprints, bands)             |  ✅   | Deterministic; the model only writes the wording                                |
+| Client and engineer documents, fully editable, Markdown and PDF export |  ✅   |                                                                                 |
+| Accounts, workspaces, projects list, retention                         |  ✅   | Needs `DATABASE_URL`; Auth.js with Google and magic links                       |
+| Share links, approval gate, version history and scope diff             |  ✅   |                                                                                 |
+| Background jobs, SSE progress, per-session locks, rate limits          |  ✅   | QStash in production, `after()` locally                                         |
+| Evaluation harness over 30 labelled briefs                             |  🟡   | The harness runs; the labels are drafts and no real report exists yet           |
+| Accessibility                                                          |  🟡   | Keyboard and screen-reader basics are in place; no full audit yet               |
+| Vector search / embeddings                                             |  ⬜   | Not built. The retrieval is lexical                                             |
+| Jira, Linear or Notion export                                          |  ⬜   | Not built                                                                       |
+| Team collaboration in one document (live cursors, comments)            |  ⬜   | Not built. Sharing is a link, and approval is a decision on a version           |
+| Self-serve billing                                                     |  ⬜   | Not built                                                                       |
 
 ---
 
@@ -51,7 +126,7 @@ Domain Detection
 Requirement Extraction
    ↓
 Hybrid Retrieval
-(Vector + BM25 + RRF)
+(multi-query GitHub + RRF + BM25)
    ↓
 Parameter State Analysis
 (PRESENT / PARTIAL / MISSING)
@@ -111,6 +186,18 @@ browser. Signing in claims every scope that browser made. A daily cron
 (`/api/cron/retention`) blanks raw client input after the workspace's
 retention period — 90 days of no activity by default — and keeps the
 documents.
+
+## 🔐 Privacy
+
+A brief is often confidential and sometimes contains personal data, so what
+happens to it is written down rather than implied: [`/privacy`](app/privacy)
+lists what is stored, every processor that sees it (Gemini, Vercel, Postgres,
+Upstash, GitHub, the email API), how long it stays and how to delete it, and
+[`/terms`](app/terms) says what a generated scope is and is not. The chat input
+says the same thing in one line where the pasting happens. Raw input is deleted
+after 90 days of inactivity; the documents are kept. A delete is a hard delete
+and takes the share links with it. Production refuses to run on OpenRouter's
+free models — they route to third parties — unless `ALLOW_FREE_MODELS=1`.
 
 ## 🧪 Testing
 

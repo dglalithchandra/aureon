@@ -9,7 +9,8 @@ import {
   Check,
   AlertTriangle,
 } from "lucide-react";
-import { gsap, useGSAP, DrawSVGPlugin, MotionPathPlugin } from "@/lib/gsap-init";
+import { gsap, useGSAP } from "@/lib/gsap-init";
+import { DrawSVGPlugin, MotionPathPlugin } from "@/lib/gsap-svg";
 import type { Session } from "@/lib/schemas/mcq";
 import { deriveSteps, type StepState } from "@/components/chat/pipelineSteps";
 import { cn } from "@/lib/utils";

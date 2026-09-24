@@ -9,13 +9,20 @@ import {
   Pencil,
   RefreshCw,
   Save,
+  Trash2,
   TriangleAlert,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { gsap, useGSAP, ScrollTrigger } from "@/lib/gsap-init";
 
 void ScrollTrigger;
-import { ApiError, patchFinalOutput, renameProject } from "@/lib/api/client";
+import {
+  ApiError,
+  deleteProject,
+  patchFinalOutput,
+  renameProject,
+} from "@/lib/api/client";
 import type { FinalOutput } from "@/lib/schemas/output";
 import { SCOPING } from "@/lib/config/scoping";
 import { useUnsavedChanges } from "@/lib/hooks/useUnsavedChanges";
@@ -74,6 +81,7 @@ export function OutputLayout({
   initialTitle,
 }: OutputLayoutProps): React.ReactElement {
   const root = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("client");
   const [draft, setDraft] = useState<FinalOutput>(initialOutput);
   const [serverCopy, setServerCopy] = useState<FinalOutput>(initialOutput);
@@ -223,6 +231,23 @@ export function OutputLayout({
     }
   }
 
+  async function handleDelete(): Promise<void> {
+    // Hard delete, and the share links stop resolving with it (PRIV-01), so
+    // it is worth one plain question first.
+    const sure = window.confirm(
+      `Delete “${title}” for good? Its versions, approvals and share links go with it. This cannot be undone.`,
+    );
+    if (!sure) return;
+    setSaveError(null);
+    try {
+      await deleteProject(sessionId);
+      clearDraft(sessionId);
+      router.push("/projects");
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : "Could not delete this.");
+    }
+  }
+
   // Blueprint step 12's threshold, applied to the document on screen: a
   // scope generated with "Generate anyway" carries a score below it.
   const lowConfidence = draft.client.confidence_badge.score < SCOPING.confidenceThreshold;
@@ -342,6 +367,14 @@ export function OutputLayout({
             >
               <Check size={12} />
               Approve & share
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              className="text-blueprint-muted border-blueprint-line/30 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs hover:border-red-400/50 hover:text-red-300"
+            >
+              <Trash2 size={12} />
+              Delete
             </button>
             <ExportMenu
               output={draft}

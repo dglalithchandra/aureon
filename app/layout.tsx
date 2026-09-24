@@ -61,9 +61,6 @@ export default function RootLayout({
       className={`${outfit.variable} ${playfair.variable} ${jetbrainsMono.variable} ${bricolage.variable} ${instrument.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        <link rel="preconnect" href="https://api.github.com" />
-      </head>
       <body className="bg-blueprint-bg text-blueprint-text flex min-h-full flex-col font-sans">
         {children}
       </body>

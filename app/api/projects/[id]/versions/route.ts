@@ -37,6 +37,6 @@ export async function GET(
     }
     return NextResponse.json({ versions: await listVersions(id) });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }

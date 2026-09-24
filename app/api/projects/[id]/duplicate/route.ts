@@ -42,6 +42,6 @@ export async function POST(
     const copyId = await duplicateProject(id, viewer);
     return NextResponse.json({ id: copyId }, { status: 201 });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }

@@ -105,7 +105,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ session: next }, { status: 202 });
     });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }
 

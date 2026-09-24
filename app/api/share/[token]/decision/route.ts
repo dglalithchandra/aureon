@@ -64,6 +64,6 @@ export async function POST(
         : null,
     });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }

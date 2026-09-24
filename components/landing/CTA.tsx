@@ -2,13 +2,8 @@
 import Link from "next/link";
 import { useRef } from "react";
 import { ArrowRight } from "lucide-react";
-import {
-  gsap,
-  useGSAP,
-  ScrollTrigger,
-  SplitText,
-  ScrambleTextPlugin,
-} from "@/lib/gsap-init";
+import { gsap, useGSAP, ScrollTrigger } from "@/lib/gsap-init";
+import { ScrambleTextPlugin, SplitText } from "@/lib/gsap-text";
 import { BlueprintGrid } from "@/components/landing/BlueprintGrid";
 
 void ScrollTrigger;
@@ -104,18 +99,36 @@ export function CTA(): React.ReactElement {
           </Link>
         </div>
 
+        {/* PRIV-01: what the app actually does. Scopes are kept until you
+            delete them; only the raw brief ages out. */}
         <p className="text-blueprint-muted mt-10 max-w-md text-xs leading-relaxed">
-          Your input is processed in-session, not stored beyond 24 hours. No tracking
-          pixels. No third-party analytics. No accounts required to try it.
+          No tracking pixels, no third-party analytics, and no account needed to try it.
+          Your scopes are kept until you delete them; the raw brief is deleted after 90
+          days of inactivity. Please don&apos;t paste passwords, keys or personal data —{" "}
+          <Link href="/privacy" className="underline underline-offset-2">
+            what we store and who sees it
+          </Link>
+          .
         </p>
 
-        <div className="border-blueprint-line/20 mt-16 flex w-full max-w-md items-center justify-between border-t pt-6">
+        <div className="border-blueprint-line/20 mt-16 flex w-full max-w-md flex-wrap items-center justify-between gap-3 border-t pt-6">
           <span className="text-blueprint-muted font-mono text-[10px] tracking-[0.25em] uppercase">
             Aureon · v1
           </span>
-          <span className="text-blueprint-muted font-mono text-[10px] tracking-[0.2em]">
-            built by humans, finished by AI
-          </span>
+          <nav className="flex items-center gap-4">
+            <Link
+              href="/privacy"
+              className="text-blueprint-muted font-mono text-[10px] tracking-[0.2em] uppercase hover:text-[var(--color-blueprint-accent)]"
+            >
+              Privacy
+            </Link>
+            <Link
+              href="/terms"
+              className="text-blueprint-muted font-mono text-[10px] tracking-[0.2em] uppercase hover:text-[var(--color-blueprint-accent)]"
+            >
+              Terms
+            </Link>
+          </nav>
         </div>
       </div>
     </section>

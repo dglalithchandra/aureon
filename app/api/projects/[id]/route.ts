@@ -49,7 +49,7 @@ export async function DELETE(
     await deleteProject(id, viewer);
     return NextResponse.json({ deleted: true });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }
 
@@ -96,6 +96,6 @@ export async function PATCH(
     const { title } = await readJsonBody(req, RenameBodySchema);
     return NextResponse.json({ title: await renameProject(id, title) });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }

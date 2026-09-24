@@ -1,6 +1,7 @@
 "use client";
 import { useRef } from "react";
-import { gsap, useGSAP, ScrollTrigger, ScrambleTextPlugin } from "@/lib/gsap-init";
+import { gsap, useGSAP, ScrollTrigger } from "@/lib/gsap-init";
+import { ScrambleTextPlugin } from "@/lib/gsap-text";
 import { BlueprintGrid } from "@/components/landing/BlueprintGrid";
 
 void ScrollTrigger;

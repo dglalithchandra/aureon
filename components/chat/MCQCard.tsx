@@ -20,6 +20,19 @@ interface DraftAnswer {
 const MAX_CUSTOM_CHARS = 1_500;
 
 /**
+ * "Other", "Other (describe)", "Something else" — an option that promises
+ * text and then sends none is an answer the pipeline cannot use (A11Y-01).
+ */
+const OTHER_OPTION = /^(other|something else|none of (these|the above))\b/i;
+
+function needsDescription(question: MCQQuestion, draft: DraftAnswer): boolean {
+  if (draft.custom.trim().length > 0) return false;
+  return question.options.some(
+    (opt) => draft.selected.has(opt) && OTHER_OPTION.test(opt),
+  );
+}
+
+/**
  * Renders the current round's clarification questions as a single submit
  * unit. The user can pick options and/or type into the custom field; the
  * submit button stays disabled until at least one of the questions has
@@ -62,10 +75,16 @@ export function MCQCard({
 
   if (questions.length === 0) return null;
 
-  const isAnswerable = questions.some((q) => {
-    const d = drafts[q.id];
-    return d ? d.selected.size > 0 || d.custom.trim().length > 0 : false;
-  });
+  const draftOf = (q: MCQQuestion): DraftAnswer =>
+    drafts[q.id] ?? { selected: new Set<string>(), custom: "" };
+
+  const undescribed = questions.filter((q) => needsDescription(q, draftOf(q)));
+  const isAnswerable =
+    undescribed.length === 0 &&
+    questions.some((q) => {
+      const d = draftOf(q);
+      return d.selected.size > 0 || d.custom.trim().length > 0;
+    });
 
   function toggleOption(qid: string, opt: string): void {
     setDrafts((prev) => {
@@ -86,6 +105,7 @@ export function MCQCard({
   }
 
   function handleSubmit(): void {
+    if (undescribed.length > 0) return;
     const out: MCQAnswer[] = [];
     for (const q of questions) {
       const d = drafts[q.id];
@@ -130,7 +150,8 @@ export function MCQCard({
 
       <div className="flex flex-col gap-6">
         {questions.map((q) => {
-          const draft = drafts[q.id] ?? { selected: new Set<string>(), custom: "" };
+          const draft = draftOf(q);
+          const describe = needsDescription(q, draft);
           return (
             <fieldset key={q.id} data-mcq-q className="flex flex-col gap-3">
               <legend className="text-blueprint-text text-sm font-semibold">
@@ -179,21 +200,37 @@ export function MCQCard({
                   htmlFor={`custom-${q.id}`}
                   className="text-blueprint-muted font-mono text-[10px] tracking-[0.18em] uppercase"
                 >
-                  + Add your own
+                  {describe ? "+ Describe your answer (required)" : "+ Add your own"}
                 </label>
                 <textarea
                   id={`custom-${q.id}`}
                   rows={2}
                   value={draft.custom}
                   onChange={(e) => setCustom(q.id, e.target.value)}
+                  aria-required={describe}
+                  aria-describedby={describe ? `custom-hint-${q.id}` : undefined}
                   placeholder="Type a custom answer…"
                   className={cn(
                     "border-blueprint-line/20 bg-blueprint-bg/40 text-blueprint-text placeholder:text-blueprint-muted/70 resize-none rounded-md border px-3 py-2 text-sm outline-none",
                     "focus-visible:border-[var(--color-blueprint-accent)]/50 focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/40",
                   )}
                 />
-                <div className="text-blueprint-muted text-right text-[10px]">
-                  {draft.custom.length} / {MAX_CUSTOM_CHARS}
+                <div className="flex items-start justify-between gap-3">
+                  {describe ? (
+                    <p
+                      id={`custom-hint-${q.id}`}
+                      role="alert"
+                      className="text-[11px] text-amber-300"
+                    >
+                      You picked an option that needs a sentence — say what you mean, or
+                      unpick it.
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <span className="text-blueprint-muted shrink-0 text-[10px]">
+                    {draft.custom.length} / {MAX_CUSTOM_CHARS}
+                  </span>
                 </div>
               </div>
             </fieldset>

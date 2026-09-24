@@ -8,6 +8,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
+import Link from "next/link";
 import { ArrowUp, Loader2, Sparkles } from "lucide-react";
 import { gsap, useGSAP } from "@/lib/gsap-init";
 import { cn } from "@/lib/utils";
@@ -237,6 +238,18 @@ export const InputBar = forwardRef<InputBarHandle, InputBarProps>(function Input
             Input exceeds 50KB limit. Trim before submitting.
           </p>
         )}
+        {/* PRIV-01: the warning belongs where the pasting happens. */}
+        <p className="text-blueprint-muted mt-1.5 text-[11px] leading-relaxed">
+          Requirements only, please — no passwords, keys, card numbers or personal
+          details.{" "}
+          <Link
+            href="/privacy"
+            className="underline decoration-dotted underline-offset-2 hover:text-[var(--color-blueprint-accent)]"
+          >
+            What we store
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );

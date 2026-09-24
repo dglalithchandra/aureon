@@ -19,6 +19,9 @@
     "app/api/session/[id]/describe/route.ts": {
       "maxDuration": 300
     },
+    "app/api/session/[id]/clarify/route.ts": {
+      "maxDuration": 300
+    },
     "app/api/session/[id]/events/route.ts": {
       "maxDuration": 60
     },

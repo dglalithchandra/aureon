@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useModal } from "@/lib/hooks/useModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Copy, Link2Off, Loader2, ShieldCheck, X } from "lucide-react";
 import {
@@ -115,6 +116,10 @@ function ShareDialogInner({
     }
   }
 
+  // Escape closes it, Tab stays inside it, and focus returns to the button
+  // that opened it (A11Y-01).
+  const dialog = useModal<HTMLDivElement>(true, onClose);
+
   async function copy(url: string, token: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(absoluteUrl(url, window.location.origin));
@@ -130,6 +135,7 @@ function ShareDialogInner({
       role="dialog"
       aria-modal="true"
       aria-labelledby="share-dialog-title"
+      ref={dialog}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

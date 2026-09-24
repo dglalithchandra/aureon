@@ -9,6 +9,7 @@ import {
 } from "@/lib/api/client";
 import type { Session } from "@/lib/schemas/mcq";
 import type { FinalOutput } from "@/lib/schemas/output";
+import { useModal } from "@/lib/hooks/useModal";
 
 /**
  * Answering one open item without leaving the output page (UX-02).
@@ -76,6 +77,15 @@ export function ClarifyPanel({
   const [phase, setPhase] = useState<Phase>("asking");
   const [error, setError] = useState<string | null>(null);
   const busy = phase !== "asking";
+  // A side panel, not a modal: the document behind it stays readable, so
+  // Escape and entry focus without the Tab trap (A11Y-01).
+  const panel = useModal<HTMLElement>(
+    true,
+    () => {
+      if (!busy) onClose();
+    },
+    { modal: false },
+  );
 
   async function submit(): Promise<void> {
     if (!answer.trim() || busy) return;
@@ -105,6 +115,7 @@ export function ClarifyPanel({
 
   return (
     <aside
+      ref={panel}
       role="dialog"
       aria-label="Clarify an open item"
       data-testid="clarify-panel"

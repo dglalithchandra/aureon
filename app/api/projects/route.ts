@@ -19,6 +19,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const projects = await listProjects(viewer, { query });
     return NextResponse.json({ projects });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }

@@ -222,7 +222,8 @@ export function FinalizeGate({
         </h1>
         <p className="text-blueprint-muted mt-3 text-sm">
           We&apos;ll produce two documents in parallel — a plain-English client view and a
-          concrete engineer build doc. Takes about 20-40 seconds.
+          concrete engineer build doc. Each one appears as soon as it is written; how long
+          that takes is the model&apos;s to decide, not ours.
         </p>
         <button
           type="button"

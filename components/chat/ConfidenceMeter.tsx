@@ -91,9 +91,11 @@ export function ConfidenceMeter({
       </div>
       <div
         role="progressbar"
+        aria-label="Scope confidence"
         aria-valuenow={value}
         aria-valuemin={0}
         aria-valuemax={100}
+        aria-valuetext={`${value} out of 100, threshold ${threshold}`}
         className="bg-blueprint-line/20 relative h-1.5 w-full overflow-hidden rounded-full"
       >
         <span

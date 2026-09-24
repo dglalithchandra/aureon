@@ -1,55 +1,13 @@
 import type { NextConfig } from "next";
 
 /**
- * Strict CSP for Aureon.
+ * Security headers that are the same for every response.
  *
- * Notes on `'unsafe-inline'` for script-src:
- *   - Required by Next.js inline runtime hydration scripts in dev (replaced
- *     with nonces in a future hardening pass) AND by the @splinetool/runtime
- *     loader which injects a small inline bootstrap.
- *   - `connect-src` allow-listing limits where the app may exfiltrate data,
- *     reducing impact even if `unsafe-inline` were exploited.
- *
- * `connect-src` allow-list:
- *   - generativelanguage.googleapis.com — Gemini (server-only, listed for safety)
- *   - api.github.com      — Octokit
- *   - prod.spline.design  — Spline scene assets
+ * The Content-Security-Policy is not here: it carries a per-request nonce,
+ * so `proxy.ts` builds it from `lib/security/csp.ts` (SEC-03). A header set
+ * in this file would be a second, weaker policy on the same response.
  */
-const cspDirectives: Record<string, string[]> = {
-  "default-src": ["'self'"],
-  "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-  "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-  "img-src": [
-    "'self'",
-    "data:",
-    "blob:",
-    "https://avatars.githubusercontent.com",
-    "https://raw.githubusercontent.com",
-    "https://prod.spline.design",
-  ],
-  "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
-  "connect-src": [
-    "'self'",
-    "https://generativelanguage.googleapis.com",
-    "https://api.github.com",
-    "https://prod.spline.design",
-    "https://*.upstash.io",
-  ],
-  "frame-ancestors": ["'none'"],
-  "base-uri": ["'self'"],
-  "form-action": ["'self'"],
-  "object-src": ["'none'"],
-  "worker-src": ["'self'", "blob:"],
-};
-
-function buildCsp(): string {
-  return Object.entries(cspDirectives)
-    .map(([directive, values]) => `${directive} ${values.join(" ")}`)
-    .join("; ");
-}
-
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: buildCsp() },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

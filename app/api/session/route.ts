@@ -61,6 +61,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const res = NextResponse.json({ session });
     return existingOwner ? res : attachOwnerCookie(res, ownerId);
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }

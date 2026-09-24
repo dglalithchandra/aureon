@@ -1,6 +1,6 @@
 "use client";
 import { animate, motion, useMotionValue, useTransform } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Info } from "lucide-react";
 import type { ConfidenceBadge as ConfidenceBadgeData } from "@/lib/schemas/output";
 import { ConfidenceExplainer } from "@/components/ConfidenceExplainer";
@@ -14,7 +14,15 @@ export function ConfidenceBadge({
   badge,
   size = "md",
 }: ConfidenceBadgeProps): React.ReactElement {
-  const [open, setOpen] = useState(false);
+  // Hover and focus reveal it; a click pins it, which is the only way to
+  // read it on a touch screen. Kept apart so a click that follows the focus
+  // it caused does not close what the focus just opened.
+  const [hovered, setHovered] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const open = hovered || pinned;
+  // Two badges share a page (the top bar and the summary), so the id has to
+  // be unique or aria-describedby points at the wrong one (A11Y-01).
+  const tooltipId = useId();
   const motionValue = useMotionValue(0);
   const rounded = useTransform(motionValue, (v) => Math.round(v));
 
@@ -25,6 +33,17 @@ export function ConfidenceBadge({
     });
     return controls.stop;
   }, [badge.score, motionValue]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(event: KeyboardEvent): void {
+      if (event.key !== "Escape") return;
+      setPinned(false);
+      setHovered(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   const tone = badge.score >= 80 ? "high" : badge.score >= 60 ? "mid" : "low";
 
@@ -43,14 +62,17 @@ export function ConfidenceBadge({
   return (
     <div
       className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
     >
       <button
         type="button"
-        aria-describedby="confidence-tooltip"
+        onClick={() => setPinned((cur) => !cur)}
+        aria-expanded={open}
+        aria-label={`Scope confidence ${badge.score} out of 100. How this is calculated`}
+        aria-describedby={open ? tooltipId : undefined}
         className={`inline-flex items-center gap-1.5 rounded-full border ${colors[tone]} ${sizes[size]} font-mono tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blueprint-accent)]/60`}
       >
         <motion.span>{rounded}</motion.span>
@@ -59,7 +81,7 @@ export function ConfidenceBadge({
       </button>
       {open && (
         <motion.div
-          id="confidence-tooltip"
+          id={tooltipId}
           role="tooltip"
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}

@@ -19,6 +19,8 @@ export interface GenerateQuestionsOptions {
   extraction: ExtractionResult;
   askedBefore: ParameterId[];
   roundNumber: number;
+  /** For the logs (OBS-01). */
+  sessionId?: string;
   /**
    * Questions from earlier rounds. A MISSING blocker parameter is asked
    * again (BUG-05), and the model is shown the wording that did not work.
@@ -36,7 +38,13 @@ export interface GenerateQuestionsOptions {
 export async function generateQuestions(
   opts: GenerateQuestionsOptions,
 ): Promise<MCQQuestion[]> {
-  const { extraction, askedBefore, roundNumber, previousQuestions = [] } = opts;
+  const {
+    extraction,
+    askedBefore,
+    roundNumber,
+    previousQuestions = [],
+    sessionId,
+  } = opts;
   const blockerExpected = isBlockerExtraction(extraction);
   // A MISSING blocker parameter may always be asked again, with different
   // framing; everything else is asked once (BUG-05).
@@ -84,7 +92,7 @@ export async function generateQuestions(
     // The budget error must reach the route as a 503, not become an LLMError.
     if (err instanceof BudgetExceededError) throw err;
     const message = err instanceof Error ? err.message : "unknown";
-    logger.error("mcq.provider_failure", { message });
+    logger.error("mcq.provider_failure", { sessionId, roundNumber, message });
     throw new LLMError("MCQ generation failed");
   }
 
@@ -97,7 +105,7 @@ export async function generateQuestions(
 
   if (!outcome.ok) {
     // Still invalid after the repair retry: no usable questions this round.
-    logger.warn("mcq.invalid_output", { issues: outcome.issues });
+    logger.warn("mcq.invalid_output", { sessionId, roundNumber, issues: outcome.issues });
     return blockerExpected ? [blockerFallbackQuestion(extraction)] : [];
   }
 
@@ -130,7 +138,7 @@ export async function generateQuestions(
   // A blocker round must always leave the user something to answer, so it
   // never ends up looking "ready" (BUG-05).
   if (blockerExpected && filtered.length === 0) {
-    logger.warn("mcq.blocker_fallback", { roundNumber });
+    logger.warn("mcq.blocker_fallback", { sessionId, roundNumber });
     return [blockerFallbackQuestion(extraction)];
   }
 

@@ -9,6 +9,7 @@ import { can, loadAccessSubject, roleFor, type Capability } from "@/lib/auth/acc
 import { getViewer } from "@/lib/auth/viewer";
 import type { Session } from "@/lib/schemas/mcq";
 import { logger } from "@/lib/logger";
+import { reportError } from "@/lib/observability/report";
 import { getSession } from "@/lib/storage/session";
 import {
   acquireLock,
@@ -80,12 +81,21 @@ export async function readJsonBody<T>(
   return parsed.data;
 }
 
-export function jsonError(err: unknown, fallbackStatus = 500): NextResponse {
+export function jsonError(
+  err: unknown,
+  fallbackStatus = 500,
+  /** The request, when the caller has it: its id joins the error report. */
+  req?: NextRequest,
+): NextResponse {
   if (err instanceof AppError) {
     return NextResponse.json(serializeError(err), { status: err.statusCode });
   }
-  logger.error("route.unhandled", {
-    message: err instanceof Error ? err.message : "unknown",
+  // Unhandled means nobody predicted it, which is exactly what error
+  // tracking is for (OBS-01). The reporter logs and, if a webhook is
+  // configured, sends a shape — never the brief or the document.
+  void reportError(err, {
+    where: req ? `${req.method} ${req.nextUrl.pathname}` : "route",
+    requestId: req?.headers.get("x-request-id") ?? null,
   });
   return NextResponse.json(serializeError(err), { status: fallbackStatus });
 }

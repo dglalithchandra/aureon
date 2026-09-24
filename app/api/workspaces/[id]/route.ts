@@ -67,6 +67,6 @@ export async function PATCH(
     });
     return NextResponse.json({ rawInputRetentionDays });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }

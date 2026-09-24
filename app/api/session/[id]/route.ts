@@ -40,7 +40,7 @@ export async function GET(
     if (session instanceof NextResponse) return session;
     return NextResponse.json({ session });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }
 
@@ -101,6 +101,6 @@ export async function PATCH(
     });
     return NextResponse.json({ session: updated });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }

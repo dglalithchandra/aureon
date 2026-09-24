@@ -61,7 +61,7 @@ export async function POST(
     return NextResponse.json({ outcome });
   } catch (err) {
     // Storage failures and the like: a 5xx lets QStash retry the delivery.
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }
 

@@ -128,6 +128,8 @@ async function mapWithConcurrency<T, R>(
 export async function enrichWithGitHub(
   extraction: ExtractionResult,
   rawText: string,
+  /** For the logs (OBS-01). */
+  sessionId?: string,
 ): Promise<GitHubEnrichment> {
   const queryInput: BuildQueryInput = {
     domain: extraction.domain,
@@ -147,7 +149,7 @@ export async function enrichWithGitHub(
   }
 
   const { result } = await withGitHubBudget(GITHUB_REQUEST_BUDGET, () =>
-    enrichUncached(extraction, rawText, queryInput),
+    enrichUncached(extraction, rawText, queryInput, sessionId),
   );
   // Empty results are not cached: they are usually a GitHub hiccup.
   if (result.matches.length > 0) {
@@ -160,6 +162,7 @@ async function enrichUncached(
   extraction: ExtractionResult,
   rawText: string,
   queryInput: BuildQueryInput,
+  sessionId?: string,
 ): Promise<GitHubEnrichment> {
   const t0 = Date.now();
   const search = await searchRepos(queryInput);
@@ -339,6 +342,7 @@ async function enrichUncached(
   const validated = GitHubEnrichmentSchema.safeParse(result);
   if (!validated.success) {
     logger.error("github.enrich.zod_failure", {
+      sessionId,
       issues: validated.error.issues
         .slice(0, 3)
         .map((i) => `${i.path.join(".")}: ${i.message}`)

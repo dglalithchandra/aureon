@@ -34,6 +34,8 @@ export interface ExtractionUsage {
 
 interface RunExtractionOptions {
   rawText: string;
+  /** For the logs: a failure nobody can tie to a session is hard to chase (OBS-01). */
+  sessionId?: string;
   /** Answers and added descriptions from earlier rounds, already formatted. */
   priorContext?: string;
   /**
@@ -95,7 +97,7 @@ export async function runExtraction(
     // The budget error must reach the route as a 503, not become an LLMError.
     if (err instanceof BudgetExceededError) throw err;
     const message = err instanceof Error ? err.message : "unknown error";
-    logger.error("extract.provider_failure", { message });
+    logger.error("extract.provider_failure", { sessionId: opts.sessionId, message });
     throw new LLMError("Extraction model call failed");
   }
 
@@ -109,6 +111,7 @@ export async function runExtraction(
   };
   opts.onUsage?.(usage);
   logger.info("extract.completed", {
+    sessionId: opts.sessionId,
     durationMs: Date.now() - startedAt,
     stopReason: response.stop_reason,
     ...usage,
@@ -116,7 +119,10 @@ export async function runExtraction(
 
   if (!outcome.ok) {
     // Bad model output is an upstream failure (502), not a client error.
-    logger.error("extract.invalid_output", { issues: outcome.issues });
+    logger.error("extract.invalid_output", {
+      sessionId: opts.sessionId,
+      issues: outcome.issues,
+    });
     throw new LLMError(`Extraction output failed validation: ${outcome.issues}`);
   }
 

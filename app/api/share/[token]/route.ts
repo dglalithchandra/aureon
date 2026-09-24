@@ -38,6 +38,6 @@ export async function DELETE(
     await revokeShareLink(token, snapshot.sessionId);
     return NextResponse.json({ revoked: true });
   } catch (err) {
-    return jsonError(err);
+    return jsonError(err, 500, req);
   }
 }

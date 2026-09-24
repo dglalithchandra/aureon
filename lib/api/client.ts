@@ -186,6 +186,18 @@ export async function renameProject(projectId: string, title: string): Promise<s
 }
 
 /**
+ * Delete a project for good: its rounds, versions, approvals and share
+ * links go with it, and any link someone holds stops resolving (PRIV-01).
+ */
+export async function deleteProject(projectId: string): Promise<void> {
+  const res = await fetch(`/api/projects/${projectId}`, {
+    method: "DELETE",
+    credentials: "same-origin",
+  });
+  if (!res.ok) throw await readError(res);
+}
+
+/**
  * Answer one open item (UX-02). The session leaves "finalized" for a new
  * round; follow it until it settles, then finalize again.
  */

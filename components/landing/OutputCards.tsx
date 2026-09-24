@@ -1,7 +1,8 @@
 "use client";
 import { useRef, type MouseEvent } from "react";
 import { Check, Users, Wrench } from "lucide-react";
-import { gsap, useGSAP, ScrollTrigger, SplitText } from "@/lib/gsap-init";
+import { gsap, useGSAP, ScrollTrigger } from "@/lib/gsap-init";
+import { SplitText } from "@/lib/gsap-text";
 import { BlueprintGrid } from "@/components/landing/BlueprintGrid";
 
 void ScrollTrigger;

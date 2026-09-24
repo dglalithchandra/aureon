@@ -64,6 +64,12 @@ const serverSchema = z
      */
     ALLOW_MEMORY_STORE: z.enum(["0", "1"]).optional(),
     /**
+     * Set to 1 to run production on a free model provider anyway (PRIV-01).
+     * OpenRouter's free models route to third parties whose data policies
+     * vary, which is not where a client's confidential brief belongs.
+     */
+    ALLOW_FREE_MODELS: z.enum(["0", "1"]).optional(),
+    /**
      * 32+ char secret used to HMAC-sign session ownership cookies.
      * In production set a real secret; if absent in dev we derive a stable
      * per-process secret (logged once) to keep DX friendly.
@@ -104,6 +110,21 @@ const serverSchema = z
         code: "custom",
         path: ["GEMINI_API_KEY"],
         message: "GEMINI_API_KEY required when LLM_PROVIDER=gemini (the default)",
+      });
+    }
+    // A client's brief goes to the model provider verbatim. OpenRouter's
+    // free tier routes to third-party providers with varying data policies,
+    // so production refuses it unless someone says so out loud (PRIV-01).
+    if (
+      data.NODE_ENV === "production" &&
+      data.LLM_PROVIDER === "openrouter" &&
+      data.ALLOW_FREE_MODELS !== "1"
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["LLM_PROVIDER"],
+        message:
+          "LLM_PROVIDER=openrouter sends client briefs to free third-party model providers; it is for local development. Set ALLOW_FREE_MODELS=1 to use it in production anyway.",
       });
     }
     // Without a database there is nowhere to keep projects, shares or

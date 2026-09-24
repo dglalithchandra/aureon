@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useRef } from "react";
 import { ArrowRight } from "lucide-react";
-import { gsap, useGSAP, SplitText } from "@/lib/gsap-init";
+import { gsap, useGSAP } from "@/lib/gsap-init";
+import { SplitText } from "@/lib/gsap-text";
 import { BlueprintGrid } from "@/components/landing/BlueprintGrid";
 import { SplineScene } from "@/components/landing/SplineScene";
 import { WireframeFallback } from "@/components/landing/WireframeFallback";
