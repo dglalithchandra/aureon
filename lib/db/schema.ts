@@ -1,5 +1,6 @@
 import {
   boolean,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -107,6 +108,13 @@ export const workspaces = pgTable("workspaces", {
    * a size cap and a content-type check before embedding it.
    */
   logoUrl: text("logo_url"),
+  /**
+   * Opt-in (default off) to the shared calibration pool: this workspace's
+   * aggregate ratios join the pool, and it may use the pool's. Only numbers
+   * and the fixed domain label ever cross a workspace boundary — never a
+   * brief, a module name, a note or a project id.
+   */
+  shareCalibration: boolean("share_calibration").notNull().default(false),
   /**
    * Raw client input older than this many days is blanked by the retention
    * job. 0 disables the deletion. The generated documents stay either way.
@@ -293,6 +301,64 @@ export const versions = pgTable(
   },
   (table) => [
     uniqueIndex("versions_project_number_idx").on(table.projectId, table.versionNumber),
+  ],
+);
+
+/**
+ * What a project actually cost, recorded after it shipped, against what was
+ * estimated at the time. The estimate is snapshotted here rather than read
+ * back from the document, so a later edit to the scope cannot silently
+ * change history — a calibration factor has to mean "what we predicted
+ * then, against what happened".
+ *
+ * One row per project: recording again replaces what was there.
+ */
+export const projectActuals = pgTable(
+  "project_actuals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** Denormalised so the workspace's factors are one query. */
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+      onDelete: "set null",
+    }),
+    /** The domain the scope was extracted as, one of the fixed labels. */
+    domain: text("domain").notNull(),
+
+    /** What happened. */
+    actualWeeks: integer("actual_weeks").notNull(),
+    actualTeamSize: integer("actual_team_size").notNull(),
+    /** 1 (nothing like the scope) to 5 (the scope was right). */
+    scopeAccuracy: integer("scope_accuracy").notNull(),
+    note: text("note"),
+    /**
+     * Per module: the size the scope gave it, the size it turned out to be,
+     * and the sprints it actually took.
+     */
+    modules: jsonb("modules").notNull(),
+
+    /** What was estimated, as it stood when this was recorded. */
+    estimatedSprints: integer("estimated_sprints").notNull(),
+    estimatedPoints: integer("estimated_points").notNull(),
+    estimatedTeamSize: integer("estimated_team_size").notNull(),
+    /** Points per sprint the estimate assumed, for the per-size maths. */
+    estimatedVelocity: integer("estimated_velocity").notNull(),
+    /** The domain multiplier the estimate used. */
+    domainMultiplier: doublePrecision("domain_multiplier").notNull().default(1),
+
+    recordedBy: uuid("recorded_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("project_actuals_project_idx").on(table.projectId),
+    index("project_actuals_workspace_idx").on(table.workspaceId),
   ],
 );
 

@@ -99,6 +99,9 @@ describe("the estimate is computed, not written by the model", () => {
         { name: "Dashboard", size: "MEDIUM", points: 23 },
         { name: "Settings", size: "SMALL", points: 9 },
       ],
+      // No recorded projects behind this workspace, so nothing is adjusted
+      // (the calibration loop).
+      calibration: null,
     });
     expect(EngineerViewSchema.safeParse(view).success).toBe(true);
   });

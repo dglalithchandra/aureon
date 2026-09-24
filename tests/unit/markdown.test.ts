@@ -113,6 +113,7 @@ const engineer: EngineerView = {
     domain_multiplier: 1.1,
     team_size_stated: false,
     basis: [{ name: "Auth", size: "MEDIUM", points: 23 }],
+    calibration: null,
   },
 };
 

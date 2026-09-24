@@ -187,6 +187,20 @@ export type EffortBasis = z.infer<typeof EffortBasisSchema>;
  * the first release default and `.catch`, so documents stored before the
  * effort engine existed still load.
  */
+/**
+ * What the workspace's own finished projects did to this estimate
+ * (lib/calibration). Absent on every document written before calibration
+ * existed, and on every workspace with fewer than five recorded projects.
+ */
+export const CalibrationAppliedSchema = z.object({
+  /** Adjusted points over unadjusted, e.g. 1.18 for +18%. */
+  multiplier: z.number().min(0.2).max(5),
+  projects: z.number().int().min(0).max(100_000),
+  source: z.enum(["workspace", "shared"]),
+  confidence: z.enum(["none", "low", "medium", "high"]),
+});
+export type CalibrationApplied = z.infer<typeof CalibrationAppliedSchema>;
+
 export const EffortSummarySchema = z.object({
   total_sprints: z.number().int().min(1).max(60),
   team_size: z.number().int().min(1).max(30),
@@ -199,6 +213,7 @@ export const EffortSummarySchema = z.object({
   /** False when the team size is the configured default, not a stated one. */
   team_size_stated: z.boolean().default(false).catch(false),
   basis: z.array(EffortBasisSchema).max(40).default([]).catch([]),
+  calibration: CalibrationAppliedSchema.nullable().default(null).catch(null),
 });
 export type EffortSummary = z.infer<typeof EffortSummarySchema>;
 

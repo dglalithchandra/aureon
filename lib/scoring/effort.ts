@@ -1,5 +1,12 @@
 import { SCOPING } from "@/lib/config/scoping";
 import { domainKey } from "@/lib/scoring/domain";
+import {
+  factorForSize,
+  summariseApplied,
+  type AppliedCalibration,
+  type Calibration,
+  type CalibrationFactor,
+} from "@/lib/calibration/factors";
 import type { ModuleCandidate, ModuleSize } from "@/lib/schemas/extraction";
 
 /**
@@ -22,7 +29,10 @@ export interface EffortModule {
   size: ModuleSize;
   /** Before the domain multiplier. */
   basePoints: number;
-  /** basePoints × multiplier, rounded, so the listed points add up to the total. */
+  /**
+   * basePoints × multiplier × the workspace's calibration factor for this
+   * size, rounded, so the listed points add up to the total.
+   */
   points: number;
 }
 
@@ -56,6 +66,13 @@ export interface EffortEstimate {
   sprints: number;
   band: EstimateBand;
   plan: SprintPlanRow[];
+  /**
+   * What this workspace's own finished projects did to the number, when it
+   * has enough of them to say (lib/calibration). Null when nothing was
+   * adjusted, which is the case for every workspace until five projects
+   * have recorded their actuals.
+   */
+  calibration: AppliedCalibration | null;
 }
 
 /** Story points for a module size, before the domain multiplier. */
@@ -186,18 +203,34 @@ export interface EffortInput {
   teamSize?: number | null;
   /** Whether `teamSize` came from a human rather than from the default. */
   teamSizeStated?: boolean;
+  /**
+   * The workspace's calibration factors, when it has enough recorded
+   * projects for them (lib/calibration/store.ts decides). Omitted or null
+   * means the estimate is the unadjusted arithmetic it always was.
+   */
+  calibration?: Calibration | null;
 }
 
 /** The whole estimate, from the module list to the sprint plan. */
 export function estimateEffort(input: EffortInput): EffortEstimate {
   const multiplier = complexityFor(input.domain);
+  const calibration = input.calibration ?? null;
+  const used: CalibrationFactor[] = [];
+  let uncalibratedPoints = 0;
+
   const modules: EffortModule[] = input.modules.map((m) => {
     const basePoints = pointsFor(m.size);
+    const domainPoints = basePoints * multiplier;
+    uncalibratedPoints += Math.round(domainPoints);
+    // The size's own factor when that size has enough history, else the
+    // domain's, else nothing (lib/calibration/factors.ts).
+    const factor = factorForSize(calibration, m.size);
+    if (factor) used.push(factor);
     return {
       name: m.name,
       size: m.size,
       basePoints,
-      points: Math.round(basePoints * multiplier),
+      points: Math.round(domainPoints * (factor?.ratio ?? 1)),
     };
   });
 
@@ -220,6 +253,7 @@ export function estimateEffort(input: EffortInput): EffortEstimate {
     sprints,
     band: bandFor(input.confidence, sprints),
     plan: planSprints(modules, velocity, sprints),
+    calibration: summariseApplied(calibration, uncalibratedPoints, totalPoints, used),
   };
 }
 

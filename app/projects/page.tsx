@@ -58,6 +58,15 @@ export default async function ProjectsPage(): Promise<React.ReactElement> {
         </div>
 
         <div className="flex items-center gap-2">
+          {viewer.userId && (
+            // The calibration loop's report: how the estimates are doing.
+            <Link
+              href="/analytics"
+              className="border-blueprint-line/25 text-blueprint-muted hover:text-blueprint-text rounded-xl border px-4 py-2 text-sm"
+            >
+              Estimate accuracy
+            </Link>
+          )}
           <Link
             href="/chat"
             className="rounded-xl bg-[var(--color-blueprint-accent)] px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90"

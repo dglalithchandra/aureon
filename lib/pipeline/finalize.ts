@@ -26,6 +26,8 @@ import type { ModuleCandidate } from "@/lib/schemas/extraction";
 import type { Session } from "@/lib/schemas/mcq";
 import { BudgetExceededError, LLMError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { calibrationForProject } from "@/lib/calibration/store";
+import type { Calibration } from "@/lib/calibration/factors";
 import { promptSafe, promptText, truncateText } from "@/lib/text/prompt-safe";
 import { coerceClientView, coerceEngineerView } from "@/lib/pipeline/coerce";
 import { computeConfidence } from "@/lib/scoring/confidence";
@@ -88,7 +90,12 @@ export async function generateEngineerView(session: Session): Promise<EngineerVi
   requireRounds(session);
   // Blueprint steps 09 and 10: both are computed here, handed to the model as
   // facts, and written back over whatever it returned.
-  const estimate = computeEstimate(session);
+  // The workspace's own finished projects, when it has five or more of
+  // them: the estimate is adjusted by what actually happened last time.
+  const estimate = computeEstimate(
+    session,
+    await calibrationForProject(session.id, latestRound(session).extraction.domain),
+  );
   const risks = detectRisks(latestRound(session).extraction);
   const context = buildSharedContext(session, computedBlocks(estimate, risks));
   const t0 = Date.now();
@@ -123,7 +130,11 @@ function latestRound(session: Session) {
  * whatever the user stated in the brief or in an answer, newest first,
  * otherwise the configured default.
  */
-export function computeEstimate(session: Session): EffortEstimate {
+export function computeEstimate(
+  session: Session,
+  /** The workspace's calibration, when it has enough history to have any. */
+  calibration: Calibration | null = null,
+): EffortEstimate {
   const extraction = latestRound(session).extraction;
   const team = teamSizeFrom(statedTeamTexts(session));
   return estimateEffort({
@@ -132,6 +143,7 @@ export function computeEstimate(session: Session): EffortEstimate {
     confidence: session.current_confidence,
     teamSize: team.size,
     teamSizeStated: team.stated,
+    calibration,
   });
 }
 
@@ -170,6 +182,7 @@ function effortSummaryOf(estimate: EffortEstimate): EngineerView["effort_summary
       size: m.size,
       points: m.points,
     })),
+    calibration: estimate.calibration,
   };
 }
 

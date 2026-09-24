@@ -213,6 +213,7 @@ export function makeEngineerView(): EngineerView {
       domain_multiplier: 2.5,
       team_size_stated: true,
       basis: [],
+      calibration: null,
     },
   };
 }

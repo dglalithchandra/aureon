@@ -24,6 +24,8 @@ clarified before development starts.
 
 ## ✨ Key Features
 
+- 📎 **Bring the file** — drop in a .txt, .md, .pdf or .docx and Aureon reads the
+  text out of it; nothing is created until you have seen and corrected it
 - 🧠 **Requirement Intelligence** — identifies PRESENT, PARTIAL and MISSING requirements
 - 🔎 **Hybrid Retrieval** — several GitHub queries per round, merged with
   Reciprocal Rank Fusion and re-ranked with BM25 over the results' text.
@@ -39,12 +41,18 @@ clarified before development starts.
 - ⚠️ **Missing Items Panel** — clearly shows unresolved requirements
 - 🔄 **Scope Diff** — every generation and every saved edit is an immutable
   version; any two can be compared at `/projects/[id]/versions`
+- 📐 **Calibration** — record what a finished project actually took; once five
+  are in, new estimates are adjusted by your own history and say so
+- 📤 **Exports that land somewhere** — Markdown, PDF, Word (.docx, with your
+  workspace name and logo, the version number and the approval state) and issue
+  CSVs for Jira and Linear
 
 ---
 
 ## 🏁 Getting started
 
-Node 20.9 or newer (the CI matrix runs 20, 22 and 24) and npm.
+Node 22 or newer, and npm. (CI runs 22. The PDF reader, `unpdf`, needs 22;
+Node 20 reached end of life in April 2026.)
 
 ```bash
 git clone <this repo> && cd scopeai
@@ -110,6 +118,7 @@ instance that started it.
 | Evaluation harness over 30 labelled briefs                            |  🟡   | The harness runs; the labels are drafts and no real report exists yet              |
 | Accessibility                                                         |  🟡   | Keyboard and screen-reader basics are in place; no full audit yet                  |
 | Vector search / embeddings                                            |  ⬜   | Not built. The retrieval is lexical                                                |
+| Calibration: record actuals, per-workspace factors, `/analytics`      |  ✅   | Factors apply from five recorded projects; cross-workspace sharing is opt-in       |
 | Two-way Jira, Linear or Notion integration                            |  ⬜   | Not built. The CSV exports are one-way: they create issues, and nothing syncs back |
 | Team collaboration in one document (live cursors, comments)           |  ⬜   | Not built. Sharing is a link, and approval is a decision on a version              |
 | Self-serve billing                                                    |  ⬜   | Not built                                                                          |
@@ -189,6 +198,68 @@ browser. Signing in claims every scope that browser made. A daily cron
 retention period — 90 days of no activity by default — and keeps the
 documents.
 
+## 📎 Files in, documents out
+
+**In.** The chat input takes a file as well as a paste: `.txt`, `.md`, `.pdf`
+and `.docx`, up to 5 MB. `POST /api/import` reads the text out of it — PDFs
+through [unpdf](https://github.com/unjs/unpdf), DOCX through
+[mammoth](https://github.com/mwilliamson/mammoth.js) — and hands it back to the
+box, where you can check it and edit it before any session exists. The file
+itself is never stored: it lives in memory for one request. The 50,000-byte
+budget applies to what you submit, exactly as it does to a paste.
+
+unpdf rather than pdf-parse: both are maintained, but unpdf ships a pdf.js
+build made for serverless — no native module, no worker file to configure per
+platform, and canvas is an optional peer needed only for rendering pages as
+images, which this never does. pdf-parse pulls in `pdfjs-dist` and
+`@napi-rs/canvas`, a native binary a serverless bundle has to carry.
+
+**Out.** Every scope exports as:
+
+| Format       | Where it is made | What it carries                                                                                                                                                                                 |
+| ------------ | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Markdown     | the browser      | the whole document, per view                                                                                                                                                                    |
+| PDF          | the browser      | what is on screen, per view                                                                                                                                                                     |
+| Word (.docx) | the server       | the workspace name and logo, the version number, the approval state, and an "AI-generated draft" footer on every page                                                                           |
+| Jira CSV     | the server       | one issue per module and per sprint, with labels and story points, in the columns [Jira's importer](https://support.atlassian.com/jira-software-cloud/docs/prepare-a-csv-file-for-import/) maps |
+| Linear CSV   | the server       | the same issues in [Linear's CSV columns](https://github.com/linear/linear/tree/master/packages/import)                                                                                         |
+
+The workspace name and logo come from workspace settings (`PATCH
+/api/workspaces/[id]`); the logo is an https URL or a `data:` URI, fetched with
+a timeout and a size cap when a document is built. Each section of each view
+also has a **Copy** button, which copies that section as Markdown.
+
+## 📐 The calibration loop
+
+An estimate is a guess until something checks it. When a project finishes,
+open its version history and **Record actuals**: the weeks it really took, the
+team, a 1–5 scope-accuracy rating with a note, and per module the size it
+turned out to be and the sprints it took. The estimate as it stood is
+snapshotted alongside, so a later edit to the scope cannot rewrite what was
+predicted.
+
+From those records each workspace gets factors — what a kind of work actually
+cost, over what was estimated for it — per domain and per module size. **A
+factor is only applied once five projects stand behind it**; below that it is
+shown with its count and marked as not yet used. From five, the effort engine
+multiplies the module points by it and the "How we estimated this" panel says
+so, in as many words:
+
+> Adjusted using 7 of your past projects: +18%
+
+`/analytics` shows the rest: estimated against actual sprints per project, the
+average absolute error, the trend by month, and every factor with the number of
+projects and the confidence behind it.
+
+**Sharing is opt-in and off by default.** A workspace owner can join a pool of
+anonymous aggregate factors from other opted-in workspaces, which is useful
+while you have fewer than five projects of your own. Only numbers and the fixed
+domain label cross a workspace boundary: the query that builds the pool does not
+select the note, the module names, the title or the project id, and a workspace
+that has not opted in is excluded from both sides of it. Turning the switch off
+removes a workspace's rows from the pool immediately, because the pool is a
+query and not a copy.
+
 ## 🔐 Privacy
 
 A brief is often confidential and sometimes contains personal data, so what
@@ -220,8 +291,11 @@ npm run test:e2e            # the browser tests (Playwright)
 - `tests/e2e/` — the browser tests (Playwright, Chromium). They drive the real
   app: edit every section of both views and reload, answer an open item and
   check the new version, generate a scope before the questions are finished
-  and check the "Low confidence draft" banner, and exercise the
-  unsaved-changes guard, the 10-second local autosave and the rename.
+  and check the "Low confidence draft" banner, import a .docx and a .pdf, copy a
+  section, download the Word and CSV exports, and exercise the unsaved-changes
+  guard, the 10-second local autosave and the rename. The import fixtures are
+  generated by `npx tsx scripts/make-import-fixtures.ts`, so the repository
+  holds no file from anyone's real project.
   `scripts/e2e-server.ts` starts `next dev` against the mock model and a
   throwaway PGlite database in `.pglite-e2e/`, so a run needs no credentials
   and spends nothing. First run: `npx playwright install chromium`. They are

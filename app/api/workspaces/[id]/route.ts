@@ -41,13 +41,16 @@ const PatchSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   /** "" clears it. */
   logoUrl: LogoSchema.optional(),
+  /** The shared calibration pool: opt-in, off by default. */
+  shareCalibration: z.boolean().optional(),
 });
 
 /**
  * Change a workspace's settings: how long raw client input is kept, the
- * name, and the logo that goes on exported documents. Owners only —
- * retention decides when the client's own words are deleted, and the name
- * and logo are what leaves the building on a document.
+ * name and logo that go on exported documents, and whether the workspace
+ * joins the shared calibration pool. Owners only — retention decides when
+ * the client's own words are deleted, the name and logo are what leaves
+ * the building on a document, and sharing is a decision about data.
  */
 export async function PATCH(
   req: NextRequest,
@@ -80,7 +83,8 @@ export async function PATCH(
     if (
       body.rawInputRetentionDays === undefined &&
       body.name === undefined &&
-      body.logoUrl === undefined
+      body.logoUrl === undefined &&
+      body.shareCalibration === undefined
     ) {
       throw new ValidationError("Nothing to change.");
     }
@@ -91,6 +95,9 @@ export async function PATCH(
     }
     if (body.name !== undefined) changes.name = body.name;
     if (body.logoUrl !== undefined) changes.logoUrl = body.logoUrl || null;
+    if (body.shareCalibration !== undefined) {
+      changes.shareCalibration = body.shareCalibration;
+    }
 
     const [updated] = await getDatabase()
       .update(workspaces)
@@ -100,6 +107,7 @@ export async function PATCH(
         name: workspaces.name,
         logoUrl: workspaces.logoUrl,
         rawInputRetentionDays: workspaces.rawInputRetentionDays,
+        shareCalibration: workspaces.shareCalibration,
       });
     if (!updated) {
       return NextResponse.json(
@@ -122,6 +130,7 @@ export async function PATCH(
           rawInputRetentionDays: updated.rawInputRetentionDays,
           name: updated.name,
           logoChanged: body.logoUrl !== undefined,
+          shareCalibration: updated.shareCalibration,
         },
       });
     return NextResponse.json(updated);

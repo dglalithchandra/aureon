@@ -149,6 +149,21 @@ export default async function VersionsPage({
         </section>
       )}
 
+      {versions.some((v) => v.lockedAt) && (
+        // Approved, so the project can be compared against what happened
+        // (the calibration loop).
+        <Link
+          href={`/projects/${id}/actuals`}
+          className="border-blueprint-line/25 hover:border-blueprint-accent/50 text-blueprint-text flex flex-wrap items-center gap-2 rounded-xl border bg-white/[0.02] px-4 py-3 text-sm"
+        >
+          <span className="font-medium">Record actuals</span>
+          <span className="text-blueprint-muted">
+            what it really took, against what was estimated — five recorded projects start
+            adjusting new estimates
+          </span>
+        </Link>
+      )}
+
       {versions.length >= 2 && (
         <form
           method="get"

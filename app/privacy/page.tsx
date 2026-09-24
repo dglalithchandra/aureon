@@ -155,6 +155,22 @@ export default function PrivacyPage(): React.ReactElement {
         </div>
       </Section>
 
+      <Section title="Calibration">
+        <p>
+          When a finished project&apos;s actuals are recorded, what is stored is the weeks
+          it took, the team size, a 1–5 accuracy rating, your note, and per module the
+          size and the sprints — beside the estimate as it stood. It stays in your
+          workspace and shapes your own future estimates.
+        </p>
+        <p className="mt-3">
+          Sharing those numbers with other workspaces is <strong>off</strong> unless a
+          workspace owner turns it on. When it is on, what crosses the boundary is
+          aggregate numbers and the fixed domain label — never the note, the module names,
+          the title or the project id. Turning it off removes the workspace from the pool
+          at once.
+        </p>
+      </Section>
+
       <Section title="Anyone with the link">
         <p>
           A share link is a capability: anyone holding it can read the snapshot it points

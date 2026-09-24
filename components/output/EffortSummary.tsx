@@ -11,6 +11,7 @@ import {
   type EffortModule,
   type SprintPlanRow,
 } from "@/lib/scoring/effort";
+import { calibrationSentence } from "@/lib/calibration/factors";
 import type { EffortSummary as EffortSummaryData } from "@/lib/schemas/output";
 import { cn } from "@/lib/utils";
 
@@ -183,6 +184,23 @@ export function EffortSummaryPanel({
               the scope above; everything else is arithmetic you can check.
             </p>
 
+            {summary.calibration && (
+              // The calibration loop: this workspace's own finished projects
+              // moved the number, and the panel says by how much and on what.
+              <p
+                data-testid="calibration-note"
+                className="rounded-lg border border-[var(--color-blueprint-accent)]/30 bg-[var(--color-blueprint-accent)]/5 px-3 py-2 leading-relaxed text-[var(--color-blueprint-accent)]"
+              >
+                {calibrationSentence(summary.calibration)}.{" "}
+                <span className="text-blueprint-muted">
+                  {summary.calibration.source === "workspace"
+                    ? "Measured from what those projects actually took against what was estimated for them"
+                    : "Measured from the shared pool your workspace opted into"}{" "}
+                  ({summary.calibration.confidence} confidence).
+                </span>
+              </p>
+            )}
+
             {summary.basis.length > 0 && (
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
@@ -225,7 +243,11 @@ export function EffortSummaryPanel({
               <Row term="Domain multiplier" value={`×${summary.domain_multiplier}`} />
               <Row
                 term="Total points"
-                value={`${summary.total_points} (base × multiplier, summed)`}
+                value={
+                  summary.calibration
+                    ? `${summary.total_points} (base × multiplier × calibration, summed)`
+                    : `${summary.total_points} (base × multiplier, summed)`
+                }
               />
               <Row
                 term="Velocity"

@@ -17,6 +17,7 @@ import {
 } from "@/app/api/projects/[id]/route";
 import { POST as duplicateRoute } from "@/app/api/projects/[id]/duplicate/route";
 import { GET as exportRoute } from "@/app/api/projects/[id]/export/route";
+import { POST as actualsRoute } from "@/app/api/projects/[id]/actuals/route";
 import { getDatabase } from "@/lib/db/client";
 import {
   authSessions,
@@ -185,6 +186,20 @@ const ROUTES: Record<string, (cookie: string) => Promise<NextResponse>> = {
       }),
       params,
     ),
+  "POST /api/projects/:id/actuals": (cookie) =>
+    actualsRoute(
+      req(`/api/projects/${PROJECT_ID}/actuals`, {
+        method: "POST",
+        cookie,
+        body: JSON.stringify({
+          actualWeeks: 10,
+          actualTeamSize: 3,
+          scopeAccuracy: 4,
+          modules: [],
+        }),
+      }),
+      params,
+    ),
   "PATCH /api/projects/:id": (cookie) =>
     renameProjectRoute(
       req(`/api/projects/${PROJECT_ID}`, {
@@ -240,6 +255,7 @@ const WRITE_ROUTES = [
   "POST /api/session/:id/answer",
   "POST /api/session/:id/describe",
   "POST /api/session/:id/clarify",
+  "POST /api/projects/:id/actuals",
   "PATCH /api/projects/:id",
   "POST /api/finalize",
   "POST /api/share",
