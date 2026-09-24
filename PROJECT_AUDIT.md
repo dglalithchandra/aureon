@@ -79,6 +79,7 @@ key, the auth credentials and the queue that DB-01 / AUTH-01 depend on.
 - Check the mobile pipeline panel in a real browser.
 - Put `GEMINI_API_KEY` in the Vercel environment (and in `.env.local` locally); check the free tier's rate limits at https://aistudio.google.com/rate-limit and set `LLM_DAILY_CALL_LIMIT` to match if 2000 calls/day is not right.
 - Self-hosting (not Vercel) needs a reverse proxy that appends the client IP to `X-Forwarded-For`; otherwise the rate-limit key can be spoofed.
+- Optional, and unset by default: point `ERROR_WEBHOOK_URL` at a Sentry ingest proxy, a Slack hook or a log drain to receive unhandled failures (OBS-01). Without it they are logged and nothing leaves the server.
 - Run `npx tsx scripts/measure-confidence.ts` with a real API key (about 50 Gemini calls) and record the before/after spread of the score, to close ARCH-01.
 - Review the draft labels in `evals/LABELS.md` (correct the case files, set `"label_status": "reviewed"`), then run `npm run evals` with a real key (about 90 Gemini calls, 15-30 minutes on the free tier) to produce the first real report and adjust `evals/targets.json` against that baseline.
 - Create an Upstash QStash project and set `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY` and `QSTASH_NEXT_SIGNING_KEY` in Vercel (Production and Preview). Enable "Protection Bypass for Automation" for protected previews. Then run `test-flow.ts --runs=10` against the preview to close OPS-01.
