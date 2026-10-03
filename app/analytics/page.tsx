@@ -34,17 +34,29 @@ export const metadata = {
  * Everything here is this workspace's own data. The shared pool, when the
  * workspace has opted into it, appears only as counts and ratios.
  */
-export default async function AnalyticsPage(): Promise<React.ReactElement> {
+export default async function AnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ workspace?: string }>;
+}): Promise<React.ReactElement> {
   const viewer = await getViewerFromCookies();
   if (!viewer.userId) return <SignedOut />;
 
   const db = getDatabase();
+  // Every workspace this person belongs to, not just the first one: the
+  // page used to pick memberships[0] and say nothing about the rest.
   const memberships = await db
-    .select({ workspaceId: workspaceMembers.workspaceId })
+    .select({ id: workspaces.id, name: workspaces.name })
     .from(workspaceMembers)
-    .where(eq(workspaceMembers.userId, viewer.userId));
-  const workspaceId = memberships[0]?.workspaceId ?? null;
-  if (!workspaceId) return <Empty />;
+    .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
+    .where(eq(workspaceMembers.userId, viewer.userId))
+    .orderBy(workspaces.name);
+  if (memberships.length === 0) return <Empty />;
+
+  const asked = (await searchParams).workspace;
+  // An id in the URL is honoured only if this person is in that workspace.
+  const chosen = memberships.find((m) => m.id === asked) ?? memberships[0]!;
+  const workspaceId = chosen.id;
 
   const [workspace] = await db
     .select({ name: workspaces.name, shareCalibration: workspaces.shareCalibration })
@@ -75,6 +87,28 @@ export default async function AnalyticsPage(): Promise<React.ReactElement> {
         <h1 className="text-blueprint-text font-display text-3xl font-bold sm:text-4xl">
           Estimate accuracy
         </h1>
+        {memberships.length > 1 && (
+          <nav
+            aria-label="Workspace"
+            className="flex flex-wrap items-center gap-2 pt-1"
+            data-testid="workspace-switcher"
+          >
+            {memberships.map((m) => (
+              <Link
+                key={m.id}
+                href={`/analytics?workspace=${m.id}`}
+                aria-current={m.id === workspaceId ? "page" : undefined}
+                className={
+                  m.id === workspaceId
+                    ? "rounded-full border border-[var(--color-blueprint-accent)] bg-[var(--color-blueprint-accent)]/10 px-3 py-1 text-xs text-[var(--color-blueprint-accent)]"
+                    : "border-blueprint-line/30 text-blueprint-muted hover:text-blueprint-text rounded-full border px-3 py-1 text-xs"
+                }
+              >
+                {m.name}
+              </Link>
+            ))}
+          </nav>
+        )}
         <p className="text-blueprint-muted text-sm leading-relaxed">
           {records.length === 0
             ? "Nothing recorded yet. When a project finishes, open its version history and record what it actually took."

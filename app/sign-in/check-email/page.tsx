@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { connection } from "next/server";
+
+/**
+ * Never cached, always rendered for the request that asked for it. The
+ * strict CSP puts a fresh nonce on every script tag (SEC-03), and a page
+ * served from the full route cache would carry the nonce of whoever
+ * rendered it first — which matches no later response's header, so every
+ * script on it is blocked. `connection()` alone did not prevent that.
+ */
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Check your email — Aureon",
@@ -10,8 +18,7 @@ export const metadata = {
  * Where Auth.js sends the browser after a magic link goes out. Rendered per
  * request so its scripts can carry the CSP nonce (SEC-03).
  */
-export default async function CheckEmailPage(): Promise<React.ReactElement> {
-  await connection();
+export default function CheckEmailPage(): React.ReactElement {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-4 px-4 py-16">
       <h1 className="text-blueprint-text font-display text-3xl font-bold">

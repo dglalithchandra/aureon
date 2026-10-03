@@ -52,14 +52,20 @@ export function ActualsForm({
   );
   const [accuracy, setAccuracy] = useState(existing?.scopeAccuracy ?? 3);
   const [note, setNote] = useState(existing?.note ?? "");
-  const [rows, setRows] = useState<ActualModule[]>(() =>
-    modules.map((m, i) => ({
-      name: m.name,
-      estimatedSize: m.estimatedSize,
-      actualSize: existing?.modules[i]?.actualSize ?? m.estimatedSize,
-      actualSprints: existing?.modules[i]?.actualSprints ?? 0,
-    })),
-  );
+  const [rows, setRows] = useState<ActualModule[]>(() => {
+    // Matched by name, not by position: the scope's module list can change
+    // between one recording and the next, and row 3 is not a module.
+    const previous = new Map(existing?.modules.map((m) => [m.name, m]) ?? []);
+    return modules.map((m) => {
+      const was = previous.get(m.name);
+      return {
+        name: m.name,
+        estimatedSize: m.estimatedSize,
+        actualSize: was?.actualSize ?? m.estimatedSize,
+        actualSprints: was?.actualSprints ?? 0,
+      };
+    });
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);

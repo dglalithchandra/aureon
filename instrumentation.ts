@@ -22,6 +22,7 @@ export async function register(): Promise<void> {
   // (tests/helpers/db.ts) and booting a second one would fight it for the
   // .pglite directory.
   if (process.env.VITEST) return;
+  warnAboutFreeModels();
   if (!process.env.DATABASE_URL) await startLocalDatabase();
 }
 
@@ -54,4 +55,20 @@ async function startLocalDatabase(): Promise<void> {
       message: err instanceof Error ? err.message : "unknown",
     });
   }
+}
+
+/**
+ * Say out loud which model is answering. Production refuses OpenRouter's
+ * free models without ALLOW_FREE_MODELS=1 (PRIV-01), so a developer whose
+ * `.env.local` still points there should hear about it here rather than at
+ * deploy time.
+ */
+function warnAboutFreeModels(): void {
+  if (process.env.LLM_PROVIDER !== "openrouter") return;
+  // console, not the logger: this runs before anything else is wired up.
+  console.warn(
+    "[aureon] LLM_PROVIDER=openrouter — free third-party models, fine for " +
+      "local work. Production refuses this unless ALLOW_FREE_MODELS=1; set " +
+      "GEMINI_API_KEY and drop LLM_PROVIDER to deploy.",
+  );
 }

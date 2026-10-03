@@ -12,6 +12,22 @@
  * GitHub's avatar and raw hosts for images. The model and GitHub APIs are
  * called from the server and never appear here.
  *
+ * One known limit, measured against a real production build. A page Next
+ * serves from its own response cache keeps the nonce it was rendered with,
+ * while this policy is rebuilt per request — so the two do not match and
+ * that page's scripts are blocked. It affects only pages with no
+ * request-dependent data: `/privacy`, `/terms` and the 404 for a URL that
+ * matches no route. They arrive as correct server-rendered HTML with
+ * working links and no hydration. Every page that renders data — the
+ * landing page, the chat, a scope, a share link, the projects list — is
+ * rendered per request and matches. `force-dynamic`, `connection()`,
+ * `headers()`, `searchParams` and a proxy rewrite to a dynamic page were
+ * each tried on Next 16.3.5 and none stopped the caching; the alternative
+ * is dropping the nonce and allowing inline scripts everywhere, which is
+ * the thing SEC-03 was about. To re-measure: build, `next start`, then
+ * compare the `nonce-` in the response header with the first `nonce="` in
+ * the body for each page.
+ *
  * `'unsafe-eval'` is development only: React uses `eval` there to rebuild
  * server stacks in the browser. Neither React nor Next needs it in a
  * production build, so it is not granted in one.

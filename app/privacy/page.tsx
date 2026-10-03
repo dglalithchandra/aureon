@@ -2,6 +2,15 @@ import Link from "next/link";
 import { DEFAULT_RAW_INPUT_RETENTION_DAYS } from "@/lib/db/schema";
 import { SHARE_EXPIRY_DAYS } from "@/lib/db/schema";
 
+/**
+ * Never cached, always rendered for the request that asked for it. The
+ * strict CSP puts a fresh nonce on every script tag (SEC-03), and a page
+ * served from the full route cache would carry the nonce of whoever
+ * rendered it first — which matches no later response's header, so every
+ * script on it is blocked. `connection()` alone did not prevent that.
+ */
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Privacy — Aureon",
   description: "What Aureon does with the text you paste, and who else sees it.",
@@ -55,6 +64,10 @@ const SUBPROCESSORS = [
   },
 ];
 
+/**
+ * Rendered per request: a page built before the request exists has no CSP
+ * nonce, so its scripts are blocked and the page arrives unhydrated.
+ */
 export default function PrivacyPage(): React.ReactElement {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-12 sm:py-16">

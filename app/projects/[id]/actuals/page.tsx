@@ -5,9 +5,8 @@ import { getViewerFromCookies } from "@/lib/auth/viewer";
 import { getSession } from "@/lib/storage/session";
 import { projectTitle } from "@/lib/projects/list";
 import { latestVersion } from "@/lib/versions/store";
-import { projectRecord } from "@/lib/calibration/store";
+import { projectActualsDetail } from "@/lib/calibration/store";
 import { ActualsForm } from "@/components/projects/ActualsForm";
-import type { StoredActuals } from "@/lib/schemas/actuals";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,7 +40,7 @@ export default async function ActualsPage({
     getSession(id),
     projectTitle(id),
     latestVersion(id),
-    projectRecord(id),
+    projectActualsDetail(id),
   ]);
 
   const output = session?.final_output;
@@ -89,36 +88,9 @@ export default async function ActualsPage({
             name: m.name,
             estimatedSize: m.size,
           }))}
-          existing={toStored(existing, id)}
+          existing={existing}
         />
       )}
     </main>
   );
-}
-
-function toStored(
-  record: Awaited<ReturnType<typeof projectRecord>>,
-  projectId: string,
-): StoredActuals | null {
-  if (!record) return null;
-  return {
-    projectId,
-    domain: record.domain,
-    actualWeeks: record.actualWeeks,
-    actualTeamSize: record.actualTeamSize,
-    scopeAccuracy: record.scopeAccuracy,
-    note: "",
-    modules: record.modules.map((m) => ({
-      name: "",
-      estimatedSize: m.estimatedSize,
-      actualSize: m.actualSize,
-      actualSprints: m.actualSprints,
-    })),
-    estimatedSprints: record.estimatedSprints,
-    estimatedPoints: record.estimatedPoints,
-    estimatedTeamSize: record.estimatedTeamSize,
-    estimatedVelocity: record.estimatedVelocity,
-    domainMultiplier: record.domainMultiplier,
-    recordedAt: record.recordedAt.getTime(),
-  };
 }

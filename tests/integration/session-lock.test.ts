@@ -191,4 +191,21 @@ describe("lock TTL", () => {
     }
     expect(SESSION_LOCK_TTL_SECONDS).toBe(JOB_MAX_DURATION_SECONDS + 30);
   });
+
+  /**
+   * A route that gives itself a timeout has to outlive it on the platform:
+   * Vercel's default is 10 s (Hobby) or 15 s (Pro), and the extractor alone
+   * allows 20 s for a large PDF.
+   */
+  it("gives every route that waits on work a maxDuration of its own", () => {
+    const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as {
+      functions: Record<string, { maxDuration: number }>;
+    };
+    for (const route of [
+      "app/api/import/route.ts",
+      "app/api/projects/[id]/export/route.ts",
+    ]) {
+      expect(vercel.functions[route]?.maxDuration ?? 0).toBeGreaterThanOrEqual(60);
+    }
+  });
 });

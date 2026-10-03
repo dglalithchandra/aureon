@@ -27,6 +27,12 @@
     },
     "app/api/cron/retention/route.ts": {
       "maxDuration": 300
+    },
+    "app/api/import/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/projects/[id]/export/route.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [

@@ -1,5 +1,14 @@
 import Link from "next/link";
 
+/**
+ * Never cached, always rendered for the request that asked for it. The
+ * strict CSP puts a fresh nonce on every script tag (SEC-03), and a page
+ * served from the full route cache would carry the nonce of whoever
+ * rendered it first — which matches no later response's header, so every
+ * script on it is blocked. `connection()` alone did not prevent that.
+ */
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Terms — Aureon",
   description: "The terms of using Aureon, and what it does not promise.",
@@ -9,6 +18,10 @@ export const metadata = {
  * Terms of use (PRIV-01). Short, and honest about what a generated scope is
  * and is not: a starting point produced by a language model, not a
  * professional estimate anyone should sign a contract against unread.
+ */
+/**
+ * Rendered per request: a page built before the request exists has no CSP
+ * nonce, so its scripts are blocked and the page arrives unhydrated.
  */
 export default function TermsPage(): React.ReactElement {
   return (

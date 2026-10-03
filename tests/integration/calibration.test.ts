@@ -21,6 +21,7 @@ import { getSession, putSession } from "@/lib/storage/session";
 import { recordVersion, lockVersion } from "@/lib/versions/store";
 import {
   calibrationFor,
+  projectActualsDetail,
   sharedPool,
   workspaceFactors,
   workspaceRecords,
@@ -245,6 +246,43 @@ describe("recording actuals", () => {
       const res = await postActuals(post(PROJECT, actualsBody(bad)), params(PROJECT));
       expect(res.status).toBe(400);
     }
+  });
+
+  it("reads the note and the module names back for its own workspace", async () => {
+    await approvedProject({
+      id: PROJECT,
+      workspaceId: await makeWorkspace("Acme"),
+      moduleName: SECRET_MODULE,
+    });
+    await postActuals(post(PROJECT, actualsBody()), params(PROJECT));
+
+    const detail = await projectActualsDetail(PROJECT);
+    expect(detail?.note).toBe(SECRET_NOTE);
+    expect(detail?.modules[0]?.name).toBe(SECRET_MODULE);
+  });
+
+  it("does not wipe the note when the record is updated from the form", async () => {
+    await approvedProject({ id: PROJECT, workspaceId: await makeWorkspace("Acme") });
+    await postActuals(post(PROJECT, actualsBody()), params(PROJECT));
+
+    // What the form would send back: whatever the GET handed it.
+    const res = await getActuals(
+      new NextRequest(`http://localhost/api/projects/${PROJECT}/actuals`, {
+        headers: { cookie: `${OWNER_COOKIE_NAME}=${buildOwnerCookie(OWNER).value}` },
+      }),
+      params(PROJECT),
+    );
+    const { actuals } = (await res.json()) as {
+      actuals: { note: string; modules: Array<{ name: string }> };
+    };
+    expect(actuals.note).toBe(SECRET_NOTE);
+    expect(actuals.modules[0]?.name).toBe(SECRET_MODULE);
+
+    await postActuals(
+      post(PROJECT, { ...actualsBody(), note: actuals.note, actualWeeks: 14 }),
+      params(PROJECT),
+    );
+    expect((await projectActualsDetail(PROJECT))?.note).toBe(SECRET_NOTE);
   });
 
   it("reads back what was recorded", async () => {

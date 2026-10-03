@@ -11,7 +11,7 @@ import {
   type Calibration,
   type CalibrationFactors,
 } from "@/lib/calibration/factors";
-import { ActualsModulesSchema } from "@/lib/schemas/actuals";
+import { ActualsModulesSchema, type StoredActuals } from "@/lib/schemas/actuals";
 
 /**
  * Reading the recorded actuals, and turning them into the factors the
@@ -61,6 +61,40 @@ export async function workspaceRecords(workspaceId: string): Promise<ActualRecor
     .from(projectActuals)
     .where(eq(projectActuals.workspaceId, workspaceId));
   return rows.map(toRecord).filter((r): r is ActualRecord => r !== null);
+}
+
+/**
+ * One project's record as its own workspace may read it: the note and the
+ * module names included, because those never left the workspace in the
+ * first place. `projectRecord` below is the numbers-only view the maths and
+ * the shared pool use; this one is for the form that wrote the record.
+ */
+export async function projectActualsDetail(
+  projectId: string,
+): Promise<StoredActuals | null> {
+  const [row] = await getDatabase()
+    .select()
+    .from(projectActuals)
+    .where(eq(projectActuals.projectId, projectId))
+    .limit(1);
+  if (!row) return null;
+
+  const modules = ActualsModulesSchema.safeParse(row.modules);
+  return {
+    projectId: row.projectId,
+    domain: row.domain,
+    actualWeeks: row.actualWeeks,
+    actualTeamSize: row.actualTeamSize,
+    scopeAccuracy: row.scopeAccuracy,
+    note: row.note ?? "",
+    modules: modules.success ? modules.data : [],
+    estimatedSprints: row.estimatedSprints,
+    estimatedPoints: row.estimatedPoints,
+    estimatedTeamSize: row.estimatedTeamSize,
+    estimatedVelocity: row.estimatedVelocity,
+    domainMultiplier: row.domainMultiplier,
+    recordedAt: row.updatedAt.getTime(),
+  };
 }
 
 /** The recorded actuals for one project, or null. */

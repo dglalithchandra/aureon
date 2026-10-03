@@ -7,8 +7,8 @@ import { getDatabase } from "@/lib/db/client";
 import { auditLog, projectActuals } from "@/lib/db/schema";
 import { getSession } from "@/lib/storage/session";
 import { latestVersion } from "@/lib/versions/store";
-import { RecordActualsSchema, type StoredActuals } from "@/lib/schemas/actuals";
-import { projectRecord } from "@/lib/calibration/store";
+import { RecordActualsSchema } from "@/lib/schemas/actuals";
+import { projectActualsDetail } from "@/lib/calibration/store";
 import {
   jsonError,
   readJsonBody,
@@ -43,30 +43,9 @@ export async function GET(
   try {
     const gate = await authorise(req, id, "read");
     if (gate instanceof NextResponse) return gate;
-    const record = await projectRecord(id);
-    if (!record) return NextResponse.json({ actuals: null });
-
-    const actuals: StoredActuals = {
-      projectId: record.projectId,
-      domain: record.domain,
-      actualWeeks: record.actualWeeks,
-      actualTeamSize: record.actualTeamSize,
-      scopeAccuracy: record.scopeAccuracy,
-      note: "",
-      modules: record.modules.map((m) => ({
-        name: "",
-        estimatedSize: m.estimatedSize,
-        actualSize: m.actualSize,
-        actualSprints: m.actualSprints,
-      })),
-      estimatedSprints: record.estimatedSprints,
-      estimatedPoints: record.estimatedPoints,
-      estimatedTeamSize: record.estimatedTeamSize,
-      estimatedVelocity: record.estimatedVelocity,
-      domainMultiplier: record.domainMultiplier,
-      recordedAt: record.recordedAt.getTime(),
-    };
-    return NextResponse.json({ actuals });
+    // The whole record, note and module names included: this is the
+    // workspace reading back what it wrote.
+    return NextResponse.json({ actuals: await projectActualsDetail(id) });
   } catch (err) {
     return jsonError(err, 500, req);
   }
