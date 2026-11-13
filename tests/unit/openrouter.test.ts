@@ -98,10 +98,8 @@ describe("OpenRouter adapter", () => {
     await create();
     const init = fetchMock.mock.calls[0]?.[1];
     const body = JSON.parse(String(init?.body)) as {
-      parallel_tool_calls?: boolean;
       provider?: { require_parameters?: boolean };
     };
-    expect(body.parallel_tool_calls).toBe(false);
     expect(body.provider?.require_parameters).toBe(true);
   });
 

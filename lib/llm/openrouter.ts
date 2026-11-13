@@ -275,7 +275,6 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
     messages,
     tools: convertTools(params.tools),
     tool_choice: convertToolChoice(params.tool_choice),
-    parallel_tool_calls: false,
     // Do not silently route to an endpoint that drops tool_choice or tools.
     provider: { require_parameters: true },
   };
