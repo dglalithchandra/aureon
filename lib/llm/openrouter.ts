@@ -268,10 +268,9 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
     model,
     max_tokens: params.max_tokens,
     temperature: params.temperature ?? 0.2,
-    // The pipeline needs a validated tool payload, not a long hidden chain of
-    // thought. Disabling optional reasoning keeps free models within the
-    // request deadline and leaves more output budget for the tool arguments.
-    reasoning_effort: "none",
+    // Some free endpoints require reasoning. Keep it at the lowest supported
+    // level so the validated tool payload still receives most of the budget.
+    reasoning_effort: "low",
     messages,
     tools: convertTools(params.tools),
     tool_choice: convertToolChoice(params.tool_choice),

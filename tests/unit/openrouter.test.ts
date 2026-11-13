@@ -85,12 +85,12 @@ describe("OpenRouter adapter", () => {
     expect(OPENROUTER_TIMEOUT_MS).toBe(45_000);
   });
 
-  it("disables optional reasoning for structured pipeline calls", async () => {
+  it("uses the lowest reasoning effort for structured pipeline calls", async () => {
     const fetchMock = stubFetch(openAiReply("tool_calls"));
     await create();
     const init = fetchMock.mock.calls[0]?.[1];
     const body = JSON.parse(String(init?.body)) as { reasoning_effort?: string };
-    expect(body.reasoning_effort).toBe("none");
+    expect(body.reasoning_effort).toBe("low");
   });
 
   it("requires an endpoint that supports all requested tool parameters", async () => {
