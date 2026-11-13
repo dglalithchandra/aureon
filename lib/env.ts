@@ -73,6 +73,13 @@ const serverSchema = z
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(10).optional(),
     /**
+     * Vercel's native Upstash integration currently exposes the same REST
+     * credentials under KV_* names. Accept those names and normalize them to
+     * UPSTASH_REDIS_* in getServerEnv() so the storage layer stays portable.
+     */
+    KV_REST_API_URL: z.string().url().optional(),
+    KV_REST_API_TOKEN: z.string().min(10).optional(),
+    /**
      * Set to 1 to run production without Upstash (DATA-01). Sessions, shares,
      * locks and rate limits then live in one process's memory, so this is
      * only safe for a single long-running instance (e.g. local next start).
@@ -164,7 +171,10 @@ const serverSchema = z
     if (
       data.NODE_ENV === "production" &&
       data.ALLOW_MEMORY_STORE !== "1" &&
-      !(data.UPSTASH_REDIS_REST_URL && data.UPSTASH_REDIS_REST_TOKEN)
+      !(
+        (data.UPSTASH_REDIS_REST_URL ?? data.KV_REST_API_URL) &&
+        (data.UPSTASH_REDIS_REST_TOKEN ?? data.KV_REST_API_TOKEN)
+      )
     ) {
       ctx.addIssue({
         code: "custom",
@@ -252,7 +262,13 @@ export function getServerEnv(): ServerEnv {
       .join("\n");
     throw new Error(`Invalid server environment:\n${issues}`);
   }
-  cachedServer = parsed.data;
+  cachedServer = {
+    ...parsed.data,
+    UPSTASH_REDIS_REST_URL:
+      parsed.data.UPSTASH_REDIS_REST_URL ?? parsed.data.KV_REST_API_URL,
+    UPSTASH_REDIS_REST_TOKEN:
+      parsed.data.UPSTASH_REDIS_REST_TOKEN ?? parsed.data.KV_REST_API_TOKEN,
+  };
   return cachedServer;
 }
 

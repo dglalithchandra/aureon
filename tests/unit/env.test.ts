@@ -53,6 +53,21 @@ describe("production storage requirement", () => {
     await expect(register()).resolves.toBeUndefined();
   });
 
+  it("normalizes Vercel's native KV variable names", async () => {
+    production();
+    vi.stubEnv("KV_REST_API_URL", "https://example.upstash.io");
+    vi.stubEnv("KV_REST_API_TOKEN", "test-token-0000000000");
+    const { getServerEnv, register } = await load();
+
+    expect(getServerEnv().UPSTASH_REDIS_REST_URL).toBe(
+      "https://example.upstash.io",
+    );
+    expect(getServerEnv().UPSTASH_REDIS_REST_TOKEN).toBe(
+      "test-token-0000000000",
+    );
+    await expect(register()).resolves.toBeUndefined();
+  });
+
   it("starts on memory storage only when ALLOW_MEMORY_STORE=1", async () => {
     production();
     vi.stubEnv("ALLOW_MEMORY_STORE", "1");
