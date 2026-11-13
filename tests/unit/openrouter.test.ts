@@ -55,6 +55,13 @@ function create() {
   });
 }
 
+function contentReply(content: string) {
+  return {
+    id: "gen-content",
+    choices: [{ finish_reason: "stop", message: { role: "assistant", content } }],
+  };
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -84,6 +91,44 @@ describe("OpenRouter adapter", () => {
     const init = fetchMock.mock.calls[0]?.[1];
     const body = JSON.parse(String(init?.body)) as { reasoning_effort?: string };
     expect(body.reasoning_effort).toBe("none");
+  });
+
+  it("requires an endpoint that supports all requested tool parameters", async () => {
+    const fetchMock = stubFetch(openAiReply("tool_calls"));
+    await create();
+    const init = fetchMock.mock.calls[0]?.[1];
+    const body = JSON.parse(String(init?.body)) as {
+      parallel_tool_calls?: boolean;
+      provider?: { require_parameters?: boolean };
+    };
+    expect(body.parallel_tool_calls).toBe(false);
+    expect(body.provider?.require_parameters).toBe(true);
+  });
+
+  it("unwraps a tool-call envelope returned in message content", async () => {
+    stubFetch(
+      contentReply(
+        JSON.stringify({
+          name: "extract_modules",
+          arguments: JSON.stringify({ modules: ["Auth"] }),
+        }),
+      ),
+    );
+    const message = await create();
+    expect(message.content[0]).toEqual(
+      expect.objectContaining({
+        type: "tool_use",
+        name: "extract_modules",
+        input: { modules: ["Auth"] },
+      }),
+    );
+  });
+
+  it("surfaces an OpenRouter error body when a 200 response has no choices", async () => {
+    stubFetch({ error: { code: 429, message: "Free model rate limit reached" } });
+    await expect(create()).rejects.toThrow(
+      "OpenRouter returned no choices: Free model rate limit reached",
+    );
   });
 
   it("selects separate credentials for main and fast tiers", async () => {

@@ -28,7 +28,10 @@ import {
 
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
-const DEFAULT_MODEL = "openrouter/free";
+// A pinned free model is more deterministic than `openrouter/free`, which can
+// select a different provider for the repair retry. This model advertises both
+// forced tool choice and structured-output support in OpenRouter's model API.
+const DEFAULT_MODEL = "baidu/ernie-5.5-flash-preview:free";
 
 interface OpenAiTool {
   type: "function";
@@ -58,6 +61,10 @@ interface OpenAiResponse {
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
+  };
+  error?: {
+    code?: number | string;
+    message?: string;
   };
 }
 
@@ -124,6 +131,54 @@ function recoverToolJson(text: string | null | undefined): unknown {
     }
   }
   return null;
+}
+
+/**
+ * Some OpenRouter free models print an OpenAI-style tool-call envelope in
+ * `message.content` instead of populating `message.tool_calls`. Unwrap the
+ * common envelopes before handing the input to the pipeline schema.
+ */
+function unwrapRecoveredToolInput(value: unknown, expectedTool: string): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+
+  if (record.name === expectedTool && "arguments" in record) {
+    return parseJsonString(record.arguments);
+  }
+
+  const fn = record.function;
+  if (fn && typeof fn === "object" && !Array.isArray(fn)) {
+    const functionRecord = fn as Record<string, unknown>;
+    if (functionRecord.name === expectedTool && "arguments" in functionRecord) {
+      return parseJsonString(functionRecord.arguments);
+    }
+  }
+
+  const calls = record.tool_calls;
+  if (Array.isArray(calls)) {
+    for (const call of calls) {
+      if (!call || typeof call !== "object" || Array.isArray(call)) continue;
+      const callRecord = call as Record<string, unknown>;
+      const callFn = callRecord.function;
+      if (!callFn || typeof callFn !== "object" || Array.isArray(callFn)) continue;
+      const functionRecord = callFn as Record<string, unknown>;
+      if (functionRecord.name === expectedTool && "arguments" in functionRecord) {
+        return parseJsonString(functionRecord.arguments);
+      }
+    }
+  }
+
+  if (expectedTool in record) return parseJsonString(record[expectedTool]);
+  return value;
+}
+
+function parseJsonString(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -212,7 +267,7 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
   const body = {
     model,
     max_tokens: params.max_tokens,
-    temperature: 0.2,
+    temperature: params.temperature ?? 0.2,
     // The pipeline needs a validated tool payload, not a long hidden chain of
     // thought. Disabling optional reasoning keeps free models within the
     // request deadline and leaves more output budget for the tool arguments.
@@ -220,6 +275,9 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
     messages,
     tools: convertTools(params.tools),
     tool_choice: convertToolChoice(params.tool_choice),
+    parallel_tool_calls: false,
+    // Do not silently route to an endpoint that drops tool_choice or tools.
+    provider: { require_parameters: true },
   };
 
   // Free OpenRouter routes drop connections often and rate-limit upstream, so we
@@ -249,7 +307,8 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
   const choice = data.choices?.[0];
   const message = choice?.message;
   if (!message) {
-    throw new Error("OpenRouter returned no choices");
+    const detail = data.error?.message?.trim();
+    throw new Error(detail ? `OpenRouter returned no choices: ${detail}` : "OpenRouter returned no choices");
   }
 
   // Build the content blocks. We map every tool_call to a
@@ -281,7 +340,7 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
         type: "tool_use",
         id: cryptoRandomId(),
         name: expectedTool,
-        input: recovered,
+        input: unwrapRecoveredToolInput(recovered, expectedTool),
       });
     } else if (message.content) {
       content.push({ type: "text", text: message.content });
