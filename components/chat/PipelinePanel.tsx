@@ -115,11 +115,12 @@ function buildSteps(
     if (id === "score" && init.score === "done") {
       detail = (
         <p>
-          Confidence:{" "}
+          Scope confidence:{" "}
           <span className="text-blueprint-text">
-            {lastRound.extraction.confidence}/100
+            {session.current_confidence}/100
           </span>
-          . Blocker: {lastRound.extraction.blocker ? "yes" : "no"}.
+          . AI clarity read: {lastRound.extraction.confidence}/100. Blocker:{" "}
+          {lastRound.extraction.blocker ? "yes" : "no"}.
         </p>
       );
     }

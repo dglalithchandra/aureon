@@ -22,8 +22,13 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** How many scopes a browser may keep without an account. */
-const ANONYMOUS_PROJECT_LIMIT = 1;
+/**
+ * How many scopes a browser may keep without an account. Production and the
+ * test suite enforce the product limit. Local development permits repeated
+ * physical test runs without making the developer clear an HttpOnly owner
+ * cookie or create an account after every scope.
+ */
+const ANONYMOUS_PROJECT_LIMIT = process.env.NODE_ENV === "development" ? 25 : 1;
 
 /**
  * Create a session owned by this browser (BUG-03), or by the signed-in user

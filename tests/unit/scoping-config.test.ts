@@ -61,6 +61,11 @@ describe("SCOPING config", () => {
     expect(parameterWeight("P-04")).toBe(3.5);
     expect(parameterWeight("P-09")).toBe(1);
   });
+
+  it("makes coverage dominant and treats disagreement as a penalty", () => {
+    expect(SCOPING.scoreWeights).toEqual({ coverage: 0.75, quality: 0.25 });
+    expect(SCOPING.disagreementPenalty).toBe(0.15);
+  });
 });
 
 describe("blocker invariant uses SCOPING.blockerCap", () => {
@@ -75,11 +80,12 @@ describe("blocker invariant uses SCOPING.blockerCap", () => {
     expect(ExtractionResultStrictSchema.safeParse(blocked(40)).success).toBe(true);
   });
 
-  it("keeps the model's clarity read and caps the score instead (ARCH-01)", () => {
+  it("keeps the model's clarity read while the cap remains a ceiling (ARCH-01)", () => {
     const result = ExtractionResultStrictSchema.safeParse(blocked(55));
     expect(result.success).toBe(true);
     expect(result.data?.confidence).toBe(55);
-    expect(computeConfidence(result.data!).score).toBe(SCOPING.blockerCap);
+    expect(computeConfidence(result.data!).score).toBe(29);
+    expect(computeConfidence(result.data!).cap).toBe(SCOPING.blockerCap);
   });
 
   it("forces blocker=true when P-01 or P-03 is MISSING", () => {

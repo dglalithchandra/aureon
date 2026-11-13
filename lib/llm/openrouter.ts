@@ -163,9 +163,13 @@ async function fetchWithRetry(
         ...init,
         signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
       });
-      if (res.ok || !RETRYABLE_STATUS.has(res.status)) return res;
-      // Retryable status — consume body so the socket frees, then back off.
-      await res.text().catch(() => undefined);
+      // Read the body inside the retry boundary. A provider can send headers
+      // and then stall while streaming the body; that timeout must be retried
+      // just like a timeout waiting for headers.
+      const text = await res.text();
+      if (res.ok || !RETRYABLE_STATUS.has(res.status)) {
+        return new Response(text, { status: res.status, headers: res.headers });
+      }
       lastErr = new Error(`OpenRouter ${res.status}`);
     } catch (err) {
       lastErr = err; // network-level failure ("fetch failed")
@@ -188,11 +192,14 @@ async function fetchWithRetry(
 
 async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
   const env = getServerEnv();
-  const apiKey = env.OPENROUTER_API_KEY;
+  const apiKey =
+    params.tier === "fast"
+      ? (env.OPENROUTER_FAST_API_KEY ?? env.OPENROUTER_API_KEY)
+      : (env.OPENROUTER_MAIN_API_KEY ?? env.OPENROUTER_API_KEY);
   if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY is not configured");
+    throw new Error(`OpenRouter ${params.tier ?? "main"} API key is not configured`);
   }
-  const model = env.OPENROUTER_MODEL ?? DEFAULT_MODEL;
+  const model = params.model || env.OPENROUTER_MODEL || DEFAULT_MODEL;
 
   const messages: OpenAiMessage[] = [];
   const sys = systemText(params.system);
@@ -206,6 +213,10 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
     model,
     max_tokens: params.max_tokens,
     temperature: 0.2,
+    // The pipeline needs a validated tool payload, not a long hidden chain of
+    // thought. Disabling optional reasoning keeps free models within the
+    // request deadline and leaves more output budget for the tool arguments.
+    reasoning_effort: "none",
     messages,
     tools: convertTools(params.tools),
     tool_choice: convertToolChoice(params.tool_choice),

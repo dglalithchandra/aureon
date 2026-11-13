@@ -85,6 +85,7 @@ export async function runExtraction(
       toolName: submitExtractionTool.name,
       parse: (input) => ExtractionResultStrictSchema.safeParse(input),
       params: {
+        tier: "main",
         model: promptModel("main"),
         max_tokens: 4096,
         system: [{ type: "text", text: EXTRACTION_SYSTEM_PROMPT }],

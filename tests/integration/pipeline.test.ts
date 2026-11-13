@@ -57,7 +57,7 @@ describe("scoping pipeline (mock LLM)", () => {
     expect(session.status).toBe("awaiting_answers");
     expect(session.pipeline_stage).toBeNull();
     // Computed from the parameter states, not the model's number (ARCH-01).
-    expect(session.current_confidence).toBe(55);
+    expect(session.current_confidence).toBe(44);
     expect(session.rounds).toHaveLength(1);
 
     const round0 = session.rounds[0]!;
@@ -91,7 +91,7 @@ describe("scoping pipeline (mock LLM)", () => {
     session = await submitAnswers(session, answers);
 
     expect(session.status).toBe("ready");
-    expect(session.current_confidence).toBe(79);
+    expect(session.current_confidence).toBe(76);
     expect(session.rounds).toHaveLength(2);
     expect(session.rounds[0]!.answers).toEqual(answers);
     expect(session.raw_input).toBe(RAW_INPUT);
@@ -108,7 +108,7 @@ describe("scoping pipeline (mock LLM)", () => {
     expect(extractionCalls[1]!.userText).toContain(
       "Custom: Field sales managers in three regions",
     );
-    // The score (79) is past the threshold, so no further questions were generated.
+    // The score (76) is past the threshold, so no further questions were generated.
     expect(mock.callsFor("generate_clarification_questions")).toHaveLength(1);
 
     // ── final output ────────────────────────────────────────────
@@ -117,7 +117,7 @@ describe("scoping pipeline (mock LLM)", () => {
     expect(FinalOutputSchema.safeParse(output).success).toBe(true);
     // The LLM fixture says score 12; the server must use the computed value.
     expect(output.client.confidence_badge).toEqual({
-      score: 79,
+      score: 76,
       breakdown: {
         coverage: 80,
         ai_clarity: 70,
@@ -131,7 +131,7 @@ describe("scoping pipeline (mock LLM)", () => {
     expect(mock.callsFor("submit_client_view")).toHaveLength(1);
     expect(mock.callsFor("submit_engineer_view")).toHaveLength(1);
     expect(mock.callsFor("submit_client_view")[0]?.userText).toContain(
-      "current_confidence: 79",
+      "current_confidence: 76",
     );
     expect(mock.calls).toHaveLength(5);
   });
@@ -208,7 +208,7 @@ describe("scoping pipeline: LLM failures", () => {
       blocker: true,
       confidence: 55,
     });
-    expect(session.current_confidence).toBe(40);
+    expect(session.current_confidence).toBe(29);
     expect(mock.callsFor("submit_extraction")).toHaveLength(1); // repaired, not retried
   });
 });

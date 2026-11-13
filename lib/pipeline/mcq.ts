@@ -80,6 +80,7 @@ export async function generateQuestions(
       toolName: generateQuestionsTool.name,
       parse: (input) => QuestionGenToolOutputSchema.safeParse(input),
       params: {
+        tier: "main",
         model: promptModel("main"),
         max_tokens: 2048,
         system: MCQ_SYSTEM_PROMPT,

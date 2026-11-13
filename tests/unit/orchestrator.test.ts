@@ -73,12 +73,12 @@ const THICK = extraction(
 
 describe("the fixtures score where these tests assume", () => {
   it.each([
-    [THIN, 56],
-    [THIN_PLUS, 57],
-    [THIN_PLUS_PLUS, 58],
-    [THICK, 62],
-    [extraction(allPresent(), 40), 70], // exactly the threshold
-    [extraction(allPresent(), 35), 68],
+    [THIN, 45],
+    [THIN_PLUS, 47],
+    [THIN_PLUS_PLUS, 49],
+    [THICK, 57],
+    [extraction(allPresent(), 24), 70], // exactly the threshold
+    [extraction(allPresent(), 23), 69],
   ])("scores %#", (ex, expected) => {
     expect(computeConfidence(ex).score).toBe(expected);
   });
@@ -86,7 +86,7 @@ describe("the fixtures score where these tests assume", () => {
 
 describe("shouldExit: confidence threshold", () => {
   it("exits once the computed score reaches 70", () => {
-    expect(shouldExit(makeSession(), extraction(allPresent(), 40))).toBe(true);
+    expect(shouldExit(makeSession(), extraction(allPresent(), 24))).toBe(true);
   });
 
   it("exits well above the threshold", () => {
@@ -94,7 +94,7 @@ describe("shouldExit: confidence threshold", () => {
   });
 
   it("keeps asking just below the threshold", () => {
-    expect(shouldExit(makeSession(), extraction(allPresent(), 35))).toBe(false);
+    expect(shouldExit(makeSession(), extraction(allPresent(), 23))).toBe(false);
   });
 
   it("ignores a model that claims 100 on a thin brief", () => {
@@ -119,13 +119,13 @@ describe("shouldExit: max rounds", () => {
 
 describe("shouldExit: diminishing returns", () => {
   it("exits when the last two gains are both below 4 points", () => {
-    const session = sessionOf(THIN, THIN_PLUS); // 56 → 57
-    expect(shouldExit(session, THIN_PLUS_PLUS)).toBe(true); // 57 → 58
+    const session = sessionOf(THIN, THIN_PLUS); // 45 → 47
+    expect(shouldExit(session, THIN_PLUS_PLUS)).toBe(true); // 47 → 49
   });
 
   it("continues when the earlier gain was large", () => {
-    const session = sessionOf(THIN, THICK); // 56 → 62
-    expect(shouldExit(session, THICK)).toBe(false); // 62 → 62
+    const session = sessionOf(THIN, THICK); // 45 → 57
+    expect(shouldExit(session, THICK)).toBe(false); // 57 → 57
   });
 
   it("needs two previous rounds before judging the trend", () => {
@@ -133,8 +133,8 @@ describe("shouldExit: diminishing returns", () => {
   });
 
   it("treats a falling score as diminishing", () => {
-    const session = sessionOf(THIN_PLUS_PLUS, THIN_PLUS); // 58 → 57
-    expect(shouldExit(session, THIN)).toBe(true); // 57 → 56
+    const session = sessionOf(THIN_PLUS_PLUS, THIN_PLUS); // 49 → 47
+    expect(shouldExit(session, THIN)).toBe(true); // 47 → 45
   });
 });
 

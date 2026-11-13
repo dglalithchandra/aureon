@@ -29,12 +29,19 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: "retain-on-failure",
     actionTimeout: 20_000,
+    // Local fallback when Playwright's managed browser download is
+    // unavailable. CI continues to use the pinned managed browser.
+    launchOptions: process.env.E2E_CHROME_PATH
+      ? { executablePath: process.env.E2E_CHROME_PATH }
+      : undefined,
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     command: "npx tsx scripts/e2e-server.ts",
     url: `${BASE_URL}/api/health`,
-    reuseExistingServer: !process.env.CI,
+    // Reusing a developer server can silently route tests through live keys,
+    // a real database and real GitHub. A busy port must fail loudly instead.
+    reuseExistingServer: false,
     timeout: 240_000,
     stdout: "pipe",
     stderr: "pipe",

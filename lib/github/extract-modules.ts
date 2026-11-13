@@ -72,6 +72,7 @@ export async function extractModulesFromReadme(
       toolName: extractModulesTool.name,
       parse: (input) => ExtractModulesToolOutputSchema.safeParse(input),
       params: {
+        tier: "fast",
         model: promptModel("fast"),
         max_tokens: 1024,
         system: SYSTEM_PROMPT,

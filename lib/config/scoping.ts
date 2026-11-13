@@ -35,7 +35,7 @@ export interface ScopingConfig {
   readonly maxRounds: number;
   /** Two consecutive confidence gains below this count as diminishing returns. */
   readonly diminishingDelta: number;
-  /** Confidence ceiling while a HIGH parameter (P-02, P-04) is MISSING. */
+  /** Confidence ceiling while the target users (P-02) are MISSING. */
   readonly criticalCap: number;
   /** Confidence ceiling while a BLOCKER parameter (P-01, P-03) is MISSING. */
   readonly blockerCap: number;
@@ -55,8 +55,9 @@ export interface ScopingConfig {
   readonly scoreWeights: {
     readonly coverage: number;
     readonly quality: number;
-    readonly consistency: number;
   };
+  /** Penalty applied to the absolute gap between coverage and the AI clarity read. */
+  readonly disagreementPenalty: number;
   /** Most the GitHub corroboration bonus can add to the score. */
   readonly githubBonusMax: number;
   /**
@@ -206,7 +207,8 @@ export const SCOPING: ScopingConfig = {
       "Other (describe)",
     ],
   },
-  scoreWeights: { coverage: 0.5, quality: 0.3, consistency: 0.2 },
+  scoreWeights: { coverage: 0.75, quality: 0.25 },
+  disagreementPenalty: 0.15,
   githubBonusMax: 5,
   domainModules: {
     saas: [

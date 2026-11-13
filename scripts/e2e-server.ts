@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import { rmSync } from "node:fs";
 import { createServer, type IncomingMessage } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { startMockLlm, type MockLlm } from "../tests/mocks/mock-llm";
 import { MOCK_TOOL_NAMES, type MockToolName } from "../tests/fixtures/llm";
 
@@ -19,7 +21,51 @@ import { MOCK_TOOL_NAMES, type MockToolName } from "../tests/fixtures/llm";
 
 const PORT = process.env.E2E_PORT ?? "3210";
 const CONTROL_PORT = Number(process.env.E2E_CONTROL_PORT ?? 3211);
-const PGLITE_DIR = ".pglite-e2e";
+// Keep the write-heavy disposable database outside the repository. Turbopack
+// watches the project tree, so a PGlite directory inside it repeatedly wakes
+// the file watcher and can turn a sub-second mocked request into minutes.
+const PGLITE_DIR = join(tmpdir(), "aureon-pglite-e2e");
+
+// Do not pass application configuration or credentials from the developer's
+// shell into the browser-test server. NODE_ENV=test also makes Next ignore
+// .env.local, so deleting these values is sufficient even when that file
+// contains live keys (see Next's environment-variable load order).
+const APP_ENV_KEYS = [
+  "ALLOW_FREE_MODELS",
+  "ALLOW_MEMORY_STORE",
+  "AUTH_GOOGLE_ID",
+  "AUTH_GOOGLE_SECRET",
+  "AUTH_SECRET",
+  "AUTH_URL",
+  "CRON_SECRET",
+  "DATABASE_URL",
+  "EMAIL_API_KEY",
+  "EMAIL_API_URL",
+  "EMAIL_FROM",
+  "GEMINI_API_KEY",
+  "GEMINI_BASE_URL",
+  "GEMINI_FAST_MODEL",
+  "GEMINI_MODEL",
+  "GITHUB_TOKEN",
+  "JOBS_BASE_URL",
+  "LLM_DAILY_CALL_LIMIT",
+  "LLM_FALLBACK_PROVIDER",
+  "LLM_FAST_PROVIDER",
+  "LLM_MAIN_PROVIDER",
+  "LLM_PROVIDER",
+  "OPENROUTER_API_KEY",
+  "OPENROUTER_FAST_API_KEY",
+  "OPENROUTER_FAST_MODEL",
+  "OPENROUTER_MAIN_API_KEY",
+  "OPENROUTER_MODEL",
+  "QSTASH_CURRENT_SIGNING_KEY",
+  "QSTASH_NEXT_SIGNING_KEY",
+  "QSTASH_TOKEN",
+  "QSTASH_URL",
+  "UPSTASH_REDIS_REST_TOKEN",
+  "UPSTASH_REDIS_REST_URL",
+  "VERCEL_AUTOMATION_BYPASS_SECRET",
+] as const;
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -79,28 +125,22 @@ async function main(): Promise<void> {
   process.stdout.write(`[e2e] mock LLM on ${mock.url}\n`);
   startControl(mock);
 
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    NODE_ENV: "development",
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  for (const key of APP_ENV_KEYS) delete env[key];
+  Object.assign(env, {
+    NODE_ENV: "test",
     PGLITE_DIR,
+    E2E_BLOCK_EXTERNAL_NETWORK: "1",
     LLM_PROVIDER: "gemini",
+    LLM_MAIN_PROVIDER: "gemini",
+    LLM_FAST_PROVIDER: "gemini",
     GEMINI_API_KEY: "test-key-not-a-real-credential",
+    GEMINI_MODEL: "gemini-e2e-main",
+    GEMINI_FAST_MODEL: "gemini-e2e-fast",
     GEMINI_BASE_URL: mock.url,
     SESSION_SECRET: "e2e-session-secret-e2e-session-secret",
     NEXT_PUBLIC_APP_URL: `http://127.0.0.1:${PORT}`,
-  };
-  // Deleted, not blanked: the environment schema reads an empty string as a
-  // malformed value and refuses to start. Without a database there is PGlite,
-  // and without QStash the jobs run inline (lib/jobs/transport).
-  for (const key of [
-    "DATABASE_URL",
-    "QSTASH_TOKEN",
-    "QSTASH_URL",
-    "UPSTASH_REDIS_REST_URL",
-    "UPSTASH_REDIS_REST_TOKEN",
-  ]) {
-    delete env[key];
-  }
+  });
 
   const child = spawn("npx", ["next", "dev", "--port", PORT], {
     stdio: "inherit",

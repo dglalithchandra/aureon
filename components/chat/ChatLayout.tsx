@@ -365,7 +365,7 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
   return (
     <div
       ref={root}
-      className="bg-blueprint-bg flex min-h-[100dvh] flex-col md:grid md:grid-cols-[minmax(280px,30%)_1fr]"
+      className="bg-blueprint-bg flex min-h-[100dvh] flex-col md:grid md:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]"
     >
       {/* Pipeline column — sticky on desktop, accordion on mobile. */}
       <div
@@ -389,7 +389,7 @@ export function ChatLayout({ initialSessionId }: ChatLayoutProps): React.ReactEl
           </div>
         </div>
         <div className="hidden md:block">
-          <div className="border-blueprint-line/15 bg-blueprint-bg/60 relative overflow-hidden rounded-2xl border p-5 backdrop-blur-md">
+          <div className="border-blueprint-line/15 bg-blueprint-bg/60 relative overflow-hidden rounded-2xl border p-4 backdrop-blur-md">
             <div
               className="plasma-glow pointer-events-none absolute -inset-12 opacity-30"
               aria-hidden

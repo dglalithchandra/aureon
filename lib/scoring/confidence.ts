@@ -12,7 +12,7 @@ import type { ExtractionResult, ParameterId } from "@/lib/schemas/extraction";
  *
  *   coverage    weighted completeness of the 9 parameters
  *   quality     the model's clarity read ("AI clarity read" in the UI)
- *   consistency how closely those two agree
+ *   consistency how closely those two agree (shown as a diagnostic)
  *   githubBonus corroboration from similar public repos, at most githubBonusMax
  *
  * Caps beat the blend: no scope with a missing goal or missing features can
@@ -41,8 +41,8 @@ interface ScoredModule {
   module_confidence?: number | null;
 }
 
-/** Parameters whose absence caps the score at criticalCap. */
-const CRITICAL_IDS: ParameterId[] = ["P-02", "P-04"];
+/** Parameters whose absence makes the scope unsafe to finalize. */
+const CRITICAL_IDS: ParameterId[] = ["P-02"];
 
 /** Weighted completeness of the 9 parameters, 0-100, unrounded. */
 export function coverageOf(parameters: ExtractionResult["parameters"]): number {
@@ -57,9 +57,10 @@ export function coverageOf(parameters: ExtractionResult["parameters"]): number {
 }
 
 /**
- * Corroboration bonus: the average confidence of the GitHub-validated
- * modules, scaled to githubBonusMax. Modules carry no per-module confidence
- * yet, so today this is 0 — the shape is here for when they do.
+ * Corroboration bonus: confidence in validated modules, scaled by the share
+ * of all proposed modules that GitHub actually corroborated. A single strong
+ * match therefore cannot grant the full bonus to a long, mostly unverified
+ * module list.
  */
 export function githubBonusOf(modules: ScoredModule[]): number {
   const scores = modules
@@ -68,7 +69,11 @@ export function githubBonusOf(modules: ScoredModule[]): number {
     .filter((c): c is number => typeof c === "number");
   if (scores.length === 0) return 0;
   const average = scores.reduce((sum, c) => sum + c, 0) / scores.length;
-  return Math.min(SCOPING.githubBonusMax, SCOPING.githubBonusMax * average);
+  const validatedShare = scores.length / Math.max(1, modules.length);
+  return Math.min(
+    SCOPING.githubBonusMax,
+    SCOPING.githubBonusMax * average * validatedShare,
+  );
 }
 
 /** The ceiling this extraction cannot score above, and why. */
@@ -96,10 +101,15 @@ export function computeConfidence(extraction: ExtractionResult): ConfidenceScore
   const githubBonus = githubBonusOf(extraction.modules);
   const w = SCOPING.scoreWeights;
 
+  // Agreement is a penalty, not a free source of points. The previous formula
+  // awarded 20 points when coverage and clarity were both zero merely because
+  // the two weak signals agreed. This blend stays monotonic while making the
+  // auditable parameter coverage the dominant signal.
+  const disagreement = Math.abs(coverage - quality);
   const raw =
     w.coverage * coverage +
-    w.quality * quality +
-    w.consistency * consistency +
+    w.quality * quality -
+    SCOPING.disagreementPenalty * disagreement +
     githubBonus;
   const { cap, capReason } = capFor(extraction);
 

@@ -63,6 +63,18 @@ describe("the components", () => {
   it("has no GitHub bonus until modules carry a confidence", () => {
     expect(score(everything("PRESENT"), 90).githubBonus).toBe(0);
   });
+
+  it("scales the GitHub bonus by the share of modules corroborated", () => {
+    const extraction = makeExtraction({
+      parameters: makeParameters(everything("PRESENT")),
+      confidence: 90,
+      modules: [
+        { ...makeExtraction().modules[0]!, github_validated: true, module_confidence: 1 },
+        { ...makeExtraction().modules[1]!, github_validated: false, module_confidence: null },
+      ],
+    });
+    expect(computeConfidence(extraction).githubBonus).toBe(3);
+  });
 });
 
 describe("caps", () => {
@@ -85,18 +97,18 @@ describe("caps", () => {
       SCOPING.criticalCap,
       "critical",
     ],
-    [
-      "missing tech constraints (P-04)",
-      { "P-04": "MISSING" } as States,
-      SCOPING.criticalCap,
-      "critical",
-    ],
     ["nothing missing", {} as States, 100, "none"],
   ])("caps at %s", (_label, missing, cap, reason) => {
     const result = score({ ...everything("PRESENT"), ...missing }, 100);
     expect(result.cap).toBe(cap);
     expect(result.capReason).toBe(reason);
     expect(result.score).toBeLessThanOrEqual(cap);
+  });
+
+  it("does not cap a rich scope only because the implementation stack is open", () => {
+    const result = score({ ...everything("PRESENT"), "P-04": "MISSING" }, 90);
+    expect(result.capReason).toBe("none");
+    expect(result.score).toBeGreaterThanOrEqual(SCOPING.confidenceThreshold);
   });
 
   it("applies the blocker cap even when the model forgot to set the flag", () => {
@@ -121,14 +133,14 @@ describe("caps", () => {
 
 describe("rounding", () => {
   it.each([
-    // coverage 100, so raw = 50 + 0.3·clarity + 0.2·clarity.
+    // coverage 100, so low clarity reduces the blend and adds disagreement penalty.
     [100, 100],
-    [91, 96], // 50 + 27.3 + 18.2 = 95.5, and a half rounds up
-    [90, 95],
-    [89, 95], // 50 + 26.7 + 17.8 = 94.5, likewise
-    [88, 94], // 50 + 26.4 + 17.6 = 94.0
-    [40, 70],
-    [0, 50],
+    [91, 96],
+    [90, 96],
+    [89, 96],
+    [88, 95],
+    [40, 76],
+    [0, 60],
   ])("clarity %d gives %d", (clarity, expected) => {
     expect(score(everything("PRESENT"), clarity).score).toBe(expected);
   });
@@ -142,6 +154,13 @@ describe("rounding", () => {
         expect(result.score).toBeLessThanOrEqual(100);
       }
     }
+  });
+
+  it("does not award points merely because two weak signals agree", () => {
+    const result = score(everything("MISSING"), 0);
+    expect(result.raw).toBe(0);
+    expect(result.score).toBe(0);
+    expect(result.consistency).toBe(100);
   });
 });
 

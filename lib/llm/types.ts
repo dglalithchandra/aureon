@@ -15,6 +15,9 @@
 /** A JSON Schema object describing a tool's input. */
 export type JsonSchema = Record<string, unknown>;
 
+/** Cost/quality class used by the provider router. */
+export type LlmTier = "main" | "fast";
+
 export interface LlmTool {
   name: string;
   description: string;
@@ -47,6 +50,8 @@ export type LlmSystem = string | LlmTextBlock[];
 export interface LlmRequest {
   /** Provider model id, from promptModel(). */
   model: string;
+  /** Defaults to main for backward compatibility with direct callers. */
+  tier?: LlmTier;
   max_tokens: number;
   system?: LlmSystem;
   tools?: LlmTool[];

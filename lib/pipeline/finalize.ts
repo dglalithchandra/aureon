@@ -314,6 +314,7 @@ async function runClientView(context: string, sessionId: string): Promise<Client
       toolName: submitClientViewTool.name,
       parse: (input) => ClientViewSchema.safeParse(coerceClientView(input)),
       params: {
+        tier: "main",
         model: promptModel("main"),
         max_tokens: 4096,
         system: [{ type: "text", text: CLIENT_VIEW_SYSTEM_PROMPT }],
@@ -360,6 +361,7 @@ async function runEngineerView(
       toolName: submitEngineerViewTool.name,
       parse: (input) => EngineerViewSchema.safeParse(coerceEngineerView(input)),
       params: {
+        tier: "main",
         model: promptModel("main"),
         max_tokens: 8192,
         system: [{ type: "text", text: ENGINEER_VIEW_SYSTEM_PROMPT }],

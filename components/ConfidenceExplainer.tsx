@@ -18,7 +18,7 @@ function capLine(cap: number): string {
     return `Held at ${cap} until you say what the project is for and what it must do.`;
   }
   if (cap === SCOPING.criticalCap) {
-    return `Held at ${cap} until you say who uses it and any tech constraints.`;
+    return `Held at ${cap} until you say who uses it.`;
   }
   return "No ceiling applied — every key area has something in it.";
 }
@@ -40,7 +40,7 @@ export function ConfidenceExplainer({
       <ul className="text-blueprint-muted flex flex-col gap-1.5">
         <Row label={`Coverage (${pct(w.coverage)})`} value={parts.coverage} />
         <Row label={`AI clarity read (${pct(w.quality)})`} value={parts.aiClarity} />
-        <Row label={`Consistency (${pct(w.consistency)})`} value={parts.consistency} />
+        <Row label="Signal agreement" value={parts.consistency} />
         <Row
           label="GitHub bonus"
           value={parts.githubBonus}
@@ -52,9 +52,11 @@ export function ConfidenceExplainer({
         answer. <strong>Coverage</strong> is how much of the nine scope areas your brief
         covers, weighted by how much each one matters. The{" "}
         <strong>AI clarity read</strong> is the one part the model contributes: how
-        clearly your brief reads. <strong>Consistency</strong> rewards those two agreeing.
-        The <strong>GitHub bonus</strong> adds up to {SCOPING.githubBonusMax} points when
-        similar public projects back up your modules.
+        clearly your brief reads. A disagreement penalty of up to {Math.round(
+          SCOPING.disagreementPenalty * 100,
+        )} points is applied when those signals conflict. The <strong>GitHub bonus</strong>
+        adds up to {SCOPING.githubBonusMax} points based on both the strength and share of
+        modules backed by similar public projects.
       </p>
       <p className="text-blueprint-muted mt-2 text-[10.5px] leading-snug">
         {capLine(parts.cap)}

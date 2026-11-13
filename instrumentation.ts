@@ -12,6 +12,12 @@
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
+  if (process.env.E2E_BLOCK_EXTERNAL_NETWORK === "1") {
+    const { installExternalNetworkGuard } =
+      await import("@/lib/testing/external-network-guard");
+    installExternalNetworkGuard();
+  }
+
   if (process.env.NODE_ENV === "production") {
     const { getServerEnv } = await import("@/lib/env");
     getServerEnv();
@@ -64,11 +70,13 @@ async function startLocalDatabase(): Promise<void> {
  * deploy time.
  */
 function warnAboutFreeModels(): void {
-  if (process.env.LLM_PROVIDER !== "openrouter") return;
+  const main = process.env.LLM_MAIN_PROVIDER ?? process.env.LLM_PROVIDER ?? "gemini";
+  const fast = process.env.LLM_FAST_PROVIDER ?? main;
+  const fallback = process.env.LLM_FALLBACK_PROVIDER;
+  if (![main, fast, fallback].includes("openrouter")) return;
   // console, not the logger: this runs before anything else is wired up.
   console.warn(
-    "[aureon] LLM_PROVIDER=openrouter — free third-party models, fine for " +
-      "local work. Production refuses this unless ALLOW_FREE_MODELS=1; set " +
-      "GEMINI_API_KEY and drop LLM_PROVIDER to deploy.",
+    "[aureon] An LLM route uses OpenRouter — third-party models are fine for " +
+      "local work. Production refuses this unless ALLOW_FREE_MODELS=1.",
   );
 }

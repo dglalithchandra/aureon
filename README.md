@@ -71,6 +71,17 @@ setup, one key is enough:
 GEMINI_API_KEY=...             # free, no card: https://aistudio.google.com/apikey
 ```
 
+The model router can split expensive and lightweight work across providers.
+`LLM_MAIN_PROVIDER` handles extraction, questions and final documents;
+`LLM_FAST_PROVIDER` handles GitHub README interpretation; and
+`LLM_FALLBACK_PROVIDER` is tried when the selected provider fails. Unset tier
+variables inherit `LLM_PROVIDER`, so existing one-provider setups still work.
+Every provider named by a route needs its own server-side key. See
+`.env.example` for a complete configuration.
+OpenRouter can optionally use `OPENROUTER_MAIN_API_KEY` and
+`OPENROUTER_FAST_API_KEY`; either falls back to the legacy
+`OPENROUTER_API_KEY` when omitted.
+
 Everything else is optional in development and has a documented fallback:
 without `DATABASE_URL` the app uses PGlite, without Upstash it rate-limits in
 memory, without `QSTASH_TOKEN` jobs run in-process after the response, without

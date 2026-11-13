@@ -1,549 +1,172 @@
 "use client";
-import { useEffect, useId, useMemo, useRef } from "react";
+
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertTriangle,
+  Check,
   ClipboardPaste,
-  Sparkles,
+  FileCheck2,
   GitBranch,
   MessagesSquare,
-  FileCheck2,
-  Check,
-  AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import { gsap, useGSAP } from "@/lib/gsap-init";
-import { DrawSVGPlugin, MotionPathPlugin } from "@/lib/gsap-svg";
+import { DrawSVGPlugin } from "@/lib/gsap-svg";
 import type { Session } from "@/lib/schemas/mcq";
-import { deriveSteps, type StepState } from "@/components/chat/pipelineSteps";
+import { deriveSteps, type PipelineStepId } from "@/components/chat/pipelineSteps";
 import { cn } from "@/lib/utils";
 
 void DrawSVGPlugin;
-void MotionPathPlugin;
-
-interface Milestone {
-  id: string;
-  label: string;
-  state: StepState;
-  Icon: typeof ClipboardPaste;
-  hint?: string;
-}
 
 interface PipelineRoadmapProps {
   session: Session | null;
   isAnalyzing: boolean;
 }
 
-/* ──────────────────────────────────────────────────────────────
- *  Milestones — states from the shared deriveSteps, plus roadmap hints.
- * ────────────────────────────────────────────────────────────── */
-function deriveMilestones(session: Session | null, isAnalyzing: boolean): Milestone[] {
-  const lastRound = session?.rounds[session.rounds.length - 1];
-  const status = session?.status ?? "analyzing";
-  const pipelineStage = session?.pipeline_stage;
-  const init = deriveSteps(session, isAnalyzing);
-
-  const conf = session?.current_confidence;
-  const roundN = session?.rounds.length ?? 0;
-  const enrichment = lastRound?.github_enrichment;
-  const matches = enrichment?.matches.length;
-  const variantsRun = enrichment?.variants?.length ?? 0;
-  const avgSim =
-    enrichment && enrichment.matches.length > 0
-      ? Math.round(
-          (enrichment.matches.reduce((s, m) => s + m.similarity, 0) /
-            enrichment.matches.length) *
-            100,
-        ) / 100
-      : null;
-
-  return [
-    {
-      id: "extract",
-      label: "Extract",
-      state: init.extract,
-      Icon: ClipboardPaste,
-      hint:
-        pipelineStage === "extracting"
-          ? "Reading requirements"
-          : lastRound
-            ? `${lastRound.extraction.modules.length} modules detected`
-            : undefined,
-    },
-    {
-      id: "github",
-      label: "GitHub",
-      state: init.github,
-      Icon: GitBranch,
-      hint:
-        pipelineStage === "github"
-          ? "Searching public repos"
-          : matches != null
-            ? avgSim != null
-              ? `${matches} repos · ${variantsRun} queries · sim ${avgSim}`
-              : `${matches} similar repos`
-            : init.github === "pending"
-              ? "Pending"
-              : "No matches",
-    },
-    {
-      id: "score",
-      label: "Score",
-      state: init.score,
-      Icon: Sparkles,
-      hint:
-        pipelineStage === "scoring"
-          ? "Calculating confidence"
-          : conf != null
-            ? `${conf}/100 confidence`
-            : undefined,
-    },
-    {
-      id: "decide",
-      label:
-        status === "blocker" || status === "needs_input"
-          ? "Blocker"
-          : roundN > 1
-            ? `Round ${roundN}`
-            : "Clarify",
-      state: init.decide,
-      Icon: MessagesSquare,
-      hint:
-        pipelineStage === "clarifying"
-          ? "Preparing next step"
-          : status === "error"
-            ? "Needs a retry"
-            : status === "blocker"
-              ? "Need core info"
-              : status === "needs_input"
-                ? "Describe the goal"
-                : status === "awaiting_answers"
-                  ? "Awaiting answers"
-                  : status === "ready"
-                    ? "Threshold met"
-                    : init.decide === "pending"
-                      ? "Pending"
-                      : "Recomputing",
-    },
-    {
-      id: "output",
-      label: "Output",
-      state: init.output,
-      Icon: FileCheck2,
-      hint:
-        status === "finalized"
-          ? "Two-stage scope ready"
-          : status === "ready"
-            ? "Generating now"
-            : "Awaiting threshold",
-    },
-  ];
-}
-
-/* ──────────────────────────────────────────────────────────────
- *  Path geometry — gentle S-curve with 5 milestone anchors.
- * ────────────────────────────────────────────────────────────── */
-const VIEWBOX_W = 240;
-const VIEWBOX_H = 720;
-const ANCHORS: Array<{ x: number; y: number }> = [
-  { x: 60, y: 70 },
-  { x: 175, y: 215 },
-  { x: 60, y: 360 },
-  { x: 175, y: 505 },
-  { x: 60, y: 650 },
+const STEPS: ReadonlyArray<{
+  id: PipelineStepId;
+  label: string;
+  idle: string;
+  running: string;
+  Icon: typeof ClipboardPaste;
+}> = [
+  { id: "extract", label: "Extract", idle: "Read the brief", running: "Reading requirements", Icon: ClipboardPaste },
+  { id: "github", label: "GitHub", idle: "Find useful references", running: "Searching public repositories", Icon: GitBranch },
+  { id: "score", label: "Score", idle: "Measure scope confidence", running: "Calculating confidence", Icon: Sparkles },
+  { id: "decide", label: "Clarify", idle: "Resolve important gaps", running: "Choosing the next question", Icon: MessagesSquare },
+  { id: "output", label: "Output", idle: "Create both project views", running: "Building your scope", Icon: FileCheck2 },
 ];
 
-function buildPathD(): string {
-  const a = ANCHORS;
-  // Cubic bézier between each pair, control points pulled vertically so the
-  // road has a deliberate snake shape.
-  const segments: string[] = [`M ${a[0]!.x} ${a[0]!.y}`];
-  for (let i = 1; i < a.length; i++) {
-    const p0 = a[i - 1]!;
-    const p1 = a[i]!;
-    const c1x = p0.x;
-    const c1y = p0.y + (p1.y - p0.y) * 0.55;
-    const c2x = p1.x;
-    const c2y = p0.y + (p1.y - p0.y) * 0.45;
-    segments.push(`C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p1.x} ${p1.y}`);
-  }
-  return segments.join(" ");
+function formatElapsed(ms: number): string {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-const PATH_D = buildPathD();
+function runningMessage(elapsedMs: number): string {
+  if (elapsedMs >= 90_000) return "The free provider is busy. Automatic retries are still running.";
+  if (elapsedMs >= 35_000) return "Free models can be slower at busy times. Your progress is saved.";
+  return "Usually finishes in 20–60 seconds.";
+}
 
-/* ──────────────────────────────────────────────────────────────
- *  Component
- * ────────────────────────────────────────────────────────────── */
 export function PipelineRoadmap({
   session,
   isAnalyzing,
 }: PipelineRoadmapProps): React.ReactElement {
-  const milestones = useMemo(
-    () => deriveMilestones(session, isAnalyzing),
-    [session, isAnalyzing],
-  );
   const root = useRef<HTMLDivElement | null>(null);
-  const lastStateRef = useRef<string[]>(milestones.map((m) => m.state));
-  const uid = useId().replace(/[:]/g, "");
+  const states = useMemo(() => deriveSteps(session, isAnalyzing), [session, isAnalyzing]);
+  const [now, setNow] = useState(() => Date.now());
 
-  // Compute progress (0..1) — fraction of the path that should be "lit".
-  const progress = useMemo(() => {
-    const N = milestones.length;
-    let lit = 0;
-    let i = 0;
-    while (i < N && milestones[i]!.state === "done") {
-      lit++;
-      i++;
-    }
-    // A running step has reached its own anchor; it must not light the path
-    // toward the following step. That made Clarify look like it had jumped
-    // directly to Output.
-    const frac = lit / (N - 1); // each anchor is 1/(N-1) of the path length
-    return Math.min(1, Math.max(0, frac));
-  }, [milestones]);
+  useEffect(() => {
+    if (!isAnalyzing) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [isAnalyzing]);
 
-  // Initial draw-on of the dim path + first marker pop-in.
+  const elapsedMs = session ? now - session.created_at : 0;
+  const doneCount = STEPS.filter((step) => states[step.id] === "done").length;
+  const active = STEPS.find((step) => states[step.id] === "running");
+  const progress = active ? Math.min(96, doneCount * 20 + 10) : doneCount * 20;
+  const status = session?.status ?? (isAnalyzing ? "analyzing" : "idle");
+
   useGSAP(
     () => {
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (reduce) return;
-      gsap.set(`#road-bg-${uid}`, { drawSVG: "0%" });
-      gsap.set(`#road-active-${uid}`, { drawSVG: "0%" });
-      gsap.set(".rm-marker-circle", { scale: 0, transformOrigin: "center" });
-
-      const tl = gsap.timeline();
-      tl.to(`#road-bg-${uid}`, {
-        drawSVG: "100%",
-        duration: 1.4,
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      gsap.from("[data-roadmap-step]", {
+        opacity: 0,
+        x: -10,
+        duration: 0.42,
+        stagger: 0.06,
         ease: "scopeai-out",
-      }).to(
-        ".rm-marker-circle",
-        {
-          scale: 1,
-          duration: 0.5,
-          stagger: 0.08,
-          ease: "scopeai-bounce",
-        },
-        0.3,
-      );
+      });
     },
     { scope: root, dependencies: [] },
   );
 
-  // Animate the active path stroke whenever progress changes.
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const path = document.getElementById(`road-active-${uid}`);
-    if (!path) return;
-    if (reduce) {
-      gsap.set(path, { drawSVG: `0% ${progress * 100}%` });
-      return;
-    }
-    gsap.to(path, {
-      drawSVG: `0% ${progress * 100}%`,
-      duration: 0.9,
-      ease: "scopeai-out",
-    });
-  }, [progress, uid]);
-
-  // Per-marker state transitions — pulse on done, scale on running, shake on error.
-  useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      lastStateRef.current = milestones.map((m) => m.state);
-      return;
-    }
-    milestones.forEach((m, i) => {
-      const prev = lastStateRef.current[i];
-      if (prev === m.state) return;
-      const node = document.querySelector<SVGCircleElement>(
-        `[data-marker-id="${uid}-${m.id}"]`,
-      );
-      if (!node) return;
-      if (m.state === "done") {
-        gsap.fromTo(
-          node,
-          { scale: 1 },
-          {
-            scale: 1.5,
-            duration: 0.18,
-            yoyo: true,
-            repeat: 1,
-            ease: "scopeai-out",
-            transformOrigin: "center",
-          },
-        );
-      } else if (m.state === "running") {
-        gsap.fromTo(
-          node,
-          { scale: 0.8 },
-          {
-            scale: 1,
-            duration: 0.4,
-            ease: "scopeai-bounce",
-            transformOrigin: "center",
-          },
-        );
-      } else if (m.state === "error") {
-        gsap.fromTo(
-          node,
-          { x: -3 },
-          {
-            x: 3,
-            duration: 0.07,
-            repeat: 4,
-            yoyo: true,
-            onComplete: () => gsap.set(node, { x: 0 }),
-          },
-        );
-      }
-    });
-    lastStateRef.current = milestones.map((m) => m.state);
-  }, [milestones, uid]);
-
-  // Continuous traveling pulse along the road (the "vehicle" on the journey).
-  // Runs MotionPathPlugin to follow the path; only visible while there's a
-  // running step.
-  const hasRunning = milestones.some((m) => m.state === "running");
-  useGSAP(
-    () => {
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (reduce) return;
-      const dot = document.getElementById(`road-pulse-${uid}`);
-      const path = document.getElementById(`road-bg-${uid}`) as SVGPathElement | null;
-      if (!dot || !path) return;
-      gsap.killTweensOf(dot);
-      if (!hasRunning) {
-        gsap.set(dot, { autoAlpha: 0 });
-        return;
-      }
-      gsap.set(dot, { autoAlpha: 1 });
-      gsap.to(dot, {
-        motionPath: {
-          path,
-          alignOrigin: [0.5, 0.5],
-          start: 0,
-          end: progress,
-        },
-        duration: 2.4,
-        repeat: -1,
-        ease: "sine.inOut",
-        yoyo: true,
-      });
-    },
-    { scope: root, dependencies: [hasRunning, progress, uid] },
-  );
-
-  const conf = session?.current_confidence ?? 0;
-  const status = session?.status ?? "idle";
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const node = root.current?.querySelector<HTMLElement>("[data-active-step]");
+    if (!node) return;
+    gsap.fromTo(node, { scale: 0.985 }, { scale: 1, duration: 0.4, ease: "scopeai-bounce" });
+  }, [active?.id]);
 
   return (
     <div ref={root} className="relative">
-      {/* Header */}
-      <div className="mb-4 flex items-baseline justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-blueprint-muted font-mono text-[10px] tracking-[0.22em] uppercase">
-            Roadmap
+          <p className="text-blueprint-muted font-mono text-[10px] tracking-[0.2em] uppercase">
+            Live pipeline
           </p>
-          <p className="text-blueprint-text font-display text-lg font-bold tracking-tight">
-            {status === "ready" || status === "finalized"
-              ? "Scope ready"
-              : status === "blocker" || status === "needs_input"
-                ? "Blocker"
-                : status === "awaiting_answers"
-                  ? "Your turn"
-                  : status === "analyzing"
-                    ? "In motion"
-                    : status === "error"
-                      ? "Needs retry"
-                      : "Idle"}
-          </p>
+          <h2 className="text-blueprint-text font-display mt-1 text-lg font-bold">
+            {status === "error" ? "Needs attention" : isAnalyzing ? "Building your scope" : status === "finalized" ? "Scope complete" : "Ready to begin"}
+          </h2>
         </div>
-        <ConfidenceBadge value={conf} />
-      </div>
-
-      {/* SVG roadmap */}
-      <div className="relative mt-2">
-        <svg
-          viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
-          className="block h-auto w-full"
-          aria-hidden
-        >
-          <defs>
-            <linearGradient id={`road-grad-${uid}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#a855f7" />
-              <stop offset="55%" stopColor="#ec4899" />
-              <stop offset="100%" stopColor="#fbbf24" />
-            </linearGradient>
-            <filter id={`road-glow-${uid}`}>
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
-          {/* Background dim path (full road) */}
-          <path
-            id={`road-bg-${uid}`}
-            d={PATH_D}
-            fill="none"
-            stroke="rgba(168,85,247,0.18)"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeDasharray="6 8"
-          />
-
-          {/* Active path — drawn-on as progress advances */}
-          <path
-            id={`road-active-${uid}`}
-            d={PATH_D}
-            fill="none"
-            stroke={`url(#road-grad-${uid})`}
-            strokeWidth="3"
-            strokeLinecap="round"
-            filter={`url(#road-glow-${uid})`}
-          />
-
-          {/* Traveling pulse */}
-          <circle
-            id={`road-pulse-${uid}`}
-            r="6"
-            fill="#ec4899"
-            filter={`url(#road-glow-${uid})`}
-            style={{ opacity: 0 }}
-          />
-
-          {/* Milestone markers (positioned via foreignObject so React handles state) */}
-          {milestones.map((m, i) => {
-            const a = ANCHORS[i]!;
-            return (
-              <g key={m.id} transform={`translate(${a.x} ${a.y})`}>
-                <circle
-                  className="rm-marker-circle"
-                  data-marker-id={`${uid}-${m.id}`}
-                  r={m.state === "running" ? 14 : 12}
-                  fill="#0a0518"
-                  stroke={m.state === "pending" ? "rgba(168,85,247,0.35)" : "#ec4899"}
-                  strokeWidth="2"
-                  filter={
-                    m.state === "running" || m.state === "done"
-                      ? `url(#road-glow-${uid})`
-                      : undefined
-                  }
-                />
-                {/* Inline icon — uses foreignObject for native SVG-friendly Lucide */}
-                <foreignObject x="-9" y="-9" width="18" height="18">
-                  <div className="flex h-full w-full items-center justify-center">
-                    {m.state === "done" ? (
-                      <Check
-                        className="text-[var(--color-blueprint-accent)]"
-                        size={12}
-                        strokeWidth={3}
-                      />
-                    ) : m.state === "error" ? (
-                      <AlertTriangle className="text-red-400" size={12} strokeWidth={3} />
-                    ) : (
-                      <m.Icon
-                        className={cn(
-                          m.state === "pending"
-                            ? "text-blueprint-muted"
-                            : "text-[var(--color-blueprint-accent)]",
-                        )}
-                        size={11}
-                        strokeWidth={2}
-                      />
-                    )}
-                  </div>
-                </foreignObject>
-              </g>
-            );
-          })}
-        </svg>
-
-        {/* Side labels — overlay on top of SVG for crisp text. */}
-        <div className="pointer-events-none absolute inset-0">
-          {milestones.map((m, i) => {
-            const a = ANCHORS[i]!;
-            const onLeft = a.x > VIEWBOX_W / 2;
-            const topPct = (a.y / VIEWBOX_H) * 100;
-            return (
-              <div
-                key={m.id}
-                className={cn(
-                  "absolute flex -translate-y-1/2 flex-col gap-0.5",
-                  onLeft
-                    ? "right-[58%] items-end text-right"
-                    : "left-[40%] items-start text-left",
-                )}
-                style={{ top: `${topPct}%` }}
-              >
-                <span
-                  className={cn(
-                    "text-[12px] leading-none font-semibold",
-                    m.state === "pending"
-                      ? "text-blueprint-muted"
-                      : m.state === "running"
-                        ? "text-[var(--color-blueprint-accent)]"
-                        : "text-blueprint-text",
-                  )}
-                >
-                  {m.label}
-                </span>
-                {m.hint && (
-                  <span className="text-blueprint-muted text-[10px] leading-tight">
-                    {m.hint}
-                  </span>
-                )}
-              </div>
-            );
-          })}
+        <div className="border-blueprint-line/25 bg-white/[0.035] rounded-full border px-3 py-1.5 text-right">
+          <p className="text-blueprint-muted text-[9px] tracking-wider uppercase">Elapsed</p>
+          <p className="text-blueprint-text font-mono text-xs tabular-nums">{formatElapsed(elapsedMs)}</p>
         </div>
       </div>
 
-      {/* Status footer */}
-      <div className="text-blueprint-muted mt-4 flex items-center justify-between font-mono text-[10px] tracking-[0.18em] uppercase">
-        <span>{status}</span>
-        <span>{Math.round(progress * 100)}% complete</span>
+      <div className="bg-blueprint-line/15 mt-4 h-1 overflow-hidden rounded-full">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-violet-500 via-pink-500 to-amber-400 shadow-[0_0_14px_rgba(236,72,153,0.55)] transition-[width] duration-700 ease-out"
+          style={{ width: `${progress}%` }}
+          role="progressbar"
+          aria-label="Scope pipeline progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress}
+        />
       </div>
-    </div>
-  );
-}
 
-/* ──────────────────────────────────────────────────────────────
- *  Tiny embedded confidence badge (animated counter).
- * ────────────────────────────────────────────────────────────── */
-function ConfidenceBadge({ value }: { value: number }): React.ReactElement {
-  const ref = useRef<HTMLSpanElement | null>(null);
-  const stateRef = useRef({ n: 0 });
-  useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const span = ref.current;
-    if (!span) return;
-    if (reduce) {
-      span.textContent = String(Math.round(value));
-      return;
-    }
-    const t = gsap.to(stateRef.current, {
-      n: value,
-      duration: 0.9,
-      ease: "scopeai-out",
-      onUpdate: () => {
-        span.textContent = String(Math.round(stateRef.current.n));
-      },
-    });
-    return () => {
-      t.kill();
-    };
-  }, [value]);
-  return (
-    <div className="border-blueprint-line/30 bg-blueprint-line/5 inline-flex items-baseline gap-1 rounded-full border px-3 py-1">
-      <span
-        ref={ref}
-        className="font-mono text-sm font-bold text-[var(--color-blueprint-accent)] tabular-nums"
-      >
-        0
-      </span>
-      <span className="text-blueprint-muted font-mono text-[10px]">/100</span>
+      <ol className="mt-4 space-y-2">
+        {STEPS.map(({ id, label, idle, running, Icon }) => {
+          const state = states[id];
+          const isRunning = state === "running";
+          return (
+            <li
+              key={id}
+              data-roadmap-step
+              data-active-step={isRunning ? "" : undefined}
+              className={cn(
+                "relative flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors",
+                isRunning && "border-pink-400/45 bg-pink-400/[0.08] shadow-[0_0_24px_rgba(236,72,153,0.12)]",
+                state === "done" && "border-emerald-400/20 bg-emerald-400/[0.035]",
+                state === "pending" && "border-blueprint-line/10 bg-white/[0.015]",
+                state === "error" && "border-red-400/35 bg-red-400/[0.06]",
+              )}
+            >
+              <span className={cn(
+                "relative grid h-9 w-9 shrink-0 place-items-center rounded-lg border",
+                isRunning && "border-pink-400/60 bg-pink-400/10 text-pink-300",
+                state === "done" && "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
+                state === "pending" && "border-blueprint-line/15 text-blueprint-muted",
+                state === "error" && "border-red-400/40 bg-red-400/10 text-red-300",
+              )}>
+                {isRunning && <span className="absolute inset-0 animate-ping rounded-lg border border-pink-400/40 motion-reduce:hidden" />}
+                {state === "done" ? <Check size={15} /> : state === "error" ? <AlertTriangle size={15} /> : <Icon size={15} />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className={cn("block text-sm font-semibold", state === "pending" ? "text-blueprint-muted" : "text-blueprint-text")}>{label}</span>
+                <span className="text-blueprint-muted block truncate text-[11px]">{isRunning ? running : state === "done" ? "Completed" : state === "error" ? "Retry required" : idle}</span>
+              </span>
+              <span className={cn("font-mono text-[9px] tracking-wider uppercase", isRunning ? "text-pink-300" : state === "done" ? "text-emerald-300" : "text-blueprint-muted/70")}>
+                {isRunning ? "Running" : state}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+
+      {isAnalyzing && (
+        <div className="border-blueprint-line/15 bg-white/[0.025] mt-4 rounded-xl border px-3 py-3" aria-live="polite">
+          <div className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-pink-400 motion-reduce:animate-none" />
+            <p className="text-blueprint-text text-xs font-medium">{active?.running ?? "Starting pipeline"}</p>
+          </div>
+          <p className="text-blueprint-muted mt-1 pl-3.5 text-[11px] leading-relaxed">{runningMessage(elapsedMs)}</p>
+        </div>
+      )}
     </div>
   );
 }

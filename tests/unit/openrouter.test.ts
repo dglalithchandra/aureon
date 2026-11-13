@@ -77,4 +77,39 @@ describe("OpenRouter adapter", () => {
     expect(init?.signal).toBeInstanceOf(AbortSignal);
     expect(OPENROUTER_TIMEOUT_MS).toBe(45_000);
   });
+
+  it("disables optional reasoning for structured pipeline calls", async () => {
+    const fetchMock = stubFetch(openAiReply("tool_calls"));
+    await create();
+    const init = fetchMock.mock.calls[0]?.[1];
+    const body = JSON.parse(String(init?.body)) as { reasoning_effort?: string };
+    expect(body.reasoning_effort).toBe("none");
+  });
+
+  it("selects separate credentials for main and fast tiers", async () => {
+    vi.stubEnv("OPENROUTER_MAIN_API_KEY", "sk-or-main-000000000000000000000000");
+    vi.stubEnv("OPENROUTER_FAST_API_KEY", "sk-or-fast-000000000000000000000000");
+    vi.resetModules();
+    const fresh = (await import("@/lib/llm/openrouter")).openRouterClient;
+    const fetchMock = stubFetch(openAiReply("tool_calls"));
+    const request = {
+      model: "test",
+      max_tokens: 100,
+      messages: [{ role: "user" as const, content: "hi" }],
+    };
+
+    await fresh.messages.create({ ...request, tier: "main" });
+    await fresh.messages.create({ ...request, tier: "fast" });
+
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).toEqual(
+      expect.objectContaining({
+        Authorization: "Bearer sk-or-main-000000000000000000000000",
+      }),
+    );
+    expect(fetchMock.mock.calls[1]?.[1]?.headers).toEqual(
+      expect.objectContaining({
+        Authorization: "Bearer sk-or-fast-000000000000000000000000",
+      }),
+    );
+  });
 });

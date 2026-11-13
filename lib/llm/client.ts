@@ -3,7 +3,8 @@ import { getServerEnv } from "@/lib/env";
 import { consumeLlmBudget } from "@/lib/llm/budget";
 import { geminiClient } from "@/lib/llm/gemini";
 import { openRouterClient } from "@/lib/llm/openrouter";
-import type { LlmClient, LlmRequest, LlmResponse } from "@/lib/llm/types";
+import type { LlmClient, LlmRequest, LlmResponse, LlmTier } from "@/lib/llm/types";
+import { logger } from "@/lib/logger";
 
 /**
  * The only way to call a model.
@@ -16,15 +17,28 @@ import type { LlmClient, LlmRequest, LlmResponse } from "@/lib/llm/types";
  * accidental client import a build error.
  */
 
-let client: LlmClient | null = null;
-let cachedProvider: string | null = null;
+export type LlmProvider = "gemini" | "openrouter";
 
-function getClient(): LlmClient {
+function clientFor(provider: LlmProvider): LlmClient {
+  return provider === "openrouter" ? openRouterClient : geminiClient;
+}
+
+/** Resolve one tier without changing existing LLM_PROVIDER-only setups. */
+export function providerForTier(tier: LlmTier): LlmProvider {
   const env = getServerEnv();
-  if (client && cachedProvider === env.LLM_PROVIDER) return client;
-  cachedProvider = env.LLM_PROVIDER;
-  client = env.LLM_PROVIDER === "openrouter" ? openRouterClient : geminiClient;
-  return client;
+  const main = env.LLM_MAIN_PROVIDER ?? env.LLM_PROVIDER;
+  return tier === "fast" ? (env.LLM_FAST_PROVIDER ?? main) : main;
+}
+
+function modelFor(provider: LlmProvider, tier: LlmTier): string {
+  const env = getServerEnv();
+  if (provider === "openrouter") {
+    if (tier === "fast" && env.OPENROUTER_FAST_MODEL) {
+      return env.OPENROUTER_FAST_MODEL;
+    }
+    return env.OPENROUTER_MODEL ?? "meta-llama/llama-3.3-70b-instruct:free";
+  }
+  return tier === "fast" ? env.GEMINI_FAST_MODEL : env.GEMINI_MODEL;
 }
 
 /**
@@ -32,8 +46,29 @@ function getClient(): LlmClient {
  * BudgetExceededError past LLM_DAILY_CALL_LIMIT), then send it.
  */
 export async function createLlmMessage(params: LlmRequest): Promise<LlmResponse> {
+  const tier = params.tier ?? "main";
+  const primary = providerForTier(tier);
+  const primaryParams = { ...params, model: modelFor(primary, tier), tier };
   await consumeLlmBudget();
-  return getClient().messages.create(params);
+  try {
+    return await clientFor(primary).messages.create(primaryParams);
+  } catch (err) {
+    const fallback = getServerEnv().LLM_FALLBACK_PROVIDER;
+    if (!fallback || fallback === primary) throw err;
+
+    logger.warn("llm.provider_fallback", {
+      tier,
+      primary,
+      fallback,
+      message: err instanceof Error ? err.message : "unknown provider failure",
+    });
+    await consumeLlmBudget();
+    return clientFor(fallback).messages.create({
+      ...params,
+      model: modelFor(fallback, tier),
+      tier,
+    });
+  }
 }
 
 /**
@@ -42,12 +77,9 @@ export async function createLlmMessage(params: LlmRequest): Promise<LlmResponse>
  *   main  the pipeline — extraction, questions, both output documents
  *   fast  small mechanical jobs, e.g. reading module names out of a README
  *
- * The ids come from the environment (GEMINI_MODEL, GEMINI_FAST_MODEL) so a
- * model can be swapped without a deploy of new code. OpenRouter ignores the
- * string and uses OPENROUTER_MODEL.
+ * The ids come from the selected provider's environment settings, so a model
+ * or provider can be swapped without changing a pipeline call site.
  */
-export function promptModel(tier: "main" | "fast"): string {
-  const env = getServerEnv();
-  if (env.LLM_PROVIDER === "openrouter") return env.OPENROUTER_MODEL ?? "openrouter";
-  return tier === "fast" ? env.GEMINI_FAST_MODEL : env.GEMINI_MODEL;
+export function promptModel(tier: LlmTier): string {
+  return modelFor(providerForTier(tier), tier);
 }

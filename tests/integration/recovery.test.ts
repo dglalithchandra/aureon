@@ -194,7 +194,7 @@ describe("ROB-01: model output is repaired or retried", () => {
     expect(failed.last_error).toMatchObject({ code: "LLM_ERROR", retryable: true });
   });
 
-  it("blocker with clarity 55 → accepted, and the score is capped at 40", async () => {
+  it("blocker with clarity 55 → accepted, with 40 remaining a ceiling", async () => {
     const session = createSession("Something for my shop.");
     await putSession(session);
     mock.override(
@@ -211,7 +211,7 @@ describe("ROB-01: model output is repaired or retried", () => {
     expect((await run(session.id)).outcomes).toEqual(["completed"]);
     const result = await stored(session.id);
     expect(result.rounds[0]!.extraction).toMatchObject({ blocker: true, confidence: 55 });
-    expect(result.current_confidence).toBe(40);
+    expect(result.current_confidence).toBe(29);
     expect(mock.callsFor("submit_extraction")).toHaveLength(1);
   });
 

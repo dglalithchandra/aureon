@@ -21,6 +21,14 @@ const serverSchema = z
      * use only for smoke testing.
      */
     LLM_PROVIDER: z.enum(["gemini", "openrouter"]).default("gemini"),
+    /**
+     * Optional tier-specific routing. When omitted, both tiers use
+     * LLM_PROVIDER, preserving the original single-provider configuration.
+     */
+    LLM_MAIN_PROVIDER: z.enum(["gemini", "openrouter"]).optional(),
+    LLM_FAST_PROVIDER: z.enum(["gemini", "openrouter"]).optional(),
+    /** A different provider to try when the selected provider throws. */
+    LLM_FALLBACK_PROVIDER: z.enum(["gemini", "openrouter"]).optional(),
     /** Google AI Studio key (https://aistudio.google.com/apikey). */
     GEMINI_API_KEY: z.string().min(20).optional(),
     /** Model for the pipeline: extraction, questions, both documents. */
@@ -29,9 +37,16 @@ const serverSchema = z
     GEMINI_FAST_MODEL: z.string().min(1).default("gemini-3.5-flash-lite"),
     /** Override the API origin. Tests point this at their mock server. */
     GEMINI_BASE_URL: z.string().url().optional(),
+    /** Backward-compatible key used for every OpenRouter tier. */
     OPENROUTER_API_KEY: z.string().min(20).optional(),
-    /** Override the model used when LLM_PROVIDER=openrouter. */
+    /** Optional key dedicated to extraction, questions and final documents. */
+    OPENROUTER_MAIN_API_KEY: z.string().min(20).optional(),
+    /** Optional key dedicated to GitHub README interpretation. */
+    OPENROUTER_FAST_API_KEY: z.string().min(20).optional(),
+    /** Main/fallback model used when a route selects OpenRouter. */
     OPENROUTER_MODEL: z.string().optional(),
+    /** Optional cheaper OpenRouter model for GitHub README interpretation. */
+    OPENROUTER_FAST_MODEL: z.string().optional(),
     GITHUB_TOKEN: z.string().optional(),
     /**
      * Postgres connection string (Neon's pooled endpoint, or any Postgres).
@@ -102,14 +117,22 @@ const serverSchema = z
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   })
   .superRefine((data, ctx) => {
+    const mainProvider = data.LLM_MAIN_PROVIDER ?? data.LLM_PROVIDER;
+    const fastProvider = data.LLM_FAST_PROVIDER ?? mainProvider;
+    const configuredProviders = new Set([
+      mainProvider,
+      fastProvider,
+      data.LLM_FALLBACK_PROVIDER,
+    ]);
+
     // Each provider needs its own credential; we don't fail fast at boot
     // because most local commands (typecheck, lint) shouldn't require LLM
     // creds — but we do refuse to issue an LLM call without the right key.
-    if (data.LLM_PROVIDER === "gemini" && !data.GEMINI_API_KEY) {
+    if (configuredProviders.has("gemini") && !data.GEMINI_API_KEY) {
       ctx.addIssue({
         code: "custom",
         path: ["GEMINI_API_KEY"],
-        message: "GEMINI_API_KEY required when LLM_PROVIDER=gemini (the default)",
+        message: "GEMINI_API_KEY required when any LLM route uses Gemini",
       });
     }
     // A client's brief goes to the model provider verbatim. OpenRouter's
@@ -117,14 +140,14 @@ const serverSchema = z
     // so production refuses it unless someone says so out loud (PRIV-01).
     if (
       data.NODE_ENV === "production" &&
-      data.LLM_PROVIDER === "openrouter" &&
+      configuredProviders.has("openrouter") &&
       data.ALLOW_FREE_MODELS !== "1"
     ) {
       ctx.addIssue({
         code: "custom",
-        path: ["LLM_PROVIDER"],
+        path: ["LLM_MAIN_PROVIDER"],
         message:
-          "LLM_PROVIDER=openrouter sends client briefs to free third-party model providers; it is for local development. Set ALLOW_FREE_MODELS=1 to use it in production anyway.",
+          "An OpenRouter route sends client briefs to free third-party model providers; it is for local development. Set ALLOW_FREE_MODELS=1 to use it in production anyway.",
       });
     }
     // Without a database there is nowhere to keep projects, shares or
@@ -175,11 +198,34 @@ const serverSchema = z
           "AUTH_SECRET is required once a sign-in method is configured (32+ random characters)",
       });
     }
-    if (data.LLM_PROVIDER === "openrouter" && !data.OPENROUTER_API_KEY) {
+    const mainOpenRouterKey = data.OPENROUTER_MAIN_API_KEY ?? data.OPENROUTER_API_KEY;
+    const fastOpenRouterKey = data.OPENROUTER_FAST_API_KEY ?? data.OPENROUTER_API_KEY;
+    if (mainProvider === "openrouter" && !mainOpenRouterKey) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["OPENROUTER_MAIN_API_KEY"],
+        message:
+          "OPENROUTER_MAIN_API_KEY or OPENROUTER_API_KEY required when the main route uses OpenRouter",
+      });
+    }
+    if (fastProvider === "openrouter" && !fastOpenRouterKey) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["OPENROUTER_FAST_API_KEY"],
+        message:
+          "OPENROUTER_FAST_API_KEY or OPENROUTER_API_KEY required when the fast route uses OpenRouter",
+      });
+    }
+    if (
+      data.LLM_FALLBACK_PROVIDER === "openrouter" &&
+      !data.OPENROUTER_API_KEY &&
+      !data.OPENROUTER_MAIN_API_KEY &&
+      !data.OPENROUTER_FAST_API_KEY
+    ) {
       ctx.addIssue({
         code: "custom",
         path: ["OPENROUTER_API_KEY"],
-        message: "OPENROUTER_API_KEY required when LLM_PROVIDER=openrouter",
+        message: "An OpenRouter key is required when the fallback route uses OpenRouter",
       });
     }
   });

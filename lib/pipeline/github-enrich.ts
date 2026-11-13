@@ -25,7 +25,12 @@ import { logger } from "@/lib/logger";
 
 const MAX_PARALLEL_FETCHES = 6;
 /** How many of the BM25-ranked candidates get an LLM similarity score. */
-const LLM_SCORED_MATCHES = 6;
+// Two deep scores are enough to rank the strongest candidates for an MVP.
+// The remaining repositories still contribute their real folder structure.
+// Keeping this small matters for local testing: free OpenRouter accounts have
+// tight daily quotas and congested endpoints, so six parallel calls made one
+// initial scope both slow and needlessly fragile.
+const LLM_SCORED_MATCHES = 2;
 /**
  * Total matches kept (LLM-scored + folder-only references). Only this many
  * top BM25 candidates get their README and tree fetched (PERF-01).
@@ -259,7 +264,12 @@ async function enrichUncached(
       // Folder-only reference: not LLM-scored, but still useful breadth.
       why_relevant = "Folder structure mined for module patterns (not deep-scored)";
     } else {
-      continue; // nothing usable from this repo — drop it
+      // Search metadata is still useful when GitHub's anonymous hourly limit
+      // blocks the follow-up README/tree requests. Keep the real ranked link
+      // and make the reduced evidence explicit instead of making the GitHub
+      // stage look as though it found nothing at all.
+      why_relevant =
+        "Search match only; add GITHUB_TOKEN for README and folder analysis";
     }
 
     enriched.push({
