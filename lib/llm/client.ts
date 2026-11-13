@@ -36,7 +36,7 @@ function modelFor(provider: LlmProvider, tier: LlmTier): string {
     if (tier === "fast" && env.OPENROUTER_FAST_MODEL) {
       return env.OPENROUTER_FAST_MODEL;
     }
-    return env.OPENROUTER_MODEL ?? "meta-llama/llama-3.3-70b-instruct:free";
+    return env.OPENROUTER_MODEL ?? "openrouter/free";
   }
   return tier === "fast" ? env.GEMINI_FAST_MODEL : env.GEMINI_MODEL;
 }
