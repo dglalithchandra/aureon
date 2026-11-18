@@ -31,6 +31,8 @@ import type { Calibration } from "@/lib/calibration/factors";
 import { promptSafe, promptText, truncateText } from "@/lib/text/prompt-safe";
 import { coerceClientView, coerceEngineerView } from "@/lib/pipeline/coerce";
 import { computeConfidence } from "@/lib/scoring/confidence";
+import { reconcileOutput } from "@/lib/pipeline/output-consistency";
+import { GITHUB_MIN_EVIDENCE_SIMILARITY } from "@/lib/config/github";
 
 const MAX_CONTEXT_CHARS = 40_000;
 /** How much of the brief the finalize context may carry (BUG-06). */
@@ -57,7 +59,7 @@ export async function generateOutput(session: Session): Promise<FinalOutput> {
     sessionId: session.id,
     durationMs: Date.now() - t0,
   });
-  return { client, engineer };
+  return reconcileOutput(session, { client, engineer });
 }
 
 /**
@@ -100,15 +102,7 @@ export async function generateEngineerView(session: Session): Promise<EngineerVi
   const context = buildSharedContext(session, computedBlocks(estimate, risks));
   const t0 = Date.now();
   const engineer = await runEngineerView(context, session.id);
-  logger.info("finalize.engineer.completed", {
-    sessionId: session.id,
-    durationMs: Date.now() - t0,
-    sprints: estimate.sprints,
-    totalPoints: estimate.totalPoints,
-    teamSize: estimate.teamSize,
-    risks: risks.length,
-  });
-  return {
+  const view: EngineerView = {
     ...engineer,
     module_table: engineer.module_table.map((row) => withEngineerRowScore(session, row)),
     // Real repos only, from the matches this session actually fetched
@@ -118,6 +112,15 @@ export async function generateEngineerView(session: Session): Promise<EngineerVi
     risks: mergeRisks(risks, engineer.risks),
     effort_summary: effortSummaryOf(estimate),
   };
+  logger.info("finalize.engineer.completed", {
+    sessionId: session.id,
+    durationMs: Date.now() - t0,
+    sprints: estimate.sprints,
+    totalPoints: estimate.totalPoints,
+    teamSize: estimate.teamSize,
+    risks: view.risks.length,
+  });
+  return view;
 }
 
 /** The latest round; callers have already checked there is one. */
@@ -254,6 +257,8 @@ function computeConfidenceBadge(session: Session): ConfidenceBadge {
 
 /** How many repositories the engineer document points at. */
 const MAX_REFERENCES = 5;
+/** Below this, a real repo is still diagnostic data, not publishable evidence. */
+export const MIN_GITHUB_REFERENCE_SIMILARITY = GITHUB_MIN_EVIDENCE_SIMILARITY;
 
 /**
  * The GitHub references for the document: the round's own matches, the most
@@ -264,6 +269,7 @@ function buildGitHubReferences(session: Session): GitHubReference[] {
   const matches = session.rounds[session.rounds.length - 1]?.github_enrichment?.matches;
   if (!matches || matches.length === 0) return [];
   return [...matches]
+    .filter((match) => match.similarity >= MIN_GITHUB_REFERENCE_SIMILARITY)
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, MAX_REFERENCES)
     .map((m) => ({

@@ -22,6 +22,7 @@ import {
 import type { ExtractionResult } from "@/lib/schemas/extraction";
 import { BudgetExceededError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { GITHUB_MIN_EVIDENCE_SIMILARITY } from "@/lib/config/github";
 
 const MAX_PARALLEL_FETCHES = 6;
 /** How many of the BM25-ranked candidates get an LLM similarity score. */
@@ -51,6 +52,8 @@ const ENRICHMENT_CACHE_TTL_SECONDS = 24 * 60 * 60;
  * never add a module on its own.
  */
 const MAX_REPO_WEIGHT = 0.8;
+/** Unscored or weak matches remain diagnostic links, not module evidence. */
+export const MIN_GITHUB_EVIDENCE_SIMILARITY = GITHUB_MIN_EVIDENCE_SIMILARITY;
 
 const EMPTY_ENRICHMENT: GitHubEnrichment = {
   matches: [],
@@ -268,8 +271,7 @@ async function enrichUncached(
       // blocks the follow-up README/tree requests. Keep the real ranked link
       // and make the reduced evidence explicit instead of making the GitHub
       // stage look as though it found nothing at all.
-      why_relevant =
-        "Search match only; add GITHUB_TOKEN for README and folder analysis";
+      why_relevant = "Search match only; add GITHUB_TOKEN for README and folder analysis";
     }
 
     enriched.push({
@@ -303,7 +305,8 @@ async function enrichUncached(
   const canonicalNameByKey = new Map<string, string>();
 
   for (const m of topMatches) {
-    const weight = Math.min(MAX_REPO_WEIGHT, Math.max(0.1, m.similarity));
+    if (m.similarity < MIN_GITHUB_EVIDENCE_SIMILARITY) continue;
+    const weight = Math.min(MAX_REPO_WEIGHT, m.similarity);
     const seenInRepo = new Set<string>();
     const allModules = [...m.modules_found, ...m.folders_found];
     for (const mod of allModules) {

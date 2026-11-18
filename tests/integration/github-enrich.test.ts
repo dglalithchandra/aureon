@@ -246,10 +246,10 @@ describe("README modules are untrusted (SEC-04)", () => {
     // Only the plain label survived the name rule.
     expect(enrichment.matches[0]!.modules_found).toEqual(["Payouts"]);
 
-    // Two README-scored repos contribute 0.8 each; three folder-only matches
-    // contribute the minimum 0.1 signal each.
-    expect(enrichment.module_repos.Payouts).toBe(5);
-    expect(enrichment.module_frequency.Payouts).toBeCloseTo(2 * 0.8 + 3 * 0.1, 5);
+    // Only the two deeply-scored repositories are evidence. Folder-only
+    // search results remain diagnostics and cannot corroborate a module.
+    expect(enrichment.module_repos.Payouts).toBe(2);
+    expect(enrichment.module_frequency.Payouts).toBeCloseTo(2 * 0.8, 5);
     for (const [name, weight] of Object.entries(enrichment.module_frequency)) {
       expect(weight).toBeLessThanOrEqual(0.8 * (enrichment.module_repos[name] ?? 0));
     }

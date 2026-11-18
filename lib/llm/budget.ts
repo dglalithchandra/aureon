@@ -37,7 +37,6 @@ async function increment(key: string): Promise<number | null> {
       if (count === 1) await redis.expire(key, COUNTER_TTL_SECONDS);
       return count;
     } catch (err) {
-      // Fail open: a Redis outage should not take the whole product down.
       logger.error("llm.budget.redis_failure", {
         message: err instanceof Error ? err.message : "unknown",
       });
@@ -67,8 +66,15 @@ export async function isLlmBudgetExhausted(now: Date = new Date()): Promise<bool
     try {
       const count = await redis.get<number | string>(key);
       return Number(count ?? 0) >= limit;
-    } catch {
-      return false; // fail open, like consumeLlmBudget
+    } catch (err) {
+      logger.error("llm.budget.redis_failure", {
+        operation: "read",
+        message: err instanceof Error ? err.message : "unknown",
+      });
+      // In production, cost protection is more important than continuing an
+      // expensive route while its global counter is unavailable. Development
+      // and tests remain fail-open so a local Redis outage does not block work.
+      return getServerEnv().NODE_ENV === "production";
     }
   }
   const entry = memory.get(key);
@@ -83,6 +89,10 @@ export async function consumeLlmBudget(now: Date = new Date()): Promise<number |
   const key = llmBudgetKey(now);
   const count = await increment(key);
   const limit = getServerEnv().LLM_DAILY_CALL_LIMIT;
+  if (count === null && getServerEnv().NODE_ENV === "production") {
+    logger.warn("llm.budget.unavailable", { key, limit });
+    throw new BudgetExceededError();
+  }
   if (count !== null && count > limit) {
     logger.warn("llm.budget.exceeded", { key, count, limit });
     throw new BudgetExceededError();

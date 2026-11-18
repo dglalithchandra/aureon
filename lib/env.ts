@@ -62,6 +62,9 @@ const serverSchema = z
     AUTH_URL: z.string().url().optional(),
     AUTH_GOOGLE_ID: z.string().optional(),
     AUTH_GOOGLE_SECRET: z.string().optional(),
+    /** Optional HTTP Basic gate for private judge/demo deployments. */
+    ACCESS_GATE_USERNAME: z.string().min(1).optional(),
+    ACCESS_GATE_PASSWORD: z.string().min(12).optional(),
     /**
      * Magic links are sent over an HTTPS email API (lib/auth/email.ts), not
      * SMTP. EMAIL_API_URL defaults to Resend's endpoint; any API that takes
@@ -131,6 +134,15 @@ const serverSchema = z
       fastProvider,
       data.LLM_FALLBACK_PROVIDER,
     ]);
+
+    if (Boolean(data.ACCESS_GATE_USERNAME) !== Boolean(data.ACCESS_GATE_PASSWORD)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ACCESS_GATE_PASSWORD"],
+        message:
+          "ACCESS_GATE_USERNAME and ACCESS_GATE_PASSWORD must be configured together",
+      });
+    }
 
     // Each provider needs its own credential; we don't fail fast at boot
     // because most local commands (typecheck, lint) shouldn't require LLM

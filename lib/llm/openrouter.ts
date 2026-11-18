@@ -306,7 +306,11 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
   const message = choice?.message;
   if (!message) {
     const detail = data.error?.message?.trim();
-    throw new Error(detail ? `OpenRouter returned no choices: ${detail}` : "OpenRouter returned no choices");
+    throw new Error(
+      detail
+        ? `OpenRouter returned no choices: ${detail}`
+        : "OpenRouter returned no choices",
+    );
   }
 
   // Build the content blocks. We map every tool_call to a

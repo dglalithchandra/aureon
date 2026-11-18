@@ -241,9 +241,24 @@ export type EngineerView = z.infer<typeof EngineerViewSchema>;
  *  Combined
  * ────────────────────────────────────────────────────────────── */
 
+export const OutputConsistencyIssueSchema = z.object({
+  code: z.string().min(1).max(60),
+  severity: z.enum(["repaired", "warning", "blocking"]),
+  message: z.string().min(1).max(400),
+});
+
+export const OutputConsistencyReportSchema = z.object({
+  consistent: z.boolean(),
+  checked_at: z.number().int(),
+  issues: z.array(OutputConsistencyIssueSchema).max(40),
+});
+export type OutputConsistencyReport = z.infer<typeof OutputConsistencyReportSchema>;
+
 export const FinalOutputSchema = z.object({
   client: ClientViewSchema,
   engineer: EngineerViewSchema,
+  /** Added after generation by the deterministic cross-view validator. */
+  consistency_report: OutputConsistencyReportSchema.optional(),
 });
 export type FinalOutput = z.infer<typeof FinalOutputSchema>;
 

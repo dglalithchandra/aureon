@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { ConfidenceBadge } from "@/components/output/ConfidenceBadge";
 import { ClientView } from "@/components/output/ClientView";
 import { EngineerView } from "@/components/output/EngineerView";
 import { ExportMenu } from "@/components/output/ExportMenu";
 import type { FinalOutput } from "@/lib/schemas/output";
 import { cn } from "@/lib/utils";
+import { ConsistencyBanner } from "@/components/output/ConsistencyBanner";
 
 type Tab = "client" | "engineer";
 
@@ -16,6 +17,7 @@ interface ReadOnlyOutputProps {
 
 export function ReadOnlyOutput({ output }: ReadOnlyOutputProps): React.ReactElement {
   const [tab, setTab] = useState<Tab>("client");
+  const reduceMotion = useReducedMotion();
 
   return (
     <div className="flex flex-col gap-8">
@@ -38,12 +40,14 @@ export function ReadOnlyOutput({ output }: ReadOnlyOutputProps): React.ReactElem
         </div>
       </div>
 
+      <ConsistencyBanner report={output.consistency_report} />
+
       <div id="readonly-print-target" className="min-w-0">
         <motion.div
           key={tab}
-          initial={{ opacity: 0, x: 8 }}
+          initial={reduceMotion ? false : { opacity: 0, x: 8 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: reduceMotion ? 0 : 0.2 }}
         >
           {tab === "client" ? (
             <ClientView view={output.client} readOnly />

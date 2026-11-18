@@ -70,7 +70,11 @@ describe("the components", () => {
       confidence: 90,
       modules: [
         { ...makeExtraction().modules[0]!, github_validated: true, module_confidence: 1 },
-        { ...makeExtraction().modules[1]!, github_validated: false, module_confidence: null },
+        {
+          ...makeExtraction().modules[1]!,
+          github_validated: false,
+          module_confidence: null,
+        },
       ],
     });
     expect(computeConfidence(extraction).githubBonus).toBe(3);

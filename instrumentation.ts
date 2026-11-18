@@ -16,6 +16,16 @@ export async function register(): Promise<void> {
     const { installExternalNetworkGuard } =
       await import("@/lib/testing/external-network-guard");
     installExternalNetworkGuard();
+
+    // Browser tests exercise `next start`, not the less representative dev
+    // server. Permit their disposable in-process database only when the
+    // network kill switch and an explicit temporary directory are both set.
+    // Ordinary production still reaches getServerEnv() below and requires a
+    // real DATABASE_URL.
+    if (process.env.PGLITE_DIR) {
+      await startLocalDatabase();
+      return;
+    }
   }
 
   if (process.env.NODE_ENV === "production") {

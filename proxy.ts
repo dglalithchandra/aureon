@@ -11,6 +11,60 @@ export const config = {
 };
 
 const API_PATH = /^\/api\//;
+const ACCESS_GATE_EXEMPT = /^\/api\/(?:health$|jobs\/|cron\/retention$|auth\/)/;
+
+/**
+ * Optional deployment-wide judge/demo gate. Browser-native Basic auth keeps
+ * the password out of URLs and application storage. HTTPS is mandatory in
+ * production because Basic credentials are encoded, not encrypted.
+ */
+function requireAccessGate(req: NextRequest): NextResponse | null {
+  const username = process.env.ACCESS_GATE_USERNAME;
+  const password = process.env.ACCESS_GATE_PASSWORD;
+  if (!username && !password) return null;
+
+  // Misconfiguration must fail closed instead of accidentally publishing the
+  // deployment. Infrastructure callbacks retain their own stronger checks.
+  if (!username || !password) return accessDenied(503, false);
+  if (ACCESS_GATE_EXEMPT.test(req.nextUrl.pathname)) return null;
+
+  const header = req.headers.get("authorization");
+  if (!header?.startsWith("Basic ")) return accessDenied(401, true);
+  try {
+    const supplied = atob(header.slice(6));
+    if (!constantTimeEqual(supplied, `${username}:${password}`)) {
+      return accessDenied(401, true);
+    }
+  } catch {
+    return accessDenied(401, true);
+  }
+  return null;
+}
+
+function constantTimeEqual(left: string, right: string): boolean {
+  const length = Math.max(left.length, right.length);
+  let difference = left.length ^ right.length;
+  for (let index = 0; index < length; index += 1) {
+    difference |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0);
+  }
+  return difference === 0;
+}
+
+function accessDenied(status: 401 | 503, challenge: boolean): NextResponse {
+  const headers = new Headers({
+    "Cache-Control": "no-store",
+    "Content-Type": "text/plain; charset=utf-8",
+  });
+  if (challenge) {
+    headers.set("WWW-Authenticate", 'Basic realm="Aureon preview", charset="UTF-8"');
+  }
+  return new NextResponse(
+    status === 503
+      ? "Private access is not configured correctly."
+      : "Authentication required.",
+    { status, headers },
+  );
+}
 
 /**
  * One id per request, so a log line, an error report and the response a
@@ -42,6 +96,11 @@ function isPollRequest(req: NextRequest): boolean {
 
 export async function proxy(req: NextRequest): Promise<NextResponse> {
   const id = requestId(req);
+  const gate = requireAccessGate(req);
+  if (gate) {
+    gate.headers.set("X-Request-Id", id);
+    return gate;
+  }
   // A page gets the policy and nothing else; rate limiting is for the API.
   if (!API_PATH.test(req.nextUrl.pathname)) return withCsp(req, id);
   if (JOB_PATH.test(req.nextUrl.pathname)) return withRequestId(req, id);

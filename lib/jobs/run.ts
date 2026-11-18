@@ -15,6 +15,8 @@ import type { ClientView, EngineerView } from "@/lib/schemas/output";
 import { AppError, BudgetExceededError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import type { Job, JobOutcome } from "@/lib/jobs/types";
+import { reconcileOutput } from "@/lib/pipeline/output-consistency";
+import { reportError } from "@/lib/observability/report";
 
 /**
  * Run one queued job. Called by POST /api/jobs/[type] (QStash) or in-process
@@ -69,6 +71,11 @@ async function runRoundJob(job: Job): Promise<JobOutcome> {
     logger.warn("jobs.round.failed", {
       sessionId: job.sessionId,
       message: err instanceof Error ? err.message : "unknown",
+    });
+    await reportError(err, {
+      where: "job.round",
+      sessionId: job.sessionId,
+      detail: { jobType: job.type },
     });
     return "failed";
   } finally {
@@ -135,6 +142,11 @@ async function generatePart(
       part,
       message: error instanceof Error ? error.message : "unknown",
     });
+    await reportError(error, {
+      where: `job.${part}`,
+      sessionId: session.id,
+      detail: { part },
+    });
     return { part, error };
   }
 }
@@ -176,10 +188,15 @@ function applyFinalizePart(session: Session, result: FinalizePartResult): Sessio
     return { ...session, draft_output: next, last_error: lastError, updated_at: now };
   }
   if (next.client && next.engineer) {
+    const finalOutput = reconcileOutput(session, {
+      client: next.client,
+      engineer: next.engineer,
+    });
     return {
       ...session,
       status: "finalized",
-      final_output: { client: next.client, engineer: next.engineer },
+      current_confidence: finalOutput.client.confidence_badge.score,
+      final_output: finalOutput,
       draft_output: null,
       pipeline_stage: null,
       last_error: null,

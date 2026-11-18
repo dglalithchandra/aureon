@@ -14,6 +14,7 @@ import {
   validateUuid,
 } from "@/lib/security/route-helpers";
 import { ValidationError } from "@/lib/errors";
+import { markOutputManuallyEdited } from "@/lib/pipeline/output-consistency";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -84,9 +85,10 @@ export async function PATCH(
     // React text nodes, react-markdown with its element allow-list — escapes
     // what it renders. An HTML sanitiser here deleted real content such as
     // "List<Order>" and "<5 users & R&D" (BUG-07).
+    const checkedOutput = markOutputManuallyEdited(final_output);
     const updated = {
       ...session,
-      final_output,
+      final_output: checkedOutput,
       updated_at: Date.now(),
     };
     await putSession(updated);
@@ -94,7 +96,7 @@ export async function PATCH(
     // can show what the owner changed by hand.
     await recordVersion({
       projectId: updated.id,
-      output: final_output,
+      output: checkedOutput,
       reason: "edited",
       confidence: updated.current_confidence,
       createdBy: (await getViewer(req)).userId,

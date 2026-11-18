@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import { createServer, type IncomingMessage } from "node:http";
 import { tmpdir } from "node:os";
@@ -19,8 +19,8 @@ import { MOCK_TOOL_NAMES, type MockToolName } from "../tests/fixtures/llm";
  * Playwright starts this through `webServer` in playwright.config.ts.
  */
 
-const PORT = process.env.E2E_PORT ?? "3210";
-const CONTROL_PORT = Number(process.env.E2E_CONTROL_PORT ?? 3211);
+const PORT = process.argv[2] ?? process.env.E2E_PORT ?? "4310";
+const CONTROL_PORT = Number(process.env.E2E_CONTROL_PORT ?? 4311);
 // Keep the write-heavy disposable database outside the repository. Turbopack
 // watches the project tree, so a PGlite directory inside it repeatedly wakes
 // the file watcher and can turn a sub-second mocked request into minutes.
@@ -142,9 +142,23 @@ async function main(): Promise<void> {
     NEXT_PUBLIC_APP_URL: `http://127.0.0.1:${PORT}`,
   });
 
-  const child = spawn("npx", ["next", "dev", "--port", PORT], {
+  // Exercise the production server. Next 16.4's Windows development HMR can
+  // repeatedly reload a Playwright page even on an isolated port, while the
+  // deployed application runs through `next start`. Building with the same
+  // sanitized environment also ensures browser tests cannot compile in live
+  // provider credentials from `.env.local`.
+  const nextBin = join(process.cwd(), "node_modules", "next", "dist", "bin", "next");
+  const build = spawnSync(process.execPath, [nextBin, "build"], {
     stdio: "inherit",
-    shell: process.platform === "win32",
+    env,
+  });
+  if (build.status !== 0) {
+    await mock.close();
+    process.exit(build.status ?? 1);
+  }
+
+  const child = spawn(process.execPath, [nextBin, "start", "--port", PORT], {
+    stdio: "inherit",
     env,
   });
 

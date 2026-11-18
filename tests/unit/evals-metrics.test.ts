@@ -8,10 +8,12 @@ import {
   mean,
   moduleRecall,
   percentile,
+  precisionAtK,
   rate,
   sameModule,
   stateDistance,
   stdev,
+  ndcgAtK,
 } from "@/evals/lib/metrics";
 
 /** The maths the evaluation report prints (evals/run.ts). */
@@ -96,6 +98,37 @@ describe("module recall", () => {
 
   it("is 1 when the case asks for nothing", () => {
     expect(moduleRecall([], ["Auth"]).recall).toBe(1);
+  });
+});
+
+describe("GitHub ranking quality", () => {
+  const relevance = {
+    "acme/direct": 3,
+    "acme/useful": 2,
+    "acme/partial": 1,
+    "acme/wrong": 0,
+  };
+
+  it("measures relevant repositories in the first five positions", () => {
+    expect(
+      precisionAtK(
+        ["acme/direct", "acme/wrong", "acme/useful", "unknown/repo", "acme/partial"],
+        relevance,
+      ),
+    ).toBe(3 / 5);
+    expect(precisionAtK(["acme/direct"], relevance)).toBe(1 / 5);
+  });
+
+  it("rewards placing direct references above partial ones", () => {
+    const ideal = ndcgAtK(["acme/direct", "acme/useful", "acme/partial"], relevance, 3);
+    const reversed = ndcgAtK(
+      ["acme/partial", "acme/useful", "acme/direct"],
+      relevance,
+      3,
+    );
+    expect(ideal).toBeCloseTo(1, 8);
+    expect(reversed).toBeLessThan(ideal);
+    expect(ndcgAtK(["acme/wrong"], {}, 5)).toBe(0);
   });
 });
 

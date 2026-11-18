@@ -92,6 +92,16 @@ describe("engineer.github_references are built from the matches (GOAL-02)", () =
       "Similar project (similarity 0.42)",
     );
   });
+
+  it("does not publish a weak or unscored search result as evidence", async () => {
+    const view = await generateEngineerView(
+      sessionWith([
+        makeMatch({ repo: "acme/weak", similarity: 0.2 }),
+        makeMatch({ repo: "acme/unscored", similarity: 0 }),
+      ]),
+    );
+    expect(view.github_references).toEqual([]);
+  });
 });
 
 describe("module confidence reaches both views (blueprint step 07)", () => {

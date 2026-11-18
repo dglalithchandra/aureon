@@ -6,6 +6,7 @@ import { logger } from "@/lib/logger";
 import { JOB_MAX_DURATION_SECONDS } from "@/lib/storage/lock";
 import { runJob } from "@/lib/jobs/run";
 import type { Job } from "@/lib/jobs/types";
+import { reportError } from "@/lib/observability/report";
 
 /** QStash retries a delivery that failed before the job claimed itself. */
 const QSTASH_RETRIES = 3;
@@ -37,6 +38,11 @@ export async function sendJobs(jobs: Job[], origin: string): Promise<void> {
             type: job.type,
             sessionId: job.sessionId,
             message: err instanceof Error ? err.message : "unknown",
+          });
+          await reportError(err, {
+            where: "jobs.inline",
+            sessionId: job.sessionId,
+            detail: { jobType: job.type },
           });
         }
       });

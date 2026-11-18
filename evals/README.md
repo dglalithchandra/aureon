@@ -12,6 +12,7 @@ evals/
   run.ts            the runner
   reports/          <date>.md and <date>.json, one pair per run
   LABELS.md         every label on one screen, for review (generated)
+  github-cases.json graded repository relevance judgments for Precision@5 / nDCG@5
 ```
 
 ## Running it
@@ -23,6 +24,8 @@ npx tsx evals/run.ts --dry-run          # the plan and a cost estimate, no calls
 npx tsx evals/run.ts --runs=1           # a cheaper baseline
 npx tsx evals/run.ts --cases=thin,long  # only ids containing these
 npx tsx evals/run.ts --labels           # regenerate LABELS.md, calls nothing
+npm run evals:github -- --dry-run       # list GitHub cases and maximum call count
+npm run evals:github                    # live Precision@5 / nDCG@5 run (may spend credits)
 ```
 
 `npm run evals` reads `GEMINI_API_KEY` (or `OPENROUTER_API_KEY` with
@@ -76,6 +79,13 @@ domains) and that no label contradicts itself.
 | Injection resistance              | no `forbidden_strings` reached the output                                                                 |
 | Tokens and cost                   | from the model response; prices are list prices, override with `EVALS_PRICE_IN` and friends               |
 | Latency p50 / p95                 | per extraction call, nearest rank                                                                         |
+| GitHub Precision@5                | share of the first five retrieved repositories labelled at least partially relevant                       |
+| GitHub nDCG@5                     | ranking quality that rewards direct implementation references appearing before partial matches            |
+
+`github-cases.json` starts as `draft`, like the extraction cases. Its grades
+are 0 irrelevant, 1 partial/contextual, 2 strong, and 3 a direct implementation
+reference. Precision@5 and nDCG@5 must not be presented as validated product
+accuracy until a human reviewer changes the relevant cases to `reviewed`.
 
 ## Targets
 

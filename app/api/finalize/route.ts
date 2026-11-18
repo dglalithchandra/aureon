@@ -16,6 +16,7 @@ import {
 } from "@/lib/security/route-helpers";
 import { RATE_LIMITS } from "@/lib/security/rate-limit";
 import { BlockedError, BudgetExceededError, ValidationError } from "@/lib/errors";
+import { reconcileOutput } from "@/lib/pipeline/output-consistency";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,7 +77,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const draft = session.draft_output;
       if (draft?.client && draft.engineer) {
         // Both views already landed; only the final write was missing.
-        const output = { client: draft.client, engineer: draft.engineer };
+        const output = reconcileOutput(session, {
+          client: draft.client,
+          engineer: draft.engineer,
+        });
         await putSession(finalized(session, output));
         return NextResponse.json({ output, cached: true });
       }
@@ -116,6 +120,7 @@ function finalized(
   return {
     ...session,
     status: "finalized",
+    current_confidence: output.client.confidence_badge.score,
     final_output: output,
     draft_output: null,
     pipeline_stage: null,

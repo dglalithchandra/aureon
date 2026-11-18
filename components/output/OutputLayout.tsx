@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   ArrowLeft,
   Check,
@@ -34,6 +34,7 @@ import { EngineerView } from "@/components/output/EngineerView";
 import { ExportMenu } from "@/components/output/ExportMenu";
 import { ShareDialog } from "@/components/output/ShareDialog";
 import { cn } from "@/lib/utils";
+import { ConsistencyBanner } from "@/components/output/ConsistencyBanner";
 
 type Tab = "client" | "engineer";
 
@@ -81,6 +82,7 @@ export function OutputLayout({
   initialTitle,
 }: OutputLayoutProps): React.ReactElement {
   const root = useRef<HTMLDivElement | null>(null);
+  const reduceMotion = useReducedMotion();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("client");
   const [draft, setDraft] = useState<FinalOutput>(initialOutput);
@@ -429,6 +431,8 @@ export function OutputLayout({
         </div>
       )}
 
+      <ConsistencyBanner report={draft.consistency_report} />
+
       {recovered && (
         <div
           role="status"
@@ -467,10 +471,10 @@ export function OutputLayout({
           <AnimatePresence mode="wait">
             <motion.div
               key={tab}
-              initial={{ opacity: 0, x: 12 }}
+              initial={reduceMotion ? false : { opacity: 0, x: 12 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -12 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
+              exit={reduceMotion ? undefined : { opacity: 0, x: -12 }}
+              transition={{ duration: reduceMotion ? 0 : 0.22, ease: "easeOut" }}
             >
               {tab === "client" ? (
                 <ClientView

@@ -17,6 +17,7 @@ import {
 } from "docx";
 import type { ClientView, EngineerView, FinalOutput } from "@/lib/schemas/output";
 import { logger } from "@/lib/logger";
+import { downloadPublicHttps } from "@/lib/security/public-download";
 
 /**
  * The scope as a Word document.
@@ -443,20 +444,13 @@ export async function loadWorkspaceLogo(
       return { data: new Uint8Array(data), type };
     }
 
-    const url = new URL(logoUrl);
-    if (url.protocol !== "https:") return null;
-
-    const res = await fetch(url, {
-      redirect: "error",
-      signal: AbortSignal.timeout(5_000),
+    const res = await downloadPublicHttps(new URL(logoUrl), {
+      maxBytes: MAX_LOGO_BYTES,
+      timeoutMs: 5_000,
     });
-    if (!res.ok) return null;
-    const type =
-      LOGO_TYPES[(res.headers.get("content-type") ?? "").split(";")[0]!.trim()];
+    const type = LOGO_TYPES[res.contentType.split(";")[0]!.trim().toLowerCase()];
     if (!type) return null;
-    const data = new Uint8Array(await res.arrayBuffer());
-    if (data.byteLength === 0 || data.byteLength > MAX_LOGO_BYTES) return null;
-    return { data, type };
+    return { data: res.data, type };
   } catch (err) {
     logger.warn("export.logo_failed", {
       message: err instanceof Error ? err.message : "unknown",

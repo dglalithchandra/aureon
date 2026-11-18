@@ -1,19 +1,26 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: npm
+    directory: /
     schedule:
-      interval: "weekly"
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
     groups:
-      # One PR per week for all minor and patch bumps; majors still get their own PR.
-      npm-minor-and-patch:
+      next-runtime:
         patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+          - next
+          - eslint-config-next
+      test-tooling:
+        dependency-type: development
+        patterns:
+          - vitest
+          - "@vitest/*"
+          - "@playwright/*"
+    versioning-strategy: increase-if-necessary
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "monthly"
+      interval: monthly
+    open-pull-requests-limit: 3

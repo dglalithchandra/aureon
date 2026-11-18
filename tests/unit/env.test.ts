@@ -25,6 +25,15 @@ afterEach(() => {
 });
 
 describe("production storage requirement", () => {
+  it("requires both access-gate credentials when either is configured", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("ACCESS_GATE_USERNAME", "judge");
+    vi.stubEnv("ACCESS_GATE_PASSWORD", "");
+    const { getServerEnv } = await load();
+
+    expect(() => getServerEnv()).toThrow(/ACCESS_GATE_USERNAME.*ACCESS_GATE_PASSWORD/);
+  });
+
   it("a production env without a database throws at startup", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("NEXT_RUNTIME", "nodejs");
@@ -59,12 +68,8 @@ describe("production storage requirement", () => {
     vi.stubEnv("KV_REST_API_TOKEN", "test-token-0000000000");
     const { getServerEnv, register } = await load();
 
-    expect(getServerEnv().UPSTASH_REDIS_REST_URL).toBe(
-      "https://example.upstash.io",
-    );
-    expect(getServerEnv().UPSTASH_REDIS_REST_TOKEN).toBe(
-      "test-token-0000000000",
-    );
+    expect(getServerEnv().UPSTASH_REDIS_REST_URL).toBe("https://example.upstash.io");
+    expect(getServerEnv().UPSTASH_REDIS_REST_TOKEN).toBe("test-token-0000000000");
     await expect(register()).resolves.toBeUndefined();
   });
 

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Home, RotateCcw } from "lucide-react";
 import { BlueprintGrid } from "@/components/landing/BlueprintGrid";
 
@@ -30,13 +30,14 @@ export function BrandedError({
   onReload,
   hideHome,
 }: BrandedErrorProps): React.ReactElement {
+  const reduceMotion = useReducedMotion();
   return (
     <main className="bg-blueprint-bg relative isolate flex min-h-[100dvh] items-center justify-center overflow-hidden px-6 py-16">
       <BlueprintGrid intensity="subtle" drift={false} />
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
+        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: reduceMotion ? 0 : 0.4 }}
         className="relative z-10 w-full max-w-lg text-center"
       >
         <p className="text-blueprint-muted font-mono text-[10px] tracking-[0.3em] uppercase">

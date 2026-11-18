@@ -123,6 +123,45 @@ export function moduleRecall(
   return { recall: (expected.length - missing.length) / expected.length, missing };
 }
 
+/** Binary relevance among the first k retrieved repository slugs. */
+export function precisionAtK(
+  observed: readonly string[],
+  relevance: Readonly<Record<string, number>>,
+  k = 5,
+): number {
+  if (k <= 0) return 0;
+  const top = observed.slice(0, k);
+  const relevant = top.filter((repo) => (relevance[repo.toLowerCase()] ?? 0) > 0).length;
+  // Precision@k keeps k as the denominator even when retrieval returns less:
+  // returning one good repository is not a perfect top-five result.
+  return relevant / k;
+}
+
+/**
+ * Normalized discounted cumulative gain. Grades are 0 (irrelevant) to 3
+ * (direct implementation reference); stronger repositories should rank first.
+ */
+export function ndcgAtK(
+  observed: readonly string[],
+  relevance: Readonly<Record<string, number>>,
+  k = 5,
+): number {
+  if (k <= 0) return 0;
+  const gain = (grade: number, index: number): number =>
+    (2 ** Math.max(0, grade) - 1) / Math.log2(index + 2);
+  const actual = observed
+    .slice(0, k)
+    .reduce(
+      (sum, repo, index) => sum + gain(relevance[repo.toLowerCase()] ?? 0, index),
+      0,
+    );
+  const ideal = Object.values(relevance)
+    .sort((a, b) => b - a)
+    .slice(0, k)
+    .reduce((sum, grade, index) => sum + gain(grade, index), 0);
+  return ideal === 0 ? 0 : actual / ideal;
+}
+
 /** Forbidden strings (an injection payload) that reached the output. */
 export function leakedStrings(forbidden: readonly string[], haystack: string): string[] {
   const text = haystack.toLowerCase();

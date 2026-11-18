@@ -14,6 +14,7 @@ import {
   type StepState,
 } from "@/components/chat/pipelineSteps";
 import { cn } from "@/lib/utils";
+import { GITHUB_MIN_EVIDENCE_SIMILARITY } from "@/lib/config/github";
 
 interface PipelinePanelProps {
   session: Session | null;
@@ -80,14 +81,21 @@ function buildSteps(
           </p>
         );
       } else {
+        const evidence = m.matches.filter(
+          (match) => match.similarity >= GITHUB_MIN_EVIDENCE_SIMILARITY,
+        );
+        const diagnosticCount = m.matches.length - evidence.length;
         detail = (
           <div className="space-y-2">
             <p>
-              {m.matches.length} similar repos via {m.variants?.length ?? 1} query
-              variants:
+              {evidence.length} evidence-quality repo{evidence.length === 1 ? "" : "s"}{" "}
+              via {m.variants?.length ?? 1} query variants
+              {diagnosticCount > 0
+                ? `; ${diagnosticCount} weaker search candidate${diagnosticCount === 1 ? "" : "s"} excluded from confidence.`
+                : "."}
             </p>
             <ul className="space-y-2">
-              {m.matches.slice(0, 5).map((r) => (
+              {evidence.slice(0, 5).map((r) => (
                 <li
                   key={r.repo}
                   className="border-blueprint-line/15 bg-blueprint-line/5 rounded-md border px-2 py-1.5"
@@ -108,6 +116,12 @@ function buildSteps(
                 </li>
               ))}
             </ul>
+            {evidence.length === 0 && (
+              <p className="text-amber-300/90">
+                Search completed, but no repository was relevant enough to cite as
+                implementation evidence.
+              </p>
+            )}
           </div>
         );
       }
@@ -116,10 +130,8 @@ function buildSteps(
       detail = (
         <p>
           Scope confidence:{" "}
-          <span className="text-blueprint-text">
-            {session.current_confidence}/100
-          </span>
-          . AI clarity read: {lastRound.extraction.confidence}/100. Blocker:{" "}
+          <span className="text-blueprint-text">{session.current_confidence}/100</span>.
+          AI clarity read: {lastRound.extraction.confidence}/100. Blocker:{" "}
           {lastRound.extraction.blocker ? "yes" : "no"}.
         </p>
       );

@@ -1,0 +1,41 @@
+[
+  {
+    "id": "github-ecommerce-platform",
+    "label_status": "draft",
+    "brief": "A modular ecommerce backend with catalog, carts, orders, payments, promotions and an admin dashboard.",
+    "relevance": {
+      "medusajs/medusa": 3,
+      "saleor/saleor": 3,
+      "vendure-ecommerce/vendure": 3,
+      "metabase/metabase": 0,
+      "calcom/cal.com": 0
+    },
+    "notes": "Direct ecommerce implementations are grade 3; unrelated analytics and scheduling products are 0. Human review required before using as an accuracy claim."
+  },
+  {
+    "id": "github-appointment-platform",
+    "label_status": "draft",
+    "brief": "An appointment scheduling platform with availability, bookings, reminders, staff calendars and role-based administration.",
+    "relevance": {
+      "calcom/cal.com": 3,
+      "easyappointments/easyappointments": 3,
+      "openemr/openemr": 1,
+      "medusajs/medusa": 0,
+      "apache/superset": 0
+    },
+    "notes": "Scheduling implementations are direct references; OpenEMR is only partially useful because appointments are one part of a much larger clinical system."
+  },
+  {
+    "id": "github-business-intelligence",
+    "label_status": "draft",
+    "brief": "A self-service analytics product with dashboards, filters, charts, data-source connections and scheduled reports.",
+    "relevance": {
+      "metabase/metabase": 3,
+      "apache/superset": 3,
+      "grafana/grafana": 2,
+      "calcom/cal.com": 0,
+      "saleor/saleor": 0
+    },
+    "notes": "BI products are direct references; Grafana is strongly related but oriented toward observability. Human review required."
+  }
+]

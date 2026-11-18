@@ -40,7 +40,7 @@ test("edits in both views survive a reload", async ({ page }) => {
   });
   await page.getByRole("button", { name: "Add tech" }).first().click();
   await setField(page, "tech for Auth", "Auth.js", { nth: 1 });
-  await page.getByRole("button", { name: "Add endpoint" }).click();
+  await page.getByRole("button", { name: "Add endpoint" }).first().click();
   await setField(page, "endpoint of Auth", "POST /api/logout", { nth: 1 });
   await page.getByRole("button", { name: "Add step" }).click();
   await setField(page, "build step", "Admin", { nth: 1 });

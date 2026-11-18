@@ -6,7 +6,7 @@ import { expect, test as base, type Page } from "@playwright/test";
  * control port, which stands in for "the model answers differently now".
  */
 
-const CONTROL = `http://127.0.0.1:${process.env.E2E_CONTROL_PORT ?? 3211}`;
+const CONTROL = `http://127.0.0.1:${process.env.E2E_CONTROL_PORT ?? 4311}`;
 
 let clientIp = 0;
 

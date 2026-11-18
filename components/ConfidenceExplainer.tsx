@@ -52,9 +52,9 @@ export function ConfidenceExplainer({
         answer. <strong>Coverage</strong> is how much of the nine scope areas your brief
         covers, weighted by how much each one matters. The{" "}
         <strong>AI clarity read</strong> is the one part the model contributes: how
-        clearly your brief reads. A disagreement penalty of up to {Math.round(
-          SCOPING.disagreementPenalty * 100,
-        )} points is applied when those signals conflict. The <strong>GitHub bonus</strong>
+        clearly your brief reads. A disagreement penalty of up to{" "}
+        {Math.round(SCOPING.disagreementPenalty * 100)} points is applied when those
+        signals conflict. The <strong>GitHub bonus</strong>
         adds up to {SCOPING.githubBonusMax} points based on both the strength and share of
         modules backed by similar public projects.
       </p>
