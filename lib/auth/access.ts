@@ -1,5 +1,5 @@
 import "@/lib/server-only";
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDatabase } from "@/lib/db/client";
 import { projects, workspaceMembers, type WorkspaceRole } from "@/lib/db/schema";
 import type { Viewer } from "@/lib/auth/viewer";
@@ -107,13 +107,4 @@ export async function workspaceRoleFor(
     .limit(1);
   if (!membership) return null;
   return isRole(membership.role) ? membership.role : null;
-}
-
-/** How many projects this browser has made while signed out (step 1's limit). */
-export async function anonymousProjectCount(anonId: string): Promise<number> {
-  const [row] = await getDatabase()
-    .select({ total: count() })
-    .from(projects)
-    .where(and(eq(projects.anonOwnerId, anonId), isNull(projects.userId)));
-  return row?.total ?? 0;
 }

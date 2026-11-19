@@ -49,29 +49,22 @@ describe("BUG-03: sessions are owned by the browser, not the latest cookie", () 
     const browser = `${OWNER_COOKIE_NAME}=${ownerCookie!.value}`;
     const a = await sessionOf(first);
 
-    // A signed-out browser may only start one scope, so the second project
-    // is stored directly — the point here is the cookie, not the limit.
-    const b = makeSession({
-      id: "b0b0b0b0-0000-4000-8000-00000000000b",
-      owner_id: a.owner_id,
-    });
-    await putSession(b);
+    const second = await create(browser);
+    const b = await sessionOf(second);
 
     expect((await read(a.id, browser)).status).toBe(200);
     expect((await read(b.id, browser)).status).toBe(200);
   });
 
-  it("asks a signed-out browser to sign in before a second scope", async () => {
+  it("lets a signed-out browser start another scope", async () => {
     const first = await create();
     const browser = `${OWNER_COOKIE_NAME}=${first.cookies.get(OWNER_COOKIE_NAME)!.value}`;
+    const original = await sessionOf(first);
 
     const second = await create(browser);
-    expect(second.status).toBe(401);
-    expect(await second.json()).toMatchObject({
-      error: { code: "SIGN_IN_REQUIRED" },
-    });
-    // The first one is untouched.
-    expect((await read((await sessionOf(first)).id, browser)).status).toBe(200);
+    expect(second.status).toBe(200);
+    expect((await sessionOf(second)).owner_id).toBe(original.owner_id);
+    expect((await read(original.id, browser)).status).toBe(200);
   });
 
   it("another browser cannot read them", async () => {
