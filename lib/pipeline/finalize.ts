@@ -101,7 +101,22 @@ export async function generateEngineerView(session: Session): Promise<EngineerVi
   const risks = detectRisks(latestRound(session).extraction);
   const context = buildSharedContext(session, computedBlocks(estimate, risks));
   const t0 = Date.now();
-  const engineer = await runEngineerView(context, session.id);
+  let engineer: EngineerView;
+  try {
+    engineer = await runEngineerView(context, session.id);
+  } catch (err) {
+    // A free model can exhaust its output budget twice while filling the
+    // large engineer tool. The extraction, estimate and risks are already
+    // validated/computed, so keep the project usable with a conservative
+    // deterministic document. Daily-budget exhaustion is rethrown by
+    // runEngineerView and is intentionally not converted to LLMError.
+    if (!(err instanceof InvalidEngineerViewError)) throw err;
+    logger.warn("finalize.engineer.deterministic_fallback", {
+      sessionId: session.id,
+      message: err.message,
+    });
+    engineer = deterministicEngineerView(session, estimate, risks);
+  }
   const view: EngineerView = {
     ...engineer,
     module_table: engineer.module_table.map((row) => withEngineerRowScore(session, row)),
@@ -121,6 +136,138 @@ export async function generateEngineerView(session: Session): Promise<EngineerVi
     risks: view.risks.length,
   });
   return view;
+}
+
+/** A complete engineer view that uses no unvalidated model claims. */
+function deterministicEngineerView(
+  session: Session,
+  estimate: EffortEstimate,
+  risks: DetectedRisk[],
+): EngineerView {
+  const extraction = latestRound(session).extraction;
+  const stack = statedStack(session);
+  const roles = statedRoles(session);
+  const modules = extraction.modules.map((module) => {
+    const path = apiPath(module.name);
+    return {
+      name: module.name,
+      confidence: module.module_confidence,
+      tech_stack: stack,
+      size: module.size,
+      dependencies: [],
+      api_endpoints: [
+        `GET /api/${path} — list records`,
+        `POST /api/${path} — create a record`,
+        `PATCH /api/${path}/:id — update a record`,
+      ],
+      notes: module.description,
+    } satisfies EngineerModuleRow;
+  });
+
+  return {
+    module_table: modules,
+    build_order: modules.map((module) => module.name),
+    database_sketch: modules.map((module) => ({
+      table: apiPath(module.name).replaceAll("-", "_").slice(0, 60),
+      fields: [
+        "id UUID PRIMARY KEY",
+        "created_at TIMESTAMPTZ NOT NULL",
+        "updated_at TIMESTAMPTZ NOT NULL",
+      ],
+      relations: [],
+    })),
+    auth_model: {
+      roles,
+      permissions_matrix: Object.fromEntries(
+        roles.map((role) => [
+          role,
+          /admin|owner/i.test(role)
+            ? ["scope:read", "scope:write", "users:manage"]
+            : ["scope:read", "scope:write"],
+        ]),
+      ),
+    },
+    third_party_checklist: statedThirdParties(session),
+    sprint_breakdown: estimate.plan.map((row) => ({
+      sprint: row.sprint,
+      focus: defaultFocus(row.modules),
+      story_points: row.storyPoints,
+      modules: row.modules,
+    })),
+    testing_strategy: modules.map((module) => ({
+      module: module.name,
+      unit: `Validate ${module.name} business rules`,
+      integration: `Verify ${module.name} persistence and authorization`,
+      e2e: `Complete the primary ${module.name} user flow`,
+    })),
+    security_per_module: Object.fromEntries(
+      modules.map((module) => [
+        module.name,
+        ["Require authorization", "Validate inputs", "Log sensitive changes"],
+      ]),
+    ),
+    risks: risks.map((risk) => ({ ...risk })),
+    github_references: [],
+    effort_summary: effortSummaryOf(estimate),
+  };
+}
+
+function apiPath(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "records"
+  );
+}
+
+const KNOWN_STACK = [
+  "Next.js",
+  "TypeScript",
+  "PostgreSQL",
+  "Redis",
+  "Vercel",
+  "React",
+  "Node.js",
+] as const;
+
+function statedStack(session: Session): string[] {
+  const text = `${session.raw_input}\n${session.enriched_input}`.toLowerCase();
+  const found = KNOWN_STACK.filter((item) => text.includes(item.toLowerCase()));
+  return found.length > 0 ? found : ["Next.js", "TypeScript", "PostgreSQL"];
+}
+
+const KNOWN_ROLES = [
+  "owner",
+  "manager",
+  "clerk",
+  "admin",
+  "administrator",
+  "viewer",
+  "editor",
+  "dispatcher",
+  "technician",
+  "customer",
+  "staff",
+] as const;
+
+function statedRoles(session: Session): string[] {
+  const text = `${session.raw_input}\n${session.enriched_input}`.toLowerCase();
+  const found = KNOWN_ROLES.filter((role) =>
+    new RegExp(`\\b${role}\\b`, "i").test(text),
+  ).map((role) => role[0]!.toUpperCase() + role.slice(1));
+  return found.length > 0 ? found : ["Admin", "Member"];
+}
+
+function statedThirdParties(session: Session): string[] {
+  const text = `${session.raw_input}\n${session.enriched_input}`.toLowerCase();
+  const services: Array<[string, string]> = [
+    ["stripe", "Stripe — configure account, keys and signed webhooks"],
+    ["twilio", "Twilio — configure sender, credentials and delivery callbacks"],
+    ["object storage", "Object storage — provision a private bucket and CORS policy"],
+    ["s3", "AWS S3 — provision a private bucket and least-privilege credentials"],
+  ];
+  return services.filter(([needle]) => text.includes(needle)).map(([, item]) => item);
 }
 
 /** The latest round; callers have already checked there is one. */
@@ -398,10 +545,15 @@ async function runEngineerView(
       sessionId,
       issues: outcome.issues,
     });
-    throw new LLMError(`Engineer view failed validation: ${outcome.issues}`);
+    throw new InvalidEngineerViewError(
+      `Engineer view failed validation: ${outcome.issues}`,
+    );
   }
   return outcome.data;
 }
+
+/** Validation exhaustion is safe to replace; transport failures remain retryable. */
+class InvalidEngineerViewError extends LLMError {}
 
 /* ──────────────────────────────────────────────────────────────
  *  Computed blocks (blueprint steps 09 and 10)

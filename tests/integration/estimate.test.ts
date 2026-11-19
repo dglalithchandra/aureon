@@ -172,6 +172,46 @@ describe("the estimate is computed, not written by the model", () => {
     expect(view.sprint_breakdown[1]?.focus).toMatch(/^Build /);
   });
 
+  it("builds a deterministic engineer view when a weak model stays incomplete", async () => {
+    mock.override("submit_engineer_view", {
+      build_order: ["Auth"],
+      database_sketch: [],
+      auth_model: { roles: ["admin"], permissions_matrix: { admin: [] } },
+      third_party_checklist: [],
+      sprint_breakdown: [],
+      testing_strategy: [],
+      security_per_module: {},
+      effort_summary: {
+        total_sprints: 1,
+        team_size: 1,
+        confidence_band: "unknown",
+      },
+    });
+
+    const view = await generateEngineerView(
+      saasSession({
+        raw_input: "Use Next.js, TypeScript and PostgreSQL. Roles are owner and manager.",
+      }),
+    );
+
+    expect(view.module_table.map((module) => module.name)).toEqual([
+      "Auth",
+      "Billing",
+      "Dashboard",
+      "Settings",
+    ]);
+    expect(view.module_table[0]?.tech_stack).toEqual([
+      "Next.js",
+      "TypeScript",
+      "PostgreSQL",
+    ]);
+    expect(view.auth_model.roles).toEqual(["Owner", "Manager"]);
+    expect(view.testing_strategy).toHaveLength(4);
+    expect(view.sprint_breakdown).toHaveLength(4);
+    expect(view.effort_summary.total_points).toBe(99);
+    expect(EngineerViewSchema.safeParse(view).success).toBe(true);
+  });
+
   it("tells the model the numbers before it writes", async () => {
     await generateEngineerView(saasSession());
     const prompt = mock.callsFor("submit_engineer_view")[0]?.userText ?? "";
