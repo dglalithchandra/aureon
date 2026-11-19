@@ -59,6 +59,8 @@ export interface LlmRequest {
   tool_choice?: { type: "tool"; name: string };
   messages: LlmMessage[];
   temperature?: number;
+  /** Optional whole-call deadline supplied by a pipeline stage. */
+  signal?: AbortSignal;
 }
 
 /**

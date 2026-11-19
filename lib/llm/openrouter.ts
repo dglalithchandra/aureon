@@ -227,7 +227,9 @@ async function fetchWithRetry(
       // the whole function budget.
       const res = await fetch(url, {
         ...init,
-        signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
+        signal: init.signal
+          ? AbortSignal.any([init.signal, AbortSignal.timeout(OPENROUTER_TIMEOUT_MS)])
+          : AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
       });
       // Read the body inside the retry boundary. A provider can send headers
       // and then stall while streaming the body; that timeout must be retried
@@ -238,6 +240,10 @@ async function fetchWithRetry(
       }
       lastErr = new Error(`OpenRouter ${res.status}`);
     } catch (err) {
+      // A pipeline-level deadline is final. Retrying it (and then trying the
+      // standby key) would keep a serverless job alive past its platform
+      // timeout without any chance of success.
+      if (init.signal?.aborted) throw init.signal.reason;
       lastErr = err; // network-level failure ("fetch failed")
     }
     if (i < attempts - 1) {
@@ -304,6 +310,7 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
           "X-Title": "Aureon",
         },
         body: JSON.stringify(body),
+        signal: params.signal,
       },
       attempts,
     );

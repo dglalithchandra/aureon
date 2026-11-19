@@ -304,9 +304,12 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
         body,
         // Each attempt gets its own deadline, so one hung request cannot eat
         // the whole function budget.
-        signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+        signal: params.signal
+          ? AbortSignal.any([params.signal, AbortSignal.timeout(GEMINI_TIMEOUT_MS)])
+          : AbortSignal.timeout(GEMINI_TIMEOUT_MS),
       });
     } catch (err) {
+      if (params.signal?.aborted) throw params.signal.reason;
       lastError = err instanceof Error ? err.message : "network failure";
       lastStatus = null;
       if (attempt < ATTEMPTS - 1) await sleep(backoff(attempt));

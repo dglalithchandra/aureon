@@ -85,6 +85,27 @@ describe("OpenRouter adapter", () => {
     expect(OPENROUTER_TIMEOUT_MS).toBe(45_000);
   });
 
+  it("honours a whole-call abort without retrying or using the standby key", async () => {
+    vi.stubEnv("OPENROUTER_FALLBACK_API_KEY", "sk-or-standby-0000000000000000000000");
+    const controller = new AbortController();
+    controller.abort(new DOMException("deadline", "TimeoutError"));
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.signal?.aborted) throw init.signal.reason;
+      return new Response(JSON.stringify(openAiReply("tool_calls")), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      openRouterClient.messages.create({
+        model: "test",
+        max_tokens: 100,
+        messages: [{ role: "user", content: "hi" }],
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("uses the lowest reasoning effort for structured pipeline calls", async () => {
     const fetchMock = stubFetch(openAiReply("tool_calls"));
     await create();

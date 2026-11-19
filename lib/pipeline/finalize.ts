@@ -39,6 +39,8 @@ const MAX_CONTEXT_CHARS = 40_000;
 const MAX_RAW_INPUT_CHARS = 12_000;
 /** Rough room kept for the extraction and GitHub sections. */
 const RESERVED_CONTEXT_CHARS = 8_000;
+/** Leave ample room for persistence and queue cleanup before Vercel's 300 s cap. */
+const ENGINEER_VIEW_DEADLINE_MS = 120_000;
 
 /**
  * Run client + engineer LLM calls in parallel and return the validated
@@ -110,7 +112,12 @@ export async function generateEngineerView(session: Session): Promise<EngineerVi
     // validated/computed, so keep the project usable with a conservative
     // deterministic document. Daily-budget exhaustion is rethrown by
     // runEngineerView and is intentionally not converted to LLMError.
-    if (!(err instanceof InvalidEngineerViewError)) throw err;
+    if (
+      !(err instanceof InvalidEngineerViewError) &&
+      !(err instanceof EngineerViewDeadlineError)
+    ) {
+      throw err;
+    }
     logger.warn("finalize.engineer.deterministic_fallback", {
       sessionId: session.id,
       message: err.message,
@@ -521,11 +528,15 @@ async function runEngineerView(
         tools: [submitEngineerViewTool],
         tool_choice: { type: "tool", name: submitEngineerViewTool.name },
         messages: [{ role: "user", content: context }],
+        signal: AbortSignal.timeout(ENGINEER_VIEW_DEADLINE_MS),
       },
     });
   } catch (err) {
     // The budget error must reach the route as a 503, not become an LLMError.
     if (err instanceof BudgetExceededError) throw err;
+    if (err instanceof Error && err.name === "TimeoutError") {
+      throw new EngineerViewDeadlineError("Engineer view exceeded its time budget");
+    }
     logger.error("finalize.engineer.failure", {
       sessionId,
       message: err instanceof Error ? err.message : "unknown",
@@ -554,6 +565,7 @@ async function runEngineerView(
 
 /** Validation exhaustion is safe to replace; transport failures remain retryable. */
 class InvalidEngineerViewError extends LLMError {}
+class EngineerViewDeadlineError extends LLMError {}
 
 /* ──────────────────────────────────────────────────────────────
  *  Computed blocks (blueprint steps 09 and 10)
