@@ -10,6 +10,7 @@ import {
   type LlmStopReason,
   type LlmTool,
 } from "@/lib/llm/types";
+import { logger } from "@/lib/logger";
 
 /**
  * OpenRouter adapter. It speaks the shape in lib/llm/types.ts, so
@@ -190,6 +191,16 @@ export const OPENROUTER_TIMEOUT_MS = 45_000;
 
 const RETRYABLE_STATUS = new Set([408, 409, 429, 500, 502, 503, 504, 520, 522, 524]);
 
+class OpenRouterRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+    this.name = "OpenRouterRequestError";
+  }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -247,11 +258,11 @@ async function fetchWithRetry(
 
 async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
   const env = getServerEnv();
-  const apiKey =
+  const primaryApiKey =
     params.tier === "fast"
       ? (env.OPENROUTER_FAST_API_KEY ?? env.OPENROUTER_API_KEY)
       : (env.OPENROUTER_MAIN_API_KEY ?? env.OPENROUTER_API_KEY);
-  if (!apiKey) {
+  if (!primaryApiKey) {
     throw new Error(`OpenRouter ${params.tier ?? "main"} API key is not configured`);
   }
   const model = params.model || env.OPENROUTER_MODEL || DEFAULT_MODEL;
@@ -281,27 +292,60 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
   // Free OpenRouter routes drop connections often and rate-limit upstream, so we
   // retry transient failures with exponential backoff + jitter. Only
   // non-retryable HTTP statuses (400/401/403/404) fail fast.
-  const res = await fetchWithRetry(
-    ENDPOINT,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://aureon.local",
-        "X-Title": "Aureon",
+  const requestWithKey = async (apiKey: string, attempts: number) => {
+    const res = await fetchWithRetry(
+      ENDPOINT,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://aureon.local",
+          "X-Title": "Aureon",
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    },
-    4,
-  );
+      attempts,
+    );
 
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(`OpenRouter ${res.status}: ${txt.slice(0, 240)}`);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new OpenRouterRequestError(
+        `OpenRouter ${res.status}: ${txt.slice(0, 240)}`,
+        res.status,
+      );
+    }
+
+    const data = (await res.json()) as OpenAiResponse;
+    if (!data.choices?.[0]?.message && data.error?.message?.trim()) {
+      const numericCode = Number(data.error.code);
+      throw new OpenRouterRequestError(
+        `OpenRouter returned no choices: ${data.error.message.trim()}`,
+        Number.isFinite(numericCode) ? numericCode : undefined,
+      );
+    }
+    return data;
+  };
+
+  let data: OpenAiResponse;
+  try {
+    data = await requestWithKey(primaryApiKey, 4);
+  } catch (err) {
+    const standbyApiKey = env.OPENROUTER_FALLBACK_API_KEY;
+    const status = err instanceof OpenRouterRequestError ? err.status : undefined;
+    const recoverable =
+      (status !== undefined &&
+        (status === 401 || status === 403 || RETRYABLE_STATUS.has(status))) ||
+      (err instanceof Error && err.message.startsWith("OpenRouter request failed after"));
+    if (!standbyApiKey || standbyApiKey === primaryApiKey || !recoverable) throw err;
+
+    logger.warn("llm.openrouter_key_fallback", {
+      tier: params.tier ?? "main",
+      status: status ?? "network",
+    });
+    data = await requestWithKey(standbyApiKey, 2);
   }
 
-  const data = (await res.json()) as OpenAiResponse;
   const choice = data.choices?.[0];
   const message = choice?.message;
   if (!message) {

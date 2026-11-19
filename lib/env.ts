@@ -43,6 +43,11 @@ const serverSchema = z
     OPENROUTER_MAIN_API_KEY: z.string().min(20).optional(),
     /** Optional key dedicated to GitHub README interpretation. */
     OPENROUTER_FAST_API_KEY: z.string().min(20).optional(),
+    /**
+     * Project-owned standby credential. The OpenRouter adapter uses it only
+     * after the tier credential is rejected, rate-limited, or unavailable.
+     */
+    OPENROUTER_FALLBACK_API_KEY: z.string().min(20).optional(),
     /** Main/fallback model used when a route selects OpenRouter. */
     OPENROUTER_MODEL: z.string().optional(),
     /** Optional cheaper OpenRouter model for GitHub README interpretation. */
@@ -242,7 +247,8 @@ const serverSchema = z
       data.LLM_FALLBACK_PROVIDER === "openrouter" &&
       !data.OPENROUTER_API_KEY &&
       !data.OPENROUTER_MAIN_API_KEY &&
-      !data.OPENROUTER_FAST_API_KEY
+      !data.OPENROUTER_FAST_API_KEY &&
+      !data.OPENROUTER_FALLBACK_API_KEY
     ) {
       ctx.addIssue({
         code: "custom",

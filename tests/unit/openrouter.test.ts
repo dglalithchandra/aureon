@@ -155,4 +155,64 @@ describe("OpenRouter adapter", () => {
       }),
     );
   });
+
+  it("uses the standby key after the tier key is rejected", async () => {
+    vi.stubEnv("OPENROUTER_MAIN_API_KEY", "sk-or-main-000000000000000000000000");
+    vi.stubEnv("OPENROUTER_FALLBACK_API_KEY", "sk-or-standby-0000000000000000000000");
+    vi.resetModules();
+    const fresh = (await import("@/lib/llm/openrouter")).openRouterClient;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: { message: "API key expired" } }), {
+          status: 401,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(openAiReply("tool_calls")), { status: 200 }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fresh.messages.create({
+      model: "test",
+      max_tokens: 100,
+      tier: "main",
+      messages: [{ role: "user", content: "hi" }],
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).toEqual(
+      expect.objectContaining({
+        Authorization: "Bearer sk-or-main-000000000000000000000000",
+      }),
+    );
+    expect(fetchMock.mock.calls[1]?.[1]?.headers).toEqual(
+      expect.objectContaining({
+        Authorization: "Bearer sk-or-standby-0000000000000000000000",
+      }),
+    );
+  });
+
+  it("does not spend the standby key on malformed requests", async () => {
+    vi.stubEnv("OPENROUTER_MAIN_API_KEY", "sk-or-main-000000000000000000000000");
+    vi.stubEnv("OPENROUTER_FALLBACK_API_KEY", "sk-or-standby-0000000000000000000000");
+    vi.resetModules();
+    const fresh = (await import("@/lib/llm/openrouter")).openRouterClient;
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: { message: "Bad request" } }), {
+        status: 400,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fresh.messages.create({
+        model: "test",
+        max_tokens: 100,
+        tier: "main",
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    ).rejects.toThrow("OpenRouter 400");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
