@@ -64,6 +64,7 @@ function contentReply(content: string) {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("OpenRouter adapter", () => {
@@ -188,6 +189,48 @@ describe("OpenRouter adapter", () => {
         new Response(JSON.stringify({ error: { message: "API key expired" } }), {
           status: 401,
         }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(openAiReply("tool_calls")), { status: 200 }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fresh.messages.create({
+      model: "test",
+      max_tokens: 100,
+      tier: "main",
+      messages: [{ role: "user", content: "hi" }],
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).toEqual(
+      expect.objectContaining({
+        Authorization: "Bearer sk-or-main-000000000000000000000000",
+      }),
+    );
+    expect(fetchMock.mock.calls[1]?.[1]?.headers).toEqual(
+      expect.objectContaining({
+        Authorization: "Bearer sk-or-standby-0000000000000000000000",
+      }),
+    );
+  });
+
+  it("rotates a daily-quota 429 to the next key without retrying it", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "sk-or-main-000000000000000000000000");
+    vi.stubEnv("OPENROUTER_MAIN_API_KEY", "sk-or-main-000000000000000000000000");
+    vi.stubEnv("OPENROUTER_FAST_API_KEY", "sk-or-fast-000000000000000000000000");
+    vi.stubEnv("OPENROUTER_FALLBACK_API_KEY", "sk-or-standby-0000000000000000000000");
+    vi.resetModules();
+    const fresh = (await import("@/lib/llm/openrouter")).openRouterClient;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: { message: "Rate limit exceeded: free-models-per-day" },
+          }),
+          { status: 429 },
+        ),
       )
       .mockResolvedValueOnce(
         new Response(JSON.stringify(openAiReply("tool_calls")), { status: 200 }),

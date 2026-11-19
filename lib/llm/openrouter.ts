@@ -191,6 +191,8 @@ export const OPENROUTER_TIMEOUT_MS = 45_000;
 
 const RETRYABLE_STATUS = new Set([408, 409, 429, 500, 502, 503, 504, 520, 522, 524]);
 
+const keyCursorByTier: Record<"main" | "fast", number> = { main: 0, fast: 0 };
+
 class OpenRouterRequestError extends Error {
   constructor(
     message: string,
@@ -221,6 +223,7 @@ async function fetchWithRetry(
   attempts: number,
 ): Promise<Response> {
   let lastErr: unknown;
+  let lastStatus: number | undefined;
   for (let i = 0; i < attempts; i++) {
     try {
       // Each attempt gets its own deadline, so one hung upstream cannot eat
@@ -238,6 +241,13 @@ async function fetchWithRetry(
       if (res.ok || !RETRYABLE_STATUS.has(res.status)) {
         return new Response(text, { status: res.status, headers: res.headers });
       }
+      // A 429 commonly means the account's daily free-model allowance is
+      // exhausted. Retrying the same credential consumes more of that quota;
+      // return it immediately so the key pool can rotate instead.
+      if (res.status === 429) {
+        return new Response(text, { status: res.status, headers: res.headers });
+      }
+      lastStatus = res.status;
       lastErr = new Error(`OpenRouter ${res.status}`);
     } catch (err) {
       // A pipeline-level deadline is final. Retrying it (and then trying the
@@ -251,10 +261,11 @@ async function fetchWithRetry(
       await sleep(base + Math.floor(Math.random() * 400));
     }
   }
-  throw new Error(
+  throw new OpenRouterRequestError(
     `OpenRouter request failed after ${attempts} attempts: ${
       lastErr instanceof Error ? lastErr.message : "unknown"
     }`,
+    lastStatus,
   );
 }
 
@@ -264,13 +275,30 @@ async function fetchWithRetry(
 
 async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
   const env = getServerEnv();
-  const primaryApiKey =
-    params.tier === "fast"
-      ? (env.OPENROUTER_FAST_API_KEY ?? env.OPENROUTER_API_KEY)
-      : (env.OPENROUTER_MAIN_API_KEY ?? env.OPENROUTER_API_KEY);
-  if (!primaryApiKey) {
+  const tier = params.tier === "fast" ? "fast" : "main";
+  const configuredKeys =
+    tier === "fast"
+      ? [
+          env.OPENROUTER_FAST_API_KEY,
+          env.OPENROUTER_FALLBACK_API_KEY,
+          env.OPENROUTER_MAIN_API_KEY,
+          env.OPENROUTER_API_KEY,
+        ]
+      : [
+          env.OPENROUTER_MAIN_API_KEY,
+          env.OPENROUTER_FALLBACK_API_KEY,
+          env.OPENROUTER_FAST_API_KEY,
+          env.OPENROUTER_API_KEY,
+        ];
+  const uniqueKeys = [
+    ...new Set(configuredKeys.filter((key): key is string => Boolean(key))),
+  ];
+  if (uniqueKeys.length === 0) {
     throw new Error(`OpenRouter ${params.tier ?? "main"} API key is not configured`);
   }
+  const offset = keyCursorByTier[tier] % uniqueKeys.length;
+  keyCursorByTier[tier] = (keyCursorByTier[tier] + 1) % uniqueKeys.length;
+  const keyPool = [...uniqueKeys.slice(offset), ...uniqueKeys.slice(0, offset)];
   const model = params.model || env.OPENROUTER_MODEL || DEFAULT_MODEL;
 
   const messages: OpenAiMessage[] = [];
@@ -334,24 +362,33 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
     return data;
   };
 
-  let data: OpenAiResponse;
-  try {
-    data = await requestWithKey(primaryApiKey, 4);
-  } catch (err) {
-    const standbyApiKey = env.OPENROUTER_FALLBACK_API_KEY;
-    const status = err instanceof OpenRouterRequestError ? err.status : undefined;
-    const recoverable =
-      (status !== undefined &&
-        (status === 401 || status === 403 || RETRYABLE_STATUS.has(status))) ||
-      (err instanceof Error && err.message.startsWith("OpenRouter request failed after"));
-    if (!standbyApiKey || standbyApiKey === primaryApiKey || !recoverable) throw err;
+  let data: OpenAiResponse | undefined;
+  let lastError: unknown;
+  for (let index = 0; index < keyPool.length; index++) {
+    try {
+      // One retry absorbs a transient network/provider failure. A 429 skips
+      // that retry inside fetchWithRetry and moves directly to the next key.
+      data = await requestWithKey(keyPool[index]!, 2);
+      break;
+    } catch (err) {
+      lastError = err;
+      const status = err instanceof OpenRouterRequestError ? err.status : undefined;
+      const recoverable =
+        (status !== undefined &&
+          (status === 401 || status === 403 || RETRYABLE_STATUS.has(status))) ||
+        (err instanceof Error &&
+          err.message.startsWith("OpenRouter request failed after"));
+      if (!recoverable || index === keyPool.length - 1) throw err;
 
-    logger.warn("llm.openrouter_key_fallback", {
-      tier: params.tier ?? "main",
-      status: status ?? "network",
-    });
-    data = await requestWithKey(standbyApiKey, 2);
+      logger.warn("llm.openrouter_key_rotate", {
+        tier: params.tier ?? "main",
+        status: status ?? "network",
+        attemptedKey: index + 1,
+        keyCount: keyPool.length,
+      });
+    }
   }
+  if (!data) throw lastError;
 
   const choice = data.choices?.[0];
   const message = choice?.message;
