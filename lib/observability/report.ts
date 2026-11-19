@@ -47,7 +47,24 @@ export async function reportError(err: unknown, context: ErrorContext): Promise<
 
   if (!url) return;
   try {
-    await fetch(url, {
+    const isDiscord = /^https:\/\/(?:discord(?:app)?\.com)\/api\/webhooks\//i.test(url);
+    const payload = isDiscord
+      ? {
+          content: [
+            `**Aureon error (${body.environment})**`,
+            `**${body.name}:** ${body.message}`,
+            `**Where:** ${body.where}`,
+            body.requestId ? `**Request:** ${body.requestId}` : null,
+            body.sessionId ? `**Session:** ${body.sessionId}` : null,
+            `**At:** ${body.at}`,
+          ]
+            .filter(Boolean)
+            .join("\n")
+            .slice(0, 2_000),
+        }
+      : body;
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -55,10 +72,13 @@ export async function reportError(err: unknown, context: ErrorContext): Promise<
           ? { authorization: `Bearer ${process.env.ERROR_WEBHOOK_TOKEN}` }
           : {}),
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
       // A hanging reporter must not hold a request open.
       signal: AbortSignal.timeout(3_000),
     });
+    if (!response.ok) {
+      logger.warn("error.report_failed", { message: `HTTP ${response.status}` });
+    }
   } catch (reportFailure) {
     logger.warn("error.report_failed", {
       message: reportFailure instanceof Error ? reportFailure.message : "unknown",

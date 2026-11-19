@@ -65,6 +65,25 @@ describe("the error reporter", () => {
       reportError(new Error("boom"), { where: "POST /api/finalize" }),
     ).resolves.toBeUndefined();
   });
+
+  it("formats Discord webhook reports as a readable message", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    vi.stubEnv("ERROR_WEBHOOK_URL", "https://discord.com/api/webhooks/123/token");
+
+    await reportError(new Error("boom"), {
+      where: "POST /api/finalize",
+      requestId: "req-1",
+      sessionId: "sess-1",
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(init.body)) as { content: string };
+    expect(body.content).toContain("Aureon error");
+    expect(body.content).toContain("POST /api/finalize");
+    expect(body.content).toContain("req-1");
+    expect(body.content).toContain("sess-1");
+  });
 });
 
 describe("request ids", () => {
