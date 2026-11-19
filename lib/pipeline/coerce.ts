@@ -68,6 +68,49 @@ export function coerceEngineerView(input: unknown): unknown {
   if (!isPlainObject(input)) return input;
   const out: UnknownObject = { ...input };
 
+  /**
+   * Free models occasionally stop after the database/auth sections and omit
+   * the remaining (large) arrays entirely, even after the structured-output
+   * repair retry.  Keep the document usable with conservative fallbacks. The
+   * sprint placeholder is replaced by the deterministic effort plan in
+   * finalize.ts; the testing/security rows remain deliberately generic so we
+   * never invent project-specific claims the model did not provide.
+   */
+  const moduleNames = Array.isArray(out.module_table)
+    ? out.module_table
+        .filter(isPlainObject)
+        .map((row) => row.name)
+        .filter((name): name is string => typeof name === "string" && name.trim() !== "")
+    : [];
+
+  if (out.third_party_checklist == null) out.third_party_checklist = [];
+  if (out.sprint_breakdown == null) {
+    out.sprint_breakdown = [
+      {
+        sprint: "Sprint 1",
+        focus: "Implement the scoped modules",
+        story_points: 0,
+        modules: [],
+      },
+    ];
+  }
+  if (out.testing_strategy == null) {
+    out.testing_strategy = moduleNames.map((module) => ({
+      module,
+      unit: `Validate ${module} business rules`,
+      integration: `Verify ${module} data and service boundaries`,
+      e2e: `Complete the primary ${module} user flow`,
+    }));
+  }
+  if (out.security_per_module == null) {
+    out.security_per_module = Object.fromEntries(
+      moduleNames.map((module) => [
+        module,
+        ["Require authorization", "Validate inputs", "Log sensitive changes"],
+      ]),
+    );
+  }
+
   // module_table[].dependencies + api_endpoints: string → [string]
   if (Array.isArray(out.module_table)) {
     out.module_table = out.module_table.map((row) => {

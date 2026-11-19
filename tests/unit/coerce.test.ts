@@ -172,6 +172,40 @@ describe("coerceEngineerView", () => {
     expect(parsed.success, JSON.stringify(parsed.error?.issues)).toBe(true);
   });
 
+  it("fills sections a truncated weak model omits", () => {
+    const partial = makeEngineerView() as unknown as Record<string, unknown>;
+    delete partial.third_party_checklist;
+    delete partial.sprint_breakdown;
+    delete partial.testing_strategy;
+    delete partial.security_per_module;
+
+    const out = asObj(coerceEngineerView(partial));
+
+    expect(out.third_party_checklist).toEqual([]);
+    expect(out.sprint_breakdown).toEqual([
+      {
+        sprint: "Sprint 1",
+        focus: "Implement the scoped modules",
+        story_points: 0,
+        modules: [],
+      },
+    ]);
+    expect(out.testing_strategy).toEqual([
+      {
+        module: "Auth",
+        unit: "Validate Auth business rules",
+        integration: "Verify Auth data and service boundaries",
+        e2e: "Complete the primary Auth user flow",
+      },
+    ]);
+    expect(out.security_per_module).toEqual({
+      Auth: ["Require authorization", "Validate inputs", "Log sensitive changes"],
+    });
+
+    const parsed = EngineerViewSchema.safeParse(out);
+    expect(parsed.success, JSON.stringify(parsed.error?.issues)).toBe(true);
+  });
+
   it("does not mutate its input", () => {
     const messy = { ...makeEngineerView(), build_order: "Auth" };
     const before = structuredClone(messy);
