@@ -222,7 +222,7 @@ describe("ROB-01: model output is repaired or retried", () => {
 
     expect((await run(session.id)).outcomes).toEqual(["completed"]);
     const calls = mock.callsFor("submit_extraction");
-    expect(calls.map((c) => c.maxTokens)).toEqual([4096, 6144]);
+    expect(calls.map((c) => c.maxTokens)).toEqual([6144, 9216]);
   });
 
   it("repairs an invalid client view during finalize", async () => {

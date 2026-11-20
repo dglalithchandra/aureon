@@ -87,7 +87,11 @@ export async function runExtraction(
       params: {
         tier: "main",
         model: promptModel("main"),
-        max_tokens: 4096,
+        // Free OpenRouter providers sometimes report `tool_use` even when the
+        // JSON arguments were cut off at the output limit. Real production
+        // failures reached exactly 4,096 tokens with required arrays missing,
+        // so leave enough headroom for the complete extraction payload.
+        max_tokens: 6144,
         system: [{ type: "text", text: EXTRACTION_SYSTEM_PROMPT }],
         tools: [submitExtractionTool],
         tool_choice: { type: "tool", name: submitExtractionTool.name },

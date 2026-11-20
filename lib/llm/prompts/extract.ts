@@ -87,9 +87,9 @@ export const submitExtractionTool: LlmTool = {
       },
       modules: {
         type: "array",
-        maxItems: 40,
+        maxItems: 20,
         description:
-          "Likely modules / pages / major components. Inferred from features, domain, and standard patterns.",
+          "Return 6-15 concise, non-overlapping modules / pages / major components. Combine closely related capabilities instead of expanding every feature into its own module.",
         items: {
           type: "object",
           required: ["name", "description", "size", "source_signal"],
@@ -108,14 +108,14 @@ export const submitExtractionTool: LlmTool = {
       },
       assumptions: {
         type: "array",
-        maxItems: 30,
+        maxItems: 15,
         items: { type: "string", maxLength: 400 },
         description:
           "Every assumption you made because something was not specified. Be explicit so the client can correct them.",
       },
       open_questions: {
         type: "array",
-        maxItems: 30,
+        maxItems: 15,
         items: { type: "string", maxLength: 400 },
         description:
           "Specific questions that, if answered, would upgrade the lowest-scoring parameters.",
