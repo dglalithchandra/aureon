@@ -115,6 +115,26 @@ describe("OpenRouter adapter", () => {
     expect(body.reasoning_effort).toBe("low");
   });
 
+  it("disables reasoning for the default Nemotron extraction model", async () => {
+    const fetchMock = stubFetch(openAiReply("tool_calls"));
+    await openRouterClient.messages.create({
+      model: "nvidia/nemotron-3.5-super-vl:free",
+      max_tokens: 100,
+      messages: [{ role: "user", content: "hi" }],
+      tools: [
+        {
+          name: "extract_modules",
+          description: "Extract module names",
+          input_schema: { type: "object" },
+        },
+      ],
+      tool_choice: { type: "tool", name: "extract_modules" },
+    });
+    const init = fetchMock.mock.calls[0]?.[1];
+    const body = JSON.parse(String(init?.body)) as { reasoning_effort?: string };
+    expect(body.reasoning_effort).toBe("none");
+  });
+
   it("requires an endpoint that supports all requested tool parameters", async () => {
     const fetchMock = stubFetch(openAiReply("tool_calls"));
     await create();

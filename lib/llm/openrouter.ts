@@ -30,9 +30,10 @@ import { logger } from "@/lib/logger";
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
 // A pinned free model is more deterministic than `openrouter/free`, which can
-// select a different provider for the repair retry. This model advertises both
-// forced tool choice and structured-output support in OpenRouter's model API.
-const DEFAULT_MODEL = "baidu/ernie-5.5-flash-preview:free";
+// select a different provider for the repair retry. Nemotron supports forced
+// tool choice without mandatory reasoning, leaving the output budget for the
+// validated JSON payload instead of hidden thinking tokens.
+const DEFAULT_MODEL = "nvidia/nemotron-3.5-super-vl:free";
 
 interface OpenAiTool {
   type: "function";
@@ -313,9 +314,11 @@ async function messagesCreate(params: LlmRequest): Promise<LlmResponse> {
     model,
     max_tokens: params.max_tokens,
     temperature: params.temperature ?? 0.2,
-    // Some free endpoints require reasoning. Keep it at the lowest supported
-    // level so the validated tool payload still receives most of the budget.
-    reasoning_effort: "low",
+    // Nemotron does not require reasoning for schema extraction. Disabling it
+    // reduced a representative extraction from ~5.7k completion tokens to
+    // ~1.3k and avoided malformed/truncated tool arguments. Preserve the old
+    // conservative setting for explicitly configured alternative models.
+    reasoning_effort: model === DEFAULT_MODEL ? "none" : "low",
     messages,
     tools: convertTools(params.tools),
     tool_choice: convertToolChoice(params.tool_choice),
